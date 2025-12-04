@@ -27,3 +27,4 @@
 - [x] Add multiple promo codes for different sales reps
 - [x] Include sales rep attribution in email notifications
 - [x] Update promo code validation to support rep-specific codes
+- [x] Update promo code system to accept any code ending in S26 (e.g., MJS26, STS26)

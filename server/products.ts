@@ -11,9 +11,8 @@ export const PRODUCTS = {
   }
 } as const;
 
-// Valid promo codes that waive the fee
-// Each sales rep gets their own code for tracking attribution
-export const PROMO_CODES: Record<string, {
+// Static promo codes (legacy support)
+export const STATIC_PROMO_CODES: Record<string, {
   code: string;
   discountPercent: number;
   description: string;
@@ -27,40 +26,7 @@ export const PROMO_CODES: Record<string, {
     salesRep: "General Campaign",
   },
   
-  // Sales Rep specific codes - Add your reps here
-  // Format: REP-[NAME] or custom codes
-  "REP-MIKE": {
-    code: "REP-MIKE",
-    discountPercent: 100,
-    description: "Sales Rep Promo - Fee Waived",
-    salesRep: "Mike",
-  },
-  "REP-SARAH": {
-    code: "REP-SARAH",
-    discountPercent: 100,
-    description: "Sales Rep Promo - Fee Waived",
-    salesRep: "Sarah",
-  },
-  "REP-JOHN": {
-    code: "REP-JOHN",
-    discountPercent: 100,
-    description: "Sales Rep Promo - Fee Waived",
-    salesRep: "John",
-  },
-  "REP-ALEX": {
-    code: "REP-ALEX",
-    discountPercent: 100,
-    description: "Sales Rep Promo - Fee Waived",
-    salesRep: "Alex",
-  },
-  "REP-CHRIS": {
-    code: "REP-CHRIS",
-    discountPercent: 100,
-    description: "Sales Rep Promo - Fee Waived",
-    salesRep: "Chris",
-  },
-  
-  // You can also create neighborhood-specific codes
+  // Regional codes
   "PINELLAS25": {
     code: "PINELLAS25",
     discountPercent: 100,
@@ -75,10 +41,16 @@ export const PROMO_CODES: Record<string, {
   },
 };
 
-export type PromoCodeKey = keyof typeof PROMO_CODES;
+/**
+ * Dynamic promo code pattern: Any code ending in "S26"
+ * Examples: MJS26, STS26, ABC123S26
+ * The prefix before S26 is used as the sales rep identifier
+ */
+const DYNAMIC_PROMO_PATTERN = /^(.+)S26$/i;
 
 /**
  * Validate a promo code and return discount info with sales rep attribution
+ * Supports both static codes and dynamic S26 pattern
  */
 export function validatePromoCode(code: string): { 
   valid: boolean; 
@@ -87,14 +59,29 @@ export function validatePromoCode(code: string): {
   salesRep?: string;
 } {
   const normalizedCode = code.toUpperCase().trim();
-  const promoEntry = Object.values(PROMO_CODES).find(p => p.code === normalizedCode);
   
-  if (promoEntry) {
+  // First check static promo codes
+  const staticEntry = Object.values(STATIC_PROMO_CODES).find(p => p.code === normalizedCode);
+  
+  if (staticEntry) {
     return {
       valid: true,
-      discountPercent: promoEntry.discountPercent,
-      description: promoEntry.description,
-      salesRep: promoEntry.salesRep,
+      discountPercent: staticEntry.discountPercent,
+      description: staticEntry.description,
+      salesRep: staticEntry.salesRep,
+    };
+  }
+  
+  // Check dynamic S26 pattern (any code ending in S26)
+  const dynamicMatch = normalizedCode.match(DYNAMIC_PROMO_PATTERN);
+  
+  if (dynamicMatch) {
+    const repInitials = dynamicMatch[1]; // Everything before "S26"
+    return {
+      valid: true,
+      discountPercent: 100, // 100% off = free
+      description: "Sales Rep Promo - Fee Waived",
+      salesRep: repInitials, // Use the initials as the rep identifier
     };
   }
   
@@ -102,12 +89,21 @@ export function validatePromoCode(code: string): {
 }
 
 /**
- * Get all available promo codes (for admin reference)
+ * Get all static promo codes (for admin reference)
+ * Note: Dynamic S26 codes are not listed as they are generated on-the-fly
  */
 export function getAllPromoCodes() {
-  return Object.values(PROMO_CODES).map(p => ({
-    code: p.code,
-    salesRep: p.salesRep,
-    discountPercent: p.discountPercent,
-  }));
+  return [
+    ...Object.values(STATIC_PROMO_CODES).map(p => ({
+      code: p.code,
+      salesRep: p.salesRep,
+      discountPercent: p.discountPercent,
+    })),
+    // Add a note about dynamic codes
+    {
+      code: "[INITIALS]S26",
+      salesRep: "Dynamic - Rep Initials",
+      discountPercent: 100,
+    }
+  ];
 }
