@@ -13,3 +13,9 @@
 - [x] Update frontend form to handle payment flow
 - [x] Test payment flow (promo code validation tests passing)
 - [x] Integrate Twilio SMS notifications for new report requests (code ready, awaiting credentials)
+- [x] Add roof concerns/notes text area to form
+- [x] Add optional hands-on inspection checkbox to form
+- [x] Update database schema for new fields
+- [x] Update backend to handle new fields
+- [x] Remove promo code hint from form
+- [x] Add proper backlink to Nextdoorextroofing.com in footer

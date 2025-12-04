@@ -49,6 +49,8 @@ export const appRouter = router({
         address: z.string().min(5),
         cityStateZip: z.string().min(5),
         roofAge: z.string().optional(),
+        roofConcerns: z.string().optional(),
+        handsOnInspection: z.boolean().optional(),
         promoCode: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -61,6 +63,10 @@ export const appRouter = router({
         const promoResult = input.promoCode ? validatePromoCode(input.promoCode) : { valid: false, discountPercent: 0 };
         const isFree = promoResult.valid && promoResult.discountPercent === 100;
 
+        // Format hands-on inspection for notifications
+        const handsOnText = input.handsOnInspection ? "✅ YES - Requested" : "No";
+        const concernsText = input.roofConcerns?.trim() || "None specified";
+
         if (isFree) {
           // Free submission with valid promo code
           const [result] = await db.insert(reportRequests).values({
@@ -70,6 +76,8 @@ export const appRouter = router({
             address: input.address,
             cityStateZip: input.cityStateZip,
             roofAge: input.roofAge || null,
+            roofConcerns: input.roofConcerns || null,
+            handsOnInspection: input.handsOnInspection || false,
             promoCode: input.promoCode?.toUpperCase() || null,
             promoApplied: true,
             amountPaid: 0,
@@ -78,7 +86,9 @@ export const appRouter = router({
 
           // Send email notification to owner
           await notifyOwner({
-            title: "🏠 New Storm Report Request (FREE - Promo Code)",
+            title: input.handsOnInspection 
+              ? "🏠🔧 New Storm Report Request (FREE + HANDS-ON)" 
+              : "🏠 New Storm Report Request (FREE - Promo Code)",
             content: `
 **New Report Request Received**
 
@@ -91,6 +101,11 @@ export const appRouter = router({
 - Address: ${input.address}
 - City/State/ZIP: ${input.cityStateZip}
 - Roof Age: ${input.roofAge || "Not specified"}
+
+**Roof Concerns:**
+${concernsText}
+
+**Hands-On Inspection:** ${handsOnText}
 
 **Payment:**
 - Promo Code: ${input.promoCode?.toUpperCase()}
@@ -126,6 +141,8 @@ export const appRouter = router({
             address: input.address,
             cityStateZip: input.cityStateZip,
             roofAge: input.roofAge || null,
+            roofConcerns: input.roofConcerns || null,
+            handsOnInspection: input.handsOnInspection || false,
             promoCode: input.promoCode?.toUpperCase() || null,
             promoApplied: false,
             amountPaid: 0,
@@ -162,6 +179,7 @@ export const appRouter = router({
               customer_phone: input.phone,
               address: input.address,
               city_state_zip: input.cityStateZip,
+              hands_on_inspection: input.handsOnInspection ? "yes" : "no",
             },
           });
 

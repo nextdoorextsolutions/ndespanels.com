@@ -41,6 +41,8 @@ export const reportRequests = mysqlTable("report_requests", {
   address: varchar("address", { length: 500 }).notNull(),
   cityStateZip: varchar("cityStateZip", { length: 255 }).notNull(),
   roofAge: varchar("roofAge", { length: 50 }),
+  roofConcerns: text("roofConcerns"), // Customer notes about specific issues
+  handsOnInspection: boolean("handsOnInspection").default(false).notNull(), // Request in-person tech inspection
   
   // Payment info
   promoCode: varchar("promoCode", { length: 50 }),

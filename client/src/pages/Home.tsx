@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -48,6 +49,8 @@ const formSchema = z.object({
   phone: z.string().min(10, { message: "Phone number is required." }),
   promoCode: z.string().optional(),
   roofAge: z.string().optional(),
+  roofConcerns: z.string().optional(),
+  handsOnInspection: z.boolean().optional(),
   disclaimer: z.boolean().refine((val) => val === true, {
     message: "You must acknowledge the disclaimer.",
   }),
@@ -92,6 +95,8 @@ export default function Home() {
       phone: "",
       promoCode: "",
       roofAge: "",
+      roofConcerns: "",
+      handsOnInspection: false,
       disclaimer: false,
     },
   });
@@ -143,6 +148,8 @@ export default function Home() {
         address: values.address,
         cityStateZip: values.cityStateZip,
         roofAge: values.roofAge,
+        roofConcerns: values.roofConcerns,
+        handsOnInspection: values.handsOnInspection,
         promoCode: values.promoCode,
       });
 
@@ -665,6 +672,49 @@ export default function Home() {
                     />
                   </div>
                   
+                  {/* Roof Concerns */}
+                  <FormField
+                    control={form.control}
+                    name="roofConcerns"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Specific Roof Concerns (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Describe any known issues, e.g., 'Active leak on south side', 'Missing shingles near chimney', 'Water stains in attic'..." 
+                            {...field} 
+                            className="bg-background/50 min-h-[80px] resize-none"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Hands-On Inspection Option */}
+                  <FormField
+                    control={form.control}
+                    name="handsOnInspection"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-primary/30 p-4 bg-primary/5">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="font-heading font-bold text-white cursor-pointer">
+                            Add Hands-On Inspection
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Request an in-person inspection with one of our certified technicians in addition to the drone survey.
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
                   {/* Neighborhood Promo Section */}
                   <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
                     <div className="flex items-start gap-3 mb-4">
@@ -686,7 +736,7 @@ export default function Home() {
                           <div className="flex gap-2">
                             <FormControl>
                               <Input 
-                                placeholder="Ex: NEIGHBOR25" 
+                                placeholder="Enter code" 
                                 {...field} 
                                 value={promoCode}
                                 onChange={(e) => {
@@ -837,16 +887,17 @@ export default function Home() {
             <div>
               <h4 className="font-heading font-bold text-white mb-4">Contact</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="https://nextdoorextroofing.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary">Nextdoorextroofing.com</a></li>
+                <li><a href="https://nextdoorextroofing.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Nextdoorextroofing.com</a></li>
                 <li>info@nextdoorextroofing.com</li>
               </ul>
             </div>
             
             <div>
-              <h4 className="font-heading font-bold text-white mb-4">Legal</h4>
+              <h4 className="font-heading font-bold text-white mb-4">About Us</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Privacy Policy</li>
-                <li>Terms of Service</li>
+                <li><a href="https://nextdoorextroofing.com/about" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Our Story</a></li>
+                <li><a href="https://nextdoorextroofing.com/services" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Full Services</a></li>
+                <li><a href="https://nextdoorextroofing.com/contact" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Contact Us</a></li>
               </ul>
             </div>
           </div>
@@ -861,8 +912,13 @@ export default function Home() {
               </p>
             </div>
             
-            <div className="text-center pt-4">
-              &copy; {new Date().getFullYear()} Next Door Exterior Solutions. All Rights Reserved.
+            <div className="text-center pt-4 space-y-2">
+              <p>&copy; {new Date().getFullYear()} Next Door Exterior Solutions. All Rights Reserved.</p>
+              <p>
+                <a href="https://nextdoorextroofing.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                  Visit our main website: Nextdoorextroofing.com
+                </a>
+              </p>
             </div>
           </div>
         </div>
