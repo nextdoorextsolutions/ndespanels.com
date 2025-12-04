@@ -202,20 +202,20 @@ export default function Home() {
           <div className="space-y-6 animate-in slide-in-from-left-10 duration-700 fade-in">
             <Badge variant="outline" className="border-primary text-primary px-4 py-1 text-sm font-mono tracking-widest uppercase bg-primary/10 backdrop-blur-sm">
               <span className="w-2 h-2 rounded-full bg-primary mr-2 animate-pulse"></span>
-              Active Survey Zone
+              Professional Inspection
             </Badge>
             
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-heading font-bold leading-tight text-white">
-              STORM <br />
+              PREMIUM <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyan-600">
-                DOCUMENTATION
+                STORM REPORT
               </span>
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-              Get high-resolution drone images, NOAA storm data, and a roof condition summary. 
+              Secure your property with a comprehensive $199 documentation package. Includes high-resolution drone imagery, official NOAA storm data, and a certified contractor's condition summary.
               <span className="text-white font-medium block mt-2">
-                Enter your promo code to receive the <span className="line-through text-muted-foreground">$199</span> report for <span className="text-primary font-bold">FREE</span>.
+                Don't wait for a claim denial—get the proof you need today.
               </span>
             </p>
 
@@ -373,7 +373,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- Price Anchor Section --- */}
+      {/* --- Pricing Section --- */}
       <section className="py-20 bg-secondary/30 border-y border-white/5">
         <div className="container">
           <div className="bg-gradient-to-br from-card to-background border border-white/10 rounded-2xl p-8 md:p-12 relative overflow-hidden">
@@ -383,32 +383,36 @@ export default function Home() {
             <div className="grid lg:grid-cols-2 gap-12 items-center relative z-10">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-6">
-                  <Clock className="w-3 h-3" /> Limited Time Offer
+                  <ShieldCheck className="w-3 h-3" /> Premium Package
                 </div>
                 <h2 className="text-3xl md:text-4xl font-heading font-bold mb-4">
-                  $199 Value — <span className="text-primary">FREE</span> With Code
+                  Complete Documentation <br/> <span className="text-primary">$199.00</span>
                 </h2>
                 <p className="text-muted-foreground text-lg mb-8">
-                  This professional documentation package normally costs $199. Homes in our active neighborhood survey zone can enter the promo code from your door hanger to receive the full report at no charge.
+                  Don't rely on guesswork. Our professional storm documentation package provides the indisputable evidence you need for maintenance planning or insurance discussions.
                 </p>
                 
-                <div className="flex flex-col sm:flex-row gap-4 max-w-md">
-                  <div className="relative flex-grow">
-                    <Input 
-                      type="text" 
-                      placeholder="Enter Promo Code" 
-                      className="h-12 bg-background border-white/20 focus:border-primary font-mono uppercase tracking-widest"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleApplyPromo}
-                    className="h-12 px-8 bg-white text-black hover:bg-gray-200 font-heading font-bold"
-                  >
-                    Apply Code
-                  </Button>
-                </div>
+                <ul className="space-y-4 mb-8">
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-white">FAA-Licensed Drone Inspection</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-white">Official NOAA Storm History Report</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <span className="text-white">Certified Contractor Condition Summary</span>
+                  </li>
+                </ul>
+
+                <Button 
+                  onClick={() => scrollToSection("request-form")}
+                  className="h-12 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-heading font-bold text-lg"
+                >
+                  Order Report Now
+                </Button>
               </div>
               
               <div className="relative">
@@ -419,13 +423,13 @@ export default function Home() {
                 />
                 <div className="absolute -bottom-6 -left-6 bg-background border border-white/10 p-4 rounded-lg shadow-xl flex items-center gap-4">
                   <div className="text-right">
-                    <div className="text-xs text-muted-foreground uppercase font-mono">Standard Price</div>
-                    <div className="text-lg font-bold line-through text-muted-foreground">$199.00</div>
+                    <div className="text-xs text-muted-foreground uppercase font-mono">Package Value</div>
+                    <div className="text-lg font-bold text-muted-foreground">$450.00</div>
                   </div>
                   <div className="h-8 w-px bg-white/20"></div>
                   <div>
                     <div className="text-xs text-primary uppercase font-mono font-bold">Your Price</div>
-                    <div className="text-2xl font-bold text-white">$0.00</div>
+                    <div className="text-2xl font-bold text-white">$199.00</div>
                   </div>
                 </div>
               </div>
@@ -496,8 +500,8 @@ export default function Home() {
         <div className="container relative z-10">
           <div className="max-w-2xl mx-auto bg-card/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
             <div className="bg-primary/10 p-6 border-b border-white/10 text-center">
-              <h2 className="text-2xl md:text-3xl font-heading font-bold text-white">Request Your Report</h2>
-              <p className="text-sm text-muted-foreground mt-2">Secure your spot in the neighborhood survey.</p>
+              <h2 className="text-2xl md:text-3xl font-heading font-bold text-white">Order Your Report</h2>
+              <p className="text-sm text-muted-foreground mt-2">Complete the form below to schedule your inspection.</p>
             </div>
             
             <div className="p-6 md:p-8">
@@ -602,30 +606,48 @@ export default function Home() {
                     />
                   </div>
                   
-                  <FormField
-                    control={form.control}
-                    name="promoCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Promo Code</FormLabel>
-                        <div className="relative">
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter code from door hanger" 
-                              {...field} 
-                              className={`bg-background/50 font-mono uppercase ${isPromoApplied ? "border-primary text-primary" : ""}`}
-                            />
-                          </FormControl>
-                          {isPromoApplied && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary flex items-center gap-1 text-xs font-bold">
-                              <CheckCircle2 className="w-4 h-4" /> APPLIED
-                            </div>
-                          )}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Neighborhood Promo Section */}
+                  <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <MapPin className="w-5 h-5 text-primary mt-1" />
+                      <div>
+                        <h4 className="font-heading font-bold text-white">Neighborhood Survey In Progress?</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          If we are currently working in your neighborhood, you may have received a door hanger with a code to waive the $199 fee.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="promoCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs uppercase tracking-wider text-primary">Enter Promo Code</FormLabel>
+                          <div className="relative">
+                            <FormControl>
+                              <Input 
+                                placeholder="Ex: NEIGHBOR25" 
+                                {...field} 
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  setPromoCode(e.target.value);
+                                  if (e.target.value.length > 0) handleApplyPromo();
+                                }}
+                                className={`bg-background/50 font-mono uppercase ${isPromoApplied ? "border-primary text-primary" : ""}`}
+                              />
+                            </FormControl>
+                            {isPromoApplied && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary flex items-center gap-1 text-xs font-bold">
+                                <CheckCircle2 className="w-4 h-4" /> FEE WAIVED
+                              </div>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   
                   <FormField
                     control={form.control}
