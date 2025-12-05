@@ -6,9 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Phone, User, Wrench } from "lucide-react";
-import { Link } from "wouter";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Phone, User, Plus } from "lucide-react";
 import { toast } from "sonner";
+import CRMLayout from "@/components/crm/CRMLayout";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -21,12 +21,10 @@ export default function Calendar() {
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [assignedRep, setAssignedRep] = useState<string>("");
 
-  // Get first and last day of current month view (including overflow days)
   const { startDate, endDate } = useMemo(() => {
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     
-    // Extend to include full weeks
     const start = new Date(firstDay);
     start.setDate(start.getDate() - start.getDay());
     
@@ -59,7 +57,6 @@ export default function Calendar() {
     },
   });
 
-  // Generate calendar days
   const calendarDays = useMemo(() => {
     const days = [];
     const start = new Date(startDate);
@@ -72,7 +69,6 @@ export default function Calendar() {
     return days;
   }, [startDate, endDate]);
 
-  // Group appointments by date
   const appointmentsByDate = useMemo(() => {
     const grouped: Record<string, typeof appointments> = {};
     appointments?.forEach(apt => {
@@ -117,98 +113,94 @@ export default function Calendar() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/crm">
-                <Button variant="ghost" size="sm">← Back to Dashboard</Button>
-              </Link>
-              <h1 className="text-2xl font-bold text-primary">Scheduling Calendar</h1>
-            </div>
-            <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-              <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90">
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  Schedule Inspection
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card">
-                <DialogHeader>
-                  <DialogTitle>Schedule New Inspection</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div>
-                    <Label>Select Lead</Label>
-                    <Select value={selectedLead?.toString() || ""} onValueChange={(v) => setSelectedLead(parseInt(v))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a lead..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {leads?.map((lead) => (
-                          <SelectItem key={lead.id} value={lead.id.toString()}>
-                            {lead.fullName} - {lead.address}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Date</Label>
-                    <Input 
-                      type="date" 
-                      value={selectedDate?.toISOString().split("T")[0] || ""} 
-                      onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Time</Label>
-                    <Input 
-                      type="time" 
-                      value={scheduleTime} 
-                      onChange={(e) => setScheduleTime(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Assign To</Label>
-                    <Select value={assignedRep} onValueChange={setAssignedRep}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select team member..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {team?.filter(m => m.role === "sales_rep" || m.role === "project_manager").map((member) => (
-                          <SelectItem key={member.id} value={member.id.toString()}>
-                            {member.name || member.email}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button 
-                    className="w-full bg-primary" 
-                    onClick={handleSchedule}
-                    disabled={!selectedLead || !selectedDate || scheduleMutation.isPending}
-                  >
-                    {scheduleMutation.isPending ? "Scheduling..." : "Schedule Inspection"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+    <CRMLayout>
+      <div className="p-6">
+        {/* Page Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Scheduling Calendar</h1>
+            <p className="text-sm text-gray-500">Manage inspections and appointments</p>
           </div>
+          <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black">
+                <Plus className="w-4 h-4 mr-2" />
+                Schedule Inspection
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-white">
+              <DialogHeader>
+                <DialogTitle className="text-gray-900">Schedule New Inspection</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div>
+                  <Label className="text-gray-700">Select Lead</Label>
+                  <Select value={selectedLead?.toString() || ""} onValueChange={(v) => setSelectedLead(parseInt(v))}>
+                    <SelectTrigger className="bg-white border-gray-200">
+                      <SelectValue placeholder="Choose a lead..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leads?.map((lead) => (
+                        <SelectItem key={lead.id} value={lead.id.toString()}>
+                          {lead.fullName} - {lead.address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-gray-700">Date</Label>
+                  <Input 
+                    type="date" 
+                    value={selectedDate?.toISOString().split("T")[0] || ""} 
+                    onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                    className="bg-white border-gray-200"
+                  />
+                </div>
+                <div>
+                  <Label className="text-gray-700">Time</Label>
+                  <Input 
+                    type="time" 
+                    value={scheduleTime} 
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="bg-white border-gray-200"
+                  />
+                </div>
+                <div>
+                  <Label className="text-gray-700">Assign To</Label>
+                  <Select value={assignedRep} onValueChange={setAssignedRep}>
+                    <SelectTrigger className="bg-white border-gray-200">
+                      <SelectValue placeholder="Select team member..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {team?.filter(m => m.role === "sales_rep" || m.role === "project_manager").map((member) => (
+                        <SelectItem key={member.id} value={member.id.toString()}>
+                          {member.name || member.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  className="w-full bg-[#00d4aa] hover:bg-[#00b894] text-black" 
+                  onClick={handleSchedule}
+                  disabled={!selectedLead || !selectedDate || scheduleMutation.isPending}
+                >
+                  {scheduleMutation.isPending ? "Scheduling..." : "Schedule Inspection"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
-      </header>
 
-      <main className="container py-6">
-        {/* Calendar Navigation */}
-        <Card className="mb-6">
-          <CardHeader className="pb-2">
+        {/* Calendar */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2 border-b">
             <div className="flex items-center justify-between">
               <Button variant="outline" size="icon" onClick={prevMonth}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <CardTitle className="text-xl">
+              <CardTitle className="text-xl text-gray-900">
                 {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
               </CardTitle>
               <Button variant="outline" size="icon" onClick={nextMonth}>
@@ -216,11 +208,11 @@ export default function Calendar() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             {/* Day Headers */}
             <div className="grid grid-cols-7 gap-1 mb-2">
               {DAYS.map(day => (
-                <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+                <div key={day} className="text-center text-sm font-semibold text-gray-600 py-2">
                   {day}
                 </div>
               ))}
@@ -237,9 +229,9 @@ export default function Calendar() {
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[100px] p-1 border rounded-md ${
-                      isCurrentMonthDay ? "bg-card" : "bg-muted/30"
-                    } ${isTodayDate ? "border-primary border-2" : "border-border"}`}
+                    className={`min-h-[100px] p-1 border rounded-md cursor-pointer transition-colors ${
+                      isCurrentMonthDay ? "bg-white hover:bg-gray-50" : "bg-gray-50"
+                    } ${isTodayDate ? "border-[#00d4aa] border-2" : "border-gray-200"}`}
                     onClick={() => {
                       setSelectedDate(date);
                       if (dayAppointments.length === 0) {
@@ -248,28 +240,25 @@ export default function Calendar() {
                     }}
                   >
                     <div className={`text-sm font-medium mb-1 ${
-                      isCurrentMonthDay ? "text-foreground" : "text-muted-foreground"
-                    } ${isTodayDate ? "text-primary" : ""}`}>
+                      isTodayDate ? "text-[#00d4aa]" : isCurrentMonthDay ? "text-gray-900" : "text-gray-400"
+                    }`}>
                       {date.getDate()}
                     </div>
+                    
+                    {/* Appointments */}
                     <div className="space-y-1">
-                      {dayAppointments.slice(0, 3).map((apt) => (
-                        <Link key={apt.id} href={`/crm/leads?id=${apt.id}`}>
-                          <div className={`text-xs p-1 rounded truncate cursor-pointer ${
-                            apt.handsOnInspection 
-                              ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" 
-                              : "bg-primary/20 text-primary border border-primary/30"
-                          }`}>
-                            <span className="font-medium">
-                              {apt.scheduledDate && new Date(apt.scheduledDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                            {" "}{apt.fullName.split(" ")[0]}
-                          </div>
-                        </Link>
+                      {dayAppointments.slice(0, 2).map((apt: any) => (
+                        <div
+                          key={apt.id}
+                          className="text-xs p-1 rounded bg-[#00d4aa]/20 text-[#00d4aa] truncate font-medium"
+                          title={apt.title}
+                        >
+                          {new Date(apt.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       ))}
-                      {dayAppointments.length > 3 && (
-                        <div className="text-xs text-muted-foreground text-center">
-                          +{dayAppointments.length - 3} more
+                      {dayAppointments.length > 2 && (
+                        <div className="text-xs text-gray-500">
+                          +{dayAppointments.length - 2} more
                         </div>
                       )}
                     </div>
@@ -281,57 +270,60 @@ export default function Calendar() {
         </Card>
 
         {/* Today's Appointments */}
-        <Card>
+        <Card className="mt-6 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
+            <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-[#00d4aa]" />
               Today's Schedule
             </CardTitle>
           </CardHeader>
           <CardContent>
             {appointmentsByDate[new Date().toDateString()]?.length ? (
               <div className="space-y-3">
-                {appointmentsByDate[new Date().toDateString()]?.map((apt) => (
-                  <div key={apt.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="text-lg font-bold text-primary">
-                        {apt.scheduledDate && new Date(apt.scheduledDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </div>
-                      <div>
-                        <div className="font-medium flex items-center gap-2">
-                          <User className="w-4 h-4" />
-                          {apt.fullName}
-                          {apt.handsOnInspection && (
-                            <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">
-                              <Wrench className="w-3 h-3 inline mr-1" />
-                              Hands-On
+                {appointmentsByDate[new Date().toDateString()]?.map((apt: any) => (
+                  <div key={apt.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg border">
+                    <div className="w-12 h-12 rounded-full bg-[#00d4aa]/20 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-[#00d4aa]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{apt.title}</p>
+                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(apt.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {apt.lead && (
+                          <>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {apt.lead.address}
                             </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {apt.address}, {apt.cityStateZip}
-                        </div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          {apt.phone}
-                        </div>
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              {apt.lead.phone}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <Link href={`/crm/leads?id=${apt.id}`}>
-                      <Button variant="outline" size="sm">View Details</Button>
-                    </Link>
+                    {apt.assignedTo && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <User className="w-4 h-4" />
+                        {apt.assignedTo.name}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center text-muted-foreground py-8">
-                No appointments scheduled for today
+              <div className="text-center py-8 text-gray-500">
+                <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No appointments scheduled for today</p>
               </div>
             )}
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </CRMLayout>
   );
 }

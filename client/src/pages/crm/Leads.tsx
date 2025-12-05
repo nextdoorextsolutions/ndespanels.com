@@ -7,20 +7,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Download, Calendar, BarChart3 } from "lucide-react";
-import { Link } from "wouter";
+import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Download, Plus, Filter } from "lucide-react";
 import { toast } from "sonner";
+import CRMLayout from "@/components/crm/CRMLayout";
 
 const STATUS_OPTIONS = [
-  { value: "new_lead", label: "New Lead", color: "bg-green-500/20 text-green-400" },
-  { value: "contacted", label: "Contacted", color: "bg-blue-500/20 text-blue-400" },
-  { value: "appointment_set", label: "Appointment Set", color: "bg-yellow-500/20 text-yellow-400" },
-  { value: "inspection_scheduled", label: "Inspection Scheduled", color: "bg-orange-500/20 text-orange-400" },
-  { value: "inspection_complete", label: "Inspection Complete", color: "bg-purple-500/20 text-purple-400" },
-  { value: "report_sent", label: "Report Sent", color: "bg-indigo-500/20 text-indigo-400" },
-  { value: "follow_up", label: "Follow Up", color: "bg-pink-500/20 text-pink-400" },
-  { value: "closed_won", label: "Closed Won", color: "bg-primary/20 text-primary" },
-  { value: "closed_lost", label: "Closed Lost", color: "bg-red-500/20 text-red-400" },
+  { value: "new_lead", label: "New Lead", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  { value: "contacted", label: "Contacted", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+  { value: "appointment_set", label: "Appointment Set", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  { value: "inspection_scheduled", label: "Inspection Scheduled", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+  { value: "inspection_complete", label: "Inspection Complete", color: "bg-purple-100 text-purple-700 border-purple-200" },
+  { value: "report_sent", label: "Report Sent", color: "bg-teal-100 text-teal-700 border-teal-200" },
+  { value: "follow_up", label: "Follow Up", color: "bg-pink-100 text-pink-700 border-pink-200" },
+  { value: "closed_won", label: "Closed Won", color: "bg-green-100 text-green-700 border-green-200" },
+  { value: "closed_lost", label: "Closed Lost", color: "bg-red-100 text-red-700 border-red-200" },
 ];
 
 export default function CRMLeads() {
@@ -28,6 +28,7 @@ export default function CRMLeads() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedLead, setSelectedLead] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [noteText, setNoteText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: leads, isLoading, refetch } = trpc.crm.getLeads.useQuery({});
@@ -39,11 +40,13 @@ export default function CRMLeads() {
     onSuccess: () => {
       toast.success("Lead updated successfully");
       refetch();
+      refetchLead();
     },
   });
   const addNote = trpc.crm.addNote.useMutation({
     onSuccess: () => {
       toast.success("Note added");
+      setNoteText("");
       refetchLead();
     },
   });
@@ -75,7 +78,7 @@ export default function CRMLeads() {
   });
 
   const getStatusColor = (status: string) => {
-    return STATUS_OPTIONS.find(s => s.value === status)?.color || "bg-gray-500/20 text-gray-400";
+    return STATUS_OPTIONS.find(s => s.value === status)?.color || "bg-gray-100 text-gray-700";
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,7 +87,6 @@ export default function CRMLeads() {
 
     setUploading(true);
     
-    // Convert file to base64
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = (reader.result as string).split(",")[1];
@@ -100,52 +102,42 @@ export default function CRMLeads() {
   };
 
   const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith("image/")) return <Image className="w-4 h-4" />;
-    return <File className="w-4 h-4" />;
+    if (fileType.startsWith("image/")) return <Image className="w-4 h-4 text-blue-500" />;
+    return <File className="w-4 h-4 text-gray-500" />;
   };
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src="/images/logo.jpg" alt="NextDoor" className="h-10 w-10 rounded-full" />
-            <div>
-              <h1 className="text-xl font-bold text-white">NextDoor CRM</h1>
-              <p className="text-xs text-gray-400">Storm Documentation Management</p>
-            </div>
-          </div>
-          <nav className="flex items-center gap-6">
-            <Link href="/crm" className="text-gray-400 hover:text-white transition">Dashboard</Link>
-            <Link href="/crm/leads" className="text-primary font-medium">Leads</Link>
-            <Link href="/crm/pipeline" className="text-gray-400 hover:text-white transition">Pipeline</Link>
-            <Link href="/crm/calendar" className="text-gray-400 hover:text-white transition flex items-center gap-1">
-              <Calendar className="w-4 h-4" /> Calendar
-            </Link>
-            <Link href="/crm/reports" className="text-gray-400 hover:text-white transition flex items-center gap-1">
-              <BarChart3 className="w-4 h-4" /> Reports
-            </Link>
-            <Link href="/crm/team" className="text-gray-400 hover:text-white transition">Team</Link>
-          </nav>
+  if (isLoading) {
+    return (
+      <CRMLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
         </div>
-      </header>
+      </CRMLayout>
+    );
+  }
 
-      <main className="container py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white">All Leads</h2>
-          <div className="flex items-center gap-4">
+  return (
+    <CRMLayout>
+      <div className="p-6">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Jobs / Contacts</h1>
+            <p className="text-sm text-gray-500">{filteredLeads?.length || 0} total records</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Search leads..."
+                placeholder="Search jobs..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 bg-black/40 border-white/10 text-white w-64"
+                className="pl-10 w-64 bg-white border-gray-200"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48 bg-black/40 border-white/10 text-white">
+              <SelectTrigger className="w-48 bg-white border-gray-200">
+                <Filter className="w-4 h-4 mr-2 text-gray-400" />
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -155,31 +147,35 @@ export default function CRMLeads() {
                 ))}
               </SelectContent>
             </Select>
+            <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black">
+              <Plus className="w-4 h-4 mr-2" />
+              New Job
+            </Button>
           </div>
         </div>
 
         {/* Leads Table */}
-        <Card className="bg-black/40 border-white/10">
+        <Card className="shadow-sm">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left p-4 text-gray-400 font-medium">Customer</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Property</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Status</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Source</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Date</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Actions</th>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="text-left p-4 text-sm font-semibold text-gray-600">Customer</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-600">Property</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-600">Status</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-600">Source</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-600">Date</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLeads?.map((lead) => (
-                    <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5 transition">
+                    <tr key={lead.id} className="border-b hover:bg-gray-50 transition">
                       <td className="p-4">
                         <div>
-                          <p className="font-medium text-white">{lead.fullName}</p>
-                          <div className="flex items-center gap-3 mt-1 text-sm text-gray-400">
+                          <p className="font-medium text-gray-900">{lead.fullName}</p>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
                               <Mail className="w-3 h-3" /> {lead.email}
                             </span>
@@ -190,8 +186,8 @@ export default function CRMLeads() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="flex items-start gap-1 text-gray-300">
-                          <MapPin className="w-4 h-4 mt-0.5 text-gray-500" />
+                        <div className="flex items-start gap-1 text-gray-700">
+                          <MapPin className="w-4 h-4 mt-0.5 text-gray-400" />
                           <div>
                             <p>{lead.address}</p>
                             <p className="text-sm text-gray-500">{lead.cityStateZip}</p>
@@ -199,20 +195,20 @@ export default function CRMLeads() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(lead.status)}`}>
-                          {lead.status?.replace(/_/g, " ").toUpperCase()}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(lead.status)}`}>
+                          {STATUS_OPTIONS.find(s => s.value === lead.status)?.label || lead.status}
                         </span>
                       </td>
                       <td className="p-4">
                         <div className="text-sm">
-                          <p className="text-gray-300">{lead.promoCode || "Direct"}</p>
+                          <p className="text-gray-700">{lead.promoCode || "Direct"}</p>
                           {lead.salesRepCode && (
-                            <p className="text-xs text-primary">Rep: {lead.salesRepCode}</p>
+                            <p className="text-xs text-[#00d4aa] font-medium">Rep: {lead.salesRepCode}</p>
                           )}
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="flex items-center gap-1 text-sm text-gray-400">
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
                           <Clock className="w-3 h-3" />
                           {new Date(lead.createdAt).toLocaleDateString()}
                         </div>
@@ -221,59 +217,57 @@ export default function CRMLeads() {
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button 
-                              variant="ghost" 
+                              variant="outline" 
                               size="sm" 
-                              className="text-primary"
+                              className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10"
                               onClick={() => setSelectedLead(lead.id)}
                             >
                               View <ChevronRight className="w-4 h-4 ml-1" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="bg-[#111] border-white/10 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+                          <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
-                              <DialogTitle className="text-xl">{leadDetail?.fullName || lead.fullName}</DialogTitle>
+                              <DialogTitle className="text-xl text-gray-900">{leadDetail?.fullName || lead.fullName}</DialogTitle>
                             </DialogHeader>
                             {leadDetail && (
-                              <Tabs defaultValue="details" className="w-full">
-                                <TabsList className="bg-black/40 border-white/10">
+                              <Tabs defaultValue="details">
+                                <TabsList className="bg-gray-100">
                                   <TabsTrigger value="details">Details</TabsTrigger>
                                   <TabsTrigger value="documents">Documents ({leadDetail.documents?.length || 0})</TabsTrigger>
                                   <TabsTrigger value="activity">Activity</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="details" className="space-y-6 mt-4">
-                                  {/* Contact Info */}
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                      <p className="text-sm text-gray-400 mb-1">Email</p>
-                                      <p className="text-white">{leadDetail.email}</p>
+                                      <p className="text-sm text-gray-500 mb-1">Email</p>
+                                      <p className="text-gray-900">{leadDetail.email}</p>
                                     </div>
                                     <div>
-                                      <p className="text-sm text-gray-400 mb-1">Phone</p>
-                                      <a href={`tel:${leadDetail.phone}`} className="text-primary hover:underline">{leadDetail.phone}</a>
+                                      <p className="text-sm text-gray-500 mb-1">Phone</p>
+                                      <a href={`tel:${leadDetail.phone}`} className="text-[#00d4aa] hover:underline">{leadDetail.phone}</a>
                                     </div>
                                     <div className="col-span-2">
-                                      <p className="text-sm text-gray-400 mb-1">Address</p>
-                                      <p className="text-white">{leadDetail.address}, {leadDetail.cityStateZip}</p>
+                                      <p className="text-sm text-gray-500 mb-1">Address</p>
+                                      <p className="text-gray-900">{leadDetail.address}, {leadDetail.cityStateZip}</p>
                                     </div>
                                     <div>
-                                      <p className="text-sm text-gray-400 mb-1">Roof Age</p>
-                                      <p className="text-white">{leadDetail.roofAge || "Not specified"}</p>
+                                      <p className="text-sm text-gray-500 mb-1">Roof Age</p>
+                                      <p className="text-gray-900">{leadDetail.roofAge || "Not specified"}</p>
                                     </div>
                                     <div>
-                                      <p className="text-sm text-gray-400 mb-1">Payment</p>
-                                      <p className="text-white">${(leadDetail.amountPaid / 100).toFixed(2)}</p>
+                                      <p className="text-sm text-gray-500 mb-1">Payment</p>
+                                      <p className="text-gray-900">${(leadDetail.amountPaid / 100).toFixed(2)}</p>
                                     </div>
                                   </div>
 
-                                  {/* Status Update */}
                                   <div>
-                                    <p className="text-sm text-gray-400 mb-2">Update Status</p>
+                                    <p className="text-sm text-gray-500 mb-2">Update Status</p>
                                     <Select 
                                       value={leadDetail.status} 
                                       onValueChange={(value) => updateLead.mutate({ id: leadDetail.id, status: value })}
                                     >
-                                      <SelectTrigger className="bg-black/40 border-white/10">
+                                      <SelectTrigger className="bg-white border-gray-200">
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -284,18 +278,16 @@ export default function CRMLeads() {
                                     </Select>
                                   </div>
 
-                                  {/* Roof Concerns */}
                                   {leadDetail.roofConcerns && (
                                     <div>
-                                      <p className="text-sm text-gray-400 mb-1">Roof Concerns</p>
-                                      <p className="text-white bg-white/5 p-3 rounded">{leadDetail.roofConcerns}</p>
+                                      <p className="text-sm text-gray-500 mb-1">Roof Concerns</p>
+                                      <p className="text-gray-900 bg-gray-50 p-3 rounded border">{leadDetail.roofConcerns}</p>
                                     </div>
                                   )}
 
-                                  {/* Hands-on Inspection */}
                                   <div className="flex items-center gap-2">
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                      leadDetail.handsOnInspection ? "bg-primary/20 text-primary" : "bg-gray-500/20 text-gray-400"
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                      leadDetail.handsOnInspection ? "bg-[#00d4aa]/20 text-[#00d4aa]" : "bg-gray-100 text-gray-500"
                                     }`}>
                                       {leadDetail.handsOnInspection ? "✓ Hands-On Inspection Requested" : "Drone Only"}
                                     </span>
@@ -303,7 +295,6 @@ export default function CRMLeads() {
                                 </TabsContent>
 
                                 <TabsContent value="documents" className="mt-4">
-                                  {/* Upload Button */}
                                   <div className="mb-4">
                                     <input
                                       type="file"
@@ -315,7 +306,7 @@ export default function CRMLeads() {
                                     <Button 
                                       onClick={() => fileInputRef.current?.click()}
                                       disabled={uploading}
-                                      className="bg-primary hover:bg-primary/90"
+                                      className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
                                     >
                                       <Upload className="w-4 h-4 mr-2" />
                                       {uploading ? "Uploading..." : "Upload Document"}
@@ -325,14 +316,13 @@ export default function CRMLeads() {
                                     </p>
                                   </div>
 
-                                  {/* Documents List */}
                                   <div className="space-y-2">
                                     {leadDetail.documents?.map((doc: any) => (
-                                      <div key={doc.id} className="flex items-center justify-between bg-white/5 p-3 rounded">
+                                      <div key={doc.id} className="flex items-center justify-between bg-gray-50 p-3 rounded border">
                                         <div className="flex items-center gap-3">
                                           {getFileIcon(doc.fileType)}
                                           <div>
-                                            <p className="text-sm text-white">{doc.fileName}</p>
+                                            <p className="text-sm text-gray-900">{doc.fileName}</p>
                                             <p className="text-xs text-gray-500">
                                               {new Date(doc.createdAt).toLocaleDateString()} • {doc.uploadedBy?.name || "System"}
                                             </p>
@@ -347,7 +337,7 @@ export default function CRMLeads() {
                                           <Button 
                                             variant="ghost" 
                                             size="sm" 
-                                            className="text-red-400 hover:text-red-300"
+                                            className="text-red-500 hover:text-red-600"
                                             onClick={() => deleteDocument.mutate({ documentId: doc.id })}
                                           >
                                             <Trash2 className="w-4 h-4" />
@@ -356,46 +346,49 @@ export default function CRMLeads() {
                                       </div>
                                     ))}
                                     {(!leadDetail.documents || leadDetail.documents.length === 0) && (
-                                      <div className="text-center py-8 text-gray-500">
-                                        <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                        <p>No documents uploaded yet</p>
-                                      </div>
+                                      <p className="text-center text-gray-500 py-8">No documents uploaded yet</p>
                                     )}
                                   </div>
                                 </TabsContent>
 
                                 <TabsContent value="activity" className="mt-4">
-                                  {/* Activity Log */}
-                                  <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+                                  <div className="mb-4">
+                                    <Textarea
+                                      placeholder="Add a note..."
+                                      value={noteText}
+                                      onChange={(e) => setNoteText(e.target.value)}
+                                      className="bg-white border-gray-200"
+                                    />
+                                    <Button 
+                                      onClick={() => {
+                                        if (noteText.trim()) {
+                                          addNote.mutate({ leadId: selectedLead!, note: noteText });
+                                        }
+                                      }}
+                                      disabled={!noteText.trim()}
+                                      className="mt-2 bg-[#00d4aa] hover:bg-[#00b894] text-black"
+                                    >
+                                      Add Note
+                                    </Button>
+                                  </div>
+
+                                  <div className="space-y-3">
                                     {leadDetail.activities?.map((activity: any) => (
-                                      <div key={activity.id} className="text-sm bg-white/5 p-3 rounded">
-                                        <p className="text-gray-300">{activity.description}</p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          {new Date(activity.createdAt).toLocaleString()}
-                                          {activity.user && ` • ${activity.user.name || activity.user.email}`}
-                                        </p>
+                                      <div key={activity.id} className="flex gap-3 p-3 bg-gray-50 rounded border">
+                                        <div className="w-8 h-8 rounded-full bg-[#00d4aa]/20 flex items-center justify-center flex-shrink-0">
+                                          <FileText className="w-4 h-4 text-[#00d4aa]" />
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="text-sm text-gray-900">{activity.description}</p>
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            {activity.user?.name || "System"} • {new Date(activity.createdAt).toLocaleString()}
+                                          </p>
+                                        </div>
                                       </div>
                                     ))}
                                     {(!leadDetail.activities || leadDetail.activities.length === 0) && (
-                                      <p className="text-gray-500 text-sm text-center py-4">No activity yet</p>
+                                      <p className="text-center text-gray-500 py-8">No activity yet</p>
                                     )}
-                                  </div>
-
-                                  {/* Add Note */}
-                                  <div>
-                                    <p className="text-sm text-gray-400 mb-2">Add Note</p>
-                                    <form onSubmit={(e) => {
-                                      e.preventDefault();
-                                      const form = e.target as HTMLFormElement;
-                                      const note = (form.elements.namedItem("note") as HTMLTextAreaElement).value;
-                                      if (note.trim()) {
-                                        addNote.mutate({ leadId: leadDetail.id, note });
-                                        form.reset();
-                                      }
-                                    }}>
-                                      <Textarea name="note" placeholder="Add a note..." className="bg-black/40 border-white/10 mb-2" />
-                                      <Button type="submit" size="sm" className="bg-primary">Add Note</Button>
-                                    </form>
                                   </div>
                                 </TabsContent>
                               </Tabs>
@@ -405,18 +398,19 @@ export default function CRMLeads() {
                       </td>
                     </tr>
                   ))}
+                  {(!filteredLeads || filteredLeads.length === 0) && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-gray-500">
+                        No leads found. They'll appear here when customers submit requests.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
-              {(!filteredLeads || filteredLeads.length === 0) && (
-                <div className="text-center py-12 text-gray-500">
-                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No leads found</p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </CRMLayout>
   );
 }

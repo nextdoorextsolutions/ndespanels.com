@@ -2,20 +2,19 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { User, Mail, Shield, Edit2, UserCheck, UserX } from "lucide-react";
-import { Link } from "wouter";
+import { User, Mail, Shield, Edit2, UserCheck, Users, Plus } from "lucide-react";
 import { toast } from "sonner";
+import CRMLayout from "@/components/crm/CRMLayout";
 
 const ROLE_OPTIONS = [
-  { value: "owner", label: "Owner", description: "Full access to all features" },
-  { value: "admin", label: "Admin", description: "Full access except billing" },
-  { value: "office", label: "Office Staff", description: "Lead management & reports" },
-  { value: "sales_rep", label: "Sales Rep", description: "View & update assigned leads" },
-  { value: "project_manager", label: "Project Manager", description: "Production & scheduling" },
-  { value: "user", label: "User", description: "Basic access" },
+  { value: "owner", label: "Owner", description: "Full access to all features", color: "bg-[#00d4aa]/20 text-[#00d4aa]" },
+  { value: "admin", label: "Admin", description: "Full access except billing", color: "bg-purple-100 text-purple-700" },
+  { value: "office", label: "Office Staff", description: "Lead management & reports", color: "bg-blue-100 text-blue-700" },
+  { value: "sales_rep", label: "Sales Rep", description: "View & update assigned leads", color: "bg-green-100 text-green-700" },
+  { value: "project_manager", label: "Project Manager", description: "Production & scheduling", color: "bg-orange-100 text-orange-700" },
+  { value: "user", label: "User", description: "Basic access", color: "bg-gray-100 text-gray-700" },
 ];
 
 export default function CRMTeam() {
@@ -34,69 +33,52 @@ export default function CRMTeam() {
   const [editingMember, setEditingMember] = useState<any>(null);
 
   const getRoleColor = (role: string) => {
-    switch (role) {
-      case "owner": return "bg-primary/20 text-primary";
-      case "admin": return "bg-purple-500/20 text-purple-400";
-      case "office": return "bg-blue-500/20 text-blue-400";
-      case "sales_rep": return "bg-green-500/20 text-green-400";
-      case "project_manager": return "bg-orange-500/20 text-orange-400";
-      default: return "bg-gray-500/20 text-gray-400";
-    }
+    return ROLE_OPTIONS.find(r => r.value === role)?.color || "bg-gray-100 text-gray-700";
   };
 
   const canEditRoles = currentUser?.role === "owner" || currentUser?.role === "admin";
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
+      <CRMLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
+        </div>
+      </CRMLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src="/images/logo.jpg" alt="NextDoor" className="h-10 w-10 rounded-full" />
-            <div>
-              <h1 className="text-xl font-bold text-white">NextDoor CRM</h1>
-              <p className="text-xs text-gray-400">Storm Documentation Management</p>
-            </div>
-          </div>
-          <nav className="flex items-center gap-6">
-            <Link href="/crm" className="text-gray-400 hover:text-white transition">Dashboard</Link>
-            <Link href="/crm/leads" className="text-gray-400 hover:text-white transition">Leads</Link>
-            <Link href="/crm/pipeline" className="text-gray-400 hover:text-white transition">Pipeline</Link>
-            <Link href="/crm/team" className="text-primary font-medium">Team</Link>
-          </nav>
-        </div>
-      </header>
-
-      <main className="container py-8">
+    <CRMLayout>
+      <div className="p-6">
+        {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-white">Team Management</h2>
-            <p className="text-gray-400 mt-1">Manage team members and their roles</p>
+            <h1 className="text-2xl font-bold text-gray-900">Team Management</h1>
+            <p className="text-sm text-gray-500">Manage team members and their roles</p>
           </div>
-          <div className="text-sm text-gray-400">
-            <Shield className="w-4 h-4 inline mr-1" />
-            {team?.length || 0} team members
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 flex items-center gap-1">
+              <Users className="w-4 h-4" />
+              {team?.length || 0} team members
+            </span>
+            <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black">
+              <Plus className="w-4 h-4 mr-2" />
+              Invite Member
+            </Button>
           </div>
         </div>
 
         {/* Role Legend */}
-        <Card className="bg-black/40 border-white/10 mb-6">
+        <Card className="mb-6 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-sm text-gray-400">Role Permissions</CardTitle>
+            <CardTitle className="text-sm text-gray-600">Role Permissions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {ROLE_OPTIONS.map((role) => (
                 <div key={role.value} className="text-center">
-                  <span className={`inline-block px-3 py-1 rounded text-xs font-medium ${getRoleColor(role.value)}`}>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${role.color}`}>
                     {role.label}
                   </span>
                   <p className="text-xs text-gray-500 mt-1">{role.description}</p>
@@ -107,138 +89,123 @@ export default function CRMTeam() {
         </Card>
 
         {/* Team Members Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {team?.map((member: any) => (
-            <Card key={member.id} className="bg-black/40 border-white/10">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    {member.avatarUrl ? (
-                      <img src={member.avatarUrl} alt={member.name} className="w-12 h-12 rounded-full" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                        <User className="w-6 h-6 text-primary" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium text-white">{member.name}</p>
-                      <div className="flex items-center gap-1 text-sm text-gray-400">
-                        <Mail className="w-3 h-3" />
-                        {member.email}
-                      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {team?.map((member) => (
+            <Card key={member.id} className="shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center flex-shrink-0">
+                    <span className="text-black font-bold text-lg">
+                      {member.name?.charAt(0) || member.email?.charAt(0) || "?"}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-gray-900 truncate">
+                        {member.name || "Unnamed User"}
+                      </h3>
+                      {canEditRoles && member.id !== currentUser?.id && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingMember(member)}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-white">
+                            <DialogHeader>
+                              <DialogTitle className="text-gray-900">Edit Team Member</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 pt-4">
+                              <div>
+                                <p className="text-sm text-gray-500 mb-1">Name</p>
+                                <p className="font-medium text-gray-900">{member.name || member.email}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500 mb-2">Role</p>
+                                <Select 
+                                  defaultValue={member.role}
+                                  onValueChange={(value) => {
+                                    updateMember.mutate({ userId: member.id, role: value as "owner" | "admin" | "office" | "sales_rep" | "project_manager" | "user" });
+                                  }}
+                                >
+                                  <SelectTrigger className="bg-white border-gray-200">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {ROLE_OPTIONS.map((role) => (
+                                      <SelectItem key={role.value} value={role.value}>
+                                        {role.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                      <Mail className="w-3 h-3" />
+                      {member.email}
+                    </p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(member.role)}`}>
+                        {ROLE_OPTIONS.find(r => r.value === member.role)?.label || member.role}
+                      </span>
+                      {member.id === currentUser?.id && (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                          You
+                        </span>
+                      )}
                     </div>
                   </div>
-                  {member.isActive !== false ? (
-                    <UserCheck className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <UserX className="w-5 h-5 text-red-500" />
-                  )}
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <span className={`px-3 py-1 rounded text-xs font-medium ${getRoleColor(member.role)}`}>
-                    {ROLE_OPTIONS.find(r => r.value === member.role)?.label || member.role}
-                  </span>
-                  
-                  {canEditRoles && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" onClick={() => setEditingMember(member)}>
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-[#111] border-white/10 text-white">
-                        <DialogHeader>
-                          <DialogTitle>Edit Team Member</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <p className="text-sm text-gray-400 mb-2">Name</p>
-                            <p className="text-white">{member.name}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-400 mb-2">Email</p>
-                            <p className="text-white">{member.email}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-400 mb-2">Role</p>
-                            <Select 
-                              defaultValue={member.role}
-                              onValueChange={(value) => {
-                                updateMember.mutate({ userId: member.id, role: value as any });
-                              }}
-                            >
-                              <SelectTrigger className="bg-black/40 border-white/10">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ROLE_OPTIONS.map((role) => (
-                                  <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-400 mb-2">Rep Code (for sales attribution)</p>
-                            <Input 
-                              defaultValue={member.repCode || ""}
-                              placeholder="e.g., MJ, ST"
-                              className="bg-black/40 border-white/10"
-                              onChange={(e) => {
-                                // Debounce this in production
-                              }}
-                              onBlur={(e) => {
-                                if (e.target.value !== member.repCode) {
-                                  updateMember.mutate({ userId: member.id, role: member.role, repCode: e.target.value });
-                                }
-                              }}
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Used for promo code tracking (e.g., MJS26)</p>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-
-                {member.repCode && (
-                  <div className="mt-3 pt-3 border-t border-white/10">
-                    <p className="text-xs text-gray-400">
-                      Rep Code: <span className="text-primary font-mono">{member.repCode}S26</span>
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}
+
+          {(!team || team.length === 0) && (
+            <Card className="col-span-full shadow-sm">
+              <CardContent className="py-12 text-center text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No team members yet</p>
+                <p className="text-sm mt-1">Team members will appear here after they log in</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {(!team || team.length === 0) && (
-          <Card className="bg-black/40 border-white/10">
-            <CardContent className="py-12 text-center">
-              <User className="w-12 h-12 mx-auto mb-4 text-gray-500" />
-              <p className="text-gray-400">No team members yet</p>
-              <p className="text-sm text-gray-500 mt-1">Team members will appear here when they log in</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* How to Add Team Members */}
-        <Card className="bg-black/40 border-white/10 mt-8">
+        {/* Access Info */}
+        <Card className="mt-6 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-white">How to Add Team Members</CardTitle>
+            <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-[#00d4aa]" />
+              CRM Access Information
+            </CardTitle>
           </CardHeader>
-          <CardContent className="text-gray-400">
-            <ol className="list-decimal list-inside space-y-2">
-              <li>Share the CRM login URL with your team member</li>
-              <li>They will log in using their email (OAuth authentication)</li>
-              <li>Once they log in, they'll appear in this list as a "User"</li>
-              <li>You can then update their role to match their position</li>
-              <li>For sales reps, assign a Rep Code for promo tracking</li>
-            </ol>
+          <CardContent>
+            <div className="space-y-4 text-sm text-gray-600">
+              <p>
+                <strong>How to add team members:</strong> Share the CRM login link with your team. 
+                Once they log in with their Manus account, they'll appear here and you can assign their role.
+              </p>
+              <p>
+                <strong>Role assignment:</strong> Only Owners and Admins can change team member roles. 
+                New users start with "User" role by default.
+              </p>
+              <div className="bg-[#00d4aa]/10 p-4 rounded-lg border border-[#00d4aa]/20">
+                <p className="font-medium text-[#00d4aa]">CRM Access URL:</p>
+                <code className="text-gray-700">{window.location.origin}/crm</code>
+              </div>
+            </div>
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </CRMLayout>
   );
 }

@@ -1,34 +1,35 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { User, Phone, MapPin, GripVertical } from "lucide-react";
-import { Link } from "wouter";
+import { User, Phone, MapPin, GripVertical, DollarSign } from "lucide-react";
 import { toast } from "sonner";
+import CRMLayout from "@/components/crm/CRMLayout";
+import { Card } from "@/components/ui/card";
 
 const PIPELINE_STAGES = [
-  { key: "new_lead", label: "New Leads", color: "border-green-500" },
-  { key: "contacted", label: "Contacted", color: "border-blue-500" },
-  { key: "appointment_set", label: "Appointment Set", color: "border-yellow-500" },
-  { key: "inspection_scheduled", label: "Scheduled", color: "border-orange-500" },
-  { key: "inspection_complete", label: "Inspected", color: "border-purple-500" },
-  { key: "report_sent", label: "Report Sent", color: "border-indigo-500" },
-  { key: "closed_won", label: "Closed Won", color: "border-primary" },
+  { key: "new_lead", label: "New Leads", color: "bg-orange-500", lightBg: "bg-orange-50" },
+  { key: "contacted", label: "Contacted", color: "bg-yellow-500", lightBg: "bg-yellow-50" },
+  { key: "appointment_set", label: "Scheduled", color: "bg-blue-500", lightBg: "bg-blue-50" },
+  { key: "inspection_complete", label: "Inspected", color: "bg-purple-500", lightBg: "bg-purple-50" },
+  { key: "report_sent", label: "Report Sent", color: "bg-teal-500", lightBg: "bg-teal-50" },
+  { key: "closed_won", label: "Closed Won", color: "bg-green-500", lightBg: "bg-green-50" },
 ];
 
 export default function CRMPipeline() {
   const { data: pipeline, isLoading, refetch } = trpc.crm.getPipeline.useQuery();
   const updateLead = trpc.crm.updateLead.useMutation({
     onSuccess: () => {
-      toast.success("Lead moved");
+      toast.success("Lead moved successfully");
       refetch();
     },
   });
 
   const handleDragStart = (e: React.DragEvent, leadId: number) => {
     e.dataTransfer.setData("leadId", leadId.toString());
+    e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
   };
 
   const handleDrop = (e: React.DragEvent, newStatus: string) => {
@@ -41,41 +42,34 @@ export default function CRMPipeline() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
+      <CRMLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
+        </div>
+      </CRMLayout>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src="/images/logo.jpg" alt="NextDoor" className="h-10 w-10 rounded-full" />
-            <div>
-              <h1 className="text-xl font-bold text-white">NextDoor CRM</h1>
-              <p className="text-xs text-gray-400">Storm Documentation Management</p>
-            </div>
-          </div>
-          <nav className="flex items-center gap-6">
-            <Link href="/crm" className="text-gray-400 hover:text-white transition">Dashboard</Link>
-            <Link href="/crm/leads" className="text-gray-400 hover:text-white transition">Leads</Link>
-            <Link href="/crm/pipeline" className="text-primary font-medium">Pipeline</Link>
-            <Link href="/crm/team" className="text-gray-400 hover:text-white transition">Team</Link>
-          </nav>
-        </div>
-      </header>
+  // Calculate totals
+  const getTotalValue = (leads: any[]) => {
+    return leads.reduce((sum, lead) => sum + (lead.amountPaid || 0), 0) / 100;
+  };
 
-      <main className="p-6">
-        <h2 className="text-2xl font-bold text-white mb-6">Sales Pipeline</h2>
-        <p className="text-gray-400 mb-6">Drag and drop leads between stages to update their status.</p>
+  return (
+    <CRMLayout>
+      <div className="p-6">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Sales Pipeline</h1>
+          <p className="text-sm text-gray-500">Drag and drop jobs between stages to update their status</p>
+        </div>
 
         {/* Kanban Board */}
         <div className="flex gap-4 overflow-x-auto pb-4">
           {PIPELINE_STAGES.map((stage) => {
             const leads = pipeline?.[stage.key as keyof typeof pipeline] || [];
+            const totalValue = getTotalValue(leads as any[]);
+            
             return (
               <div
                 key={stage.key}
@@ -83,70 +77,83 @@ export default function CRMPipeline() {
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, stage.key)}
               >
-                <Card className={`bg-black/40 border-t-4 ${stage.color} border-x-white/10 border-b-white/10`}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium text-white">{stage.label}</CardTitle>
-                      <span className="text-xs bg-white/10 px-2 py-1 rounded text-gray-400">
-                        {leads.length}
-                      </span>
+                {/* Column Header */}
+                <div className={`${stage.lightBg} rounded-t-lg p-3 border-t-4 ${stage.color.replace('bg-', 'border-')}`}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-900">{stage.label}</h3>
+                    <span className={`${stage.color} text-white text-xs font-bold px-2 py-1 rounded-full`}>
+                      {(leads as any[]).length}
+                    </span>
+                  </div>
+                  {totalValue > 0 && (
+                    <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
+                      <DollarSign className="w-3 h-3" />
+                      {totalValue.toFixed(2)}
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 min-h-[400px]">
-                    {leads.map((lead: any) => (
-                      <div
-                        key={lead.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, lead.id)}
-                        className="bg-white/5 hover:bg-white/10 rounded-lg p-3 cursor-grab active:cursor-grabbing transition border border-white/5"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                              <User className="w-4 h-4 text-primary" />
+                  )}
+                </div>
+
+                {/* Cards Container */}
+                <div className="bg-gray-100 rounded-b-lg p-2 min-h-[500px] space-y-2">
+                  {(leads as any[]).map((lead: any) => (
+                    <Card
+                      key={lead.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, lead.id)}
+                      className="p-3 bg-white cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow border border-gray-200"
+                    >
+                      <div className="flex items-start gap-2">
+                        <GripVertical className="w-4 h-4 text-gray-300 mt-1 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center flex-shrink-0">
+                              <span className="text-black font-semibold text-xs">
+                                {lead.fullName?.charAt(0) || "?"}
+                              </span>
                             </div>
-                            <p className="font-medium text-white text-sm">{lead.fullName}</p>
+                            <p className="font-medium text-gray-900 truncate">{lead.fullName}</p>
                           </div>
-                          <GripVertical className="w-4 h-4 text-gray-500" />
+                          
+                          <div className="space-y-1 text-xs text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              <span className="truncate">{lead.address}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              <span>{lead.phone}</span>
+                            </div>
+                          </div>
+
+                          {lead.salesRepCode && (
+                            <div className="mt-2">
+                              <span className="inline-block px-2 py-0.5 bg-[#00d4aa]/10 text-[#00d4aa] text-xs rounded font-medium">
+                                Rep: {lead.salesRepCode}
+                              </span>
+                            </div>
+                          )}
+
+                          {lead.amountPaid > 0 && (
+                            <div className="mt-2 text-xs font-medium text-green-600">
+                              ${(lead.amountPaid / 100).toFixed(2)} paid
+                            </div>
+                          )}
                         </div>
-                        <div className="space-y-1 text-xs text-gray-400">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            <span className="truncate">{lead.address}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            <span>{lead.phone}</span>
-                          </div>
-                        </div>
-                        {lead.promoCode && (
-                          <div className="mt-2">
-                            <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
-                              {lead.promoCode}
-                            </span>
-                          </div>
-                        )}
-                        {lead.handsOnInspection && (
-                          <div className="mt-1">
-                            <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
-                              🔧 Hands-On
-                            </span>
-                          </div>
-                        )}
                       </div>
-                    ))}
-                    {leads.length === 0 && (
-                      <div className="text-center py-8 text-gray-500 text-sm">
-                        No leads in this stage
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </Card>
+                  ))}
+
+                  {(leads as any[]).length === 0 && (
+                    <div className="text-center py-8 text-gray-400 text-sm">
+                      Drop jobs here
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
-      </main>
-    </div>
+      </div>
+    </CRMLayout>
   );
 }

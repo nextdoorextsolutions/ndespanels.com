@@ -51,3 +51,16 @@
 - [x] Reports export page with filters
 - [x] CSV export for lead lists
 - [x] PDF report generation
+
+## CRM Redesign (AccuLynx-Style)
+- [x] Research AccuLynx UI patterns (navigation, dashboard, dropdowns)
+- [x] Implement AccuLynx-style top navigation with dropdown menus
+- [x] Redesign dashboard with widget cards and quick actions
+- [x] Create CRMLayout component with consistent header/navigation
+- [x] Update leads/jobs view with light theme and table style
+- [x] Add quick-add buttons (New Job) and action menus
+- [x] Update Pipeline page with kanban board
+- [x] Update Calendar page with scheduling
+- [x] Update Reports page with export functionality
+- [x] Update Team page with member management
+- [x] Add status badges and color coding
