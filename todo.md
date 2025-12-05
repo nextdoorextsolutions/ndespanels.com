@@ -85,3 +85,19 @@
 - [x] Implement Timeline tab with chronological activity history
 - [x] Add search functionality across all tabs
 - [x] Style job detail page with dark blue theme
+
+## Role-Based Access Control & Edit History
+- [x] Add user roles enum to schema (owner, admin, team_lead, sales_rep)
+- [x] Create edit_history table to track all changes
+- [x] Add teamLeadId field to users for team assignment
+- [x] Create role-based access control middleware
+- [x] Implement permission helpers (canView, canEdit, canDelete)
+- [x] Update CRM router with role-based filtering
+- [x] Add edit history logging on all mutations
+- [x] Make customer info editable in Job Detail page
+- [x] Add edit history view for Owners/Admins
+- [x] Update Leads page with role-based job filtering
+- [x] Sales Rep: view/edit only assigned jobs
+- [x] Team Lead: view assigned jobs + team members' jobs
+- [x] Admin: view/edit all, no delete
+- [x] Owner: full access including delete and history view

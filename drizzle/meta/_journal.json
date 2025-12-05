@@ -43,6 +43,13 @@
       "when": 1764958816514,
       "tag": "0005_last_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1764961409992,
+      "tag": "0006_pink_sentinels",
+      "breakpoints": true
     }
   ]
 }

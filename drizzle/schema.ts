@@ -2,6 +2,11 @@ import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "d
 
 /**
  * CRM Users table - team members with role-based access
+ * Roles:
+ * - owner: Full access - view, edit, delete everything, view edit history
+ * - admin: View all jobs, edit everything, cannot delete
+ * - team_lead: View own jobs + jobs of team members assigned to them
+ * - sales_rep: View and edit only their own assigned jobs, no delete
  */
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -10,10 +15,12 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 50 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  // CRM roles: owner, office, sales_rep, project_manager
-  role: mysqlEnum("role", ["user", "admin", "owner", "office", "sales_rep", "project_manager"]).default("user").notNull(),
+  // CRM roles: owner, admin, team_lead, sales_rep
+  role: mysqlEnum("role", ["user", "admin", "owner", "office", "sales_rep", "project_manager", "team_lead"]).default("user").notNull(),
   // Sales rep specific fields
   repCode: varchar("repCode", { length: 20 }), // e.g., "MJS26" - their promo code suffix
+  // Team assignment - for team_lead to manage their team members
+  teamLeadId: int("teamLeadId"), // FK to users.id - who is this user's team lead
   isActive: boolean("isActive").default(true).notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -147,3 +154,36 @@ export const documents = mysqlTable("documents", {
 
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
+
+/**
+ * Edit History - tracks all edits made to leads/jobs for audit trail
+ * Only visible to Owners and Admins
+ */
+export const editHistory = mysqlTable("edit_history", {
+  id: int("id").autoincrement().primaryKey(),
+  reportRequestId: int("reportRequestId").notNull(), // FK to reportRequests.id
+  userId: int("userId").notNull(), // FK to users.id (who made the edit)
+  
+  // What was changed
+  fieldName: varchar("fieldName", { length: 100 }).notNull(), // e.g., "fullName", "status", "email"
+  oldValue: text("oldValue"), // Previous value (null if new)
+  newValue: text("newValue"), // New value
+  
+  // Edit type
+  editType: mysqlEnum("editType", [
+    "create",
+    "update",
+    "delete",
+    "assign",
+    "status_change"
+  ]).default("update").notNull(),
+  
+  // Additional context
+  ipAddress: varchar("ipAddress", { length: 45 }), // IPv4 or IPv6
+  userAgent: varchar("userAgent", { length: 500 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EditHistory = typeof editHistory.$inferSelect;
+export type InsertEditHistory = typeof editHistory.$inferInsert;

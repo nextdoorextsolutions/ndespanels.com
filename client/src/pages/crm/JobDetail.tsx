@@ -18,19 +18,20 @@ import {
   Trash2,
   Send,
   Edit2,
-  ChevronDown,
+  Save,
+  X,
   AlertCircle,
   CheckCircle,
   XCircle,
-  MoreVertical,
   ExternalLink,
+  Shield,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
@@ -65,6 +66,15 @@ const ACTIVITY_ICONS: Record<string, typeof CheckCircle> = {
   photo_uploaded: Image,
 };
 
+// Edit type colors for history
+const EDIT_TYPE_COLORS: Record<string, string> = {
+  create: "bg-green-500",
+  update: "bg-blue-500",
+  delete: "bg-red-500",
+  assign: "bg-purple-500",
+  status_change: "bg-yellow-500",
+};
+
 // Tab configuration
 const TABS = [
   { key: "overview", label: "Overview", icon: User },
@@ -72,6 +82,7 @@ const TABS = [
   { key: "photos", label: "Photos", icon: Image },
   { key: "messages", label: "Notes & Messages", icon: MessageSquare },
   { key: "timeline", label: "Timeline", icon: History },
+  { key: "edit_history", label: "Edit History", icon: Eye, requiresPermission: "canViewHistory" },
 ];
 
 export default function JobDetail() {
@@ -82,6 +93,18 @@ export default function JobDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+  const [customerForm, setCustomerForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+    cityStateZip: "",
+    roofAge: "",
+    roofConcerns: "",
+    leadSource: "",
+    handsOnInspection: false,
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,16 +112,38 @@ export default function JobDetail() {
     { id: jobId },
     { enabled: jobId > 0 }
   );
+  const { data: permissions } = trpc.crm.getMyPermissions.useQuery();
   const { data: searchResults } = trpc.crm.searchJob.useQuery(
     { jobId, query: searchQuery, type: "all" },
     { enabled: searchQuery.length > 2 }
   );
   const { data: team } = trpc.crm.getTeam.useQuery();
+  const { data: editHistoryData } = trpc.crm.getEditHistory.useQuery(
+    { jobId, limit: 100 },
+    { enabled: jobId > 0 && permissions?.canViewEditHistory }
+  );
 
   const updateLead = trpc.crm.updateLead.useMutation({
     onSuccess: () => {
       toast.success("Job updated successfully");
       refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const updateCustomerInfo = trpc.crm.updateCustomerInfo.useMutation({
+    onSuccess: () => {
+      toast.success("Customer info updated successfully");
+      setIsEditingCustomer(false);
+      refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteLead = trpc.crm.deleteLead.useMutation({
+    onSuccess: () => {
+      toast.success("Job deleted successfully");
+      window.location.href = "/crm/leads";
     },
     onError: (error) => toast.error(error.message),
   });
@@ -184,6 +229,29 @@ export default function JobDetail() {
     });
   };
 
+  const startEditingCustomer = () => {
+    if (!jobData?.job) return;
+    setCustomerForm({
+      fullName: jobData.job.fullName || "",
+      email: jobData.job.email || "",
+      phone: jobData.job.phone || "",
+      address: jobData.job.address || "",
+      cityStateZip: jobData.job.cityStateZip || "",
+      roofAge: jobData.job.roofAge || "",
+      roofConcerns: jobData.job.roofConcerns || "",
+      leadSource: jobData.job.leadSource || "",
+      handsOnInspection: jobData.job.handsOnInspection || false,
+    });
+    setIsEditingCustomer(true);
+  };
+
+  const saveCustomerInfo = () => {
+    updateCustomerInfo.mutate({
+      id: jobId,
+      ...customerForm,
+    });
+  };
+
   if (isLoading || !jobData) {
     return (
       <CRMLayout>
@@ -194,8 +262,19 @@ export default function JobDetail() {
     );
   }
 
-  const { job, assignedUser, documents, photos, messages, timeline } = jobData;
+  const { job, assignedUser, documents, photos, messages, timeline, permissions: jobPermissions } = jobData;
   const statusConfig = STATUS_CONFIG[job.status] || STATUS_CONFIG.new_lead;
+  const canEdit = jobPermissions?.canEdit ?? false;
+  const canDelete = jobPermissions?.canDelete ?? false;
+  const canViewHistory = jobPermissions?.canViewHistory ?? false;
+
+  // Filter tabs based on permissions
+  const visibleTabs = TABS.filter(tab => {
+    if (tab.requiresPermission === "canViewHistory") {
+      return canViewHistory;
+    }
+    return true;
+  });
 
   // Filter content based on search
   const filteredDocuments = searchQuery 
@@ -210,6 +289,13 @@ export default function JobDetail() {
   const filteredTimeline = searchQuery
     ? timeline.filter(t => t.description.toLowerCase().includes(searchQuery.toLowerCase()))
     : timeline;
+  const filteredEditHistory = searchQuery && editHistoryData
+    ? editHistoryData.filter(h => 
+        h.fieldName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        h.oldValue?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        h.newValue?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : editHistoryData || [];
 
   return (
     <CRMLayout>
@@ -231,24 +317,52 @@ export default function JobDetail() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {/* Role Badge */}
+              {permissions && (
+                <span className={`px-2 py-1 rounded text-xs font-medium text-white ${
+                  permissions.role === "owner" ? "bg-purple-500" :
+                  permissions.role === "admin" ? "bg-blue-500" :
+                  permissions.role === "team_lead" ? "bg-green-500" :
+                  "bg-cyan-500"
+                }`}>
+                  <Shield className="w-3 h-3 inline mr-1" />
+                  {permissions.roleDisplayName}
+                </span>
+              )}
               <span className={`px-3 py-1 rounded-full text-sm font-medium text-white ${statusConfig.color}`}>
                 {statusConfig.label}
               </span>
-              <Select
-                value={job.status}
-                onValueChange={(value) => updateLead.mutate({ id: jobId, status: value })}
-              >
-                <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600 text-white">
-                  <SelectValue placeholder="Change Status" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                    <SelectItem key={key} value={key} className="text-white hover:bg-slate-600">
-                      {config.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {canEdit && (
+                <Select
+                  value={job.status}
+                  onValueChange={(value) => updateLead.mutate({ id: jobId, status: value })}
+                >
+                  <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600 text-white">
+                    <SelectValue placeholder="Change Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-700 border-slate-600">
+                    {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                      <SelectItem key={key} value={key} className="text-white hover:bg-slate-600">
+                        {config.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {canDelete && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                  onClick={() => {
+                    if (confirm("Are you sure you want to delete this job? This action cannot be undone.")) {
+                      deleteLead.mutate({ id: jobId });
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -256,7 +370,7 @@ export default function JobDetail() {
         {/* Tabs */}
         <div className="bg-slate-800 border-b border-slate-700 px-6">
           <div className="flex items-center gap-1">
-            {TABS.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
@@ -277,18 +391,21 @@ export default function JobDetail() {
                 {tab.key === "messages" && messages.length > 0 && (
                   <span className="ml-1 px-1.5 py-0.5 bg-slate-600 rounded text-xs">{messages.length}</span>
                 )}
+                {tab.key === "edit_history" && editHistoryData && editHistoryData.length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-slate-600 rounded text-xs">{editHistoryData.length}</span>
+                )}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Search Bar (for Documents, Photos, Messages, Timeline tabs) */}
+        {/* Search Bar (for Documents, Photos, Messages, Timeline, Edit History tabs) */}
         {activeTab !== "overview" && (
           <div className="px-6 py-4 bg-slate-850">
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
-                placeholder={`Search ${activeTab}...`}
+                placeholder={`Search ${activeTab.replace("_", " ")}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
@@ -302,43 +419,143 @@ export default function JobDetail() {
           {/* Overview Tab */}
           {activeTab === "overview" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Customer Info */}
+              {/* Customer Info - Editable */}
               <Card className="bg-slate-800 border-slate-700">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <User className="w-5 h-5 text-[#00d4aa]" />
-                    Customer Information
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <User className="w-5 h-5 text-[#00d4aa]" />
+                      Customer Information
+                    </CardTitle>
+                    {canEdit && !isEditingCustomer && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-slate-400 hover:text-white hover:bg-slate-700"
+                        onClick={startEditingCustomer}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {isEditingCustomer && (
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                          onClick={saveCustomerInfo}
+                          disabled={updateCustomerInfo.isPending}
+                        >
+                          <Save className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                          onClick={() => setIsEditingCustomer(false)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center">
-                      <span className="text-black font-bold text-lg">
-                        {job.fullName?.charAt(0) || "?"}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">{job.fullName}</p>
-                      <p className="text-sm text-slate-400">Customer</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3 pt-4 border-t border-slate-700">
-                    <div className="flex items-center gap-3 text-slate-300">
-                      <Phone className="w-4 h-4 text-slate-400" />
-                      <a href={`tel:${job.phone}`} className="hover:text-[#00d4aa]">{job.phone}</a>
-                    </div>
-                    <div className="flex items-center gap-3 text-slate-300">
-                      <Mail className="w-4 h-4 text-slate-400" />
-                      <a href={`mailto:${job.email}`} className="hover:text-[#00d4aa]">{job.email}</a>
-                    </div>
-                    <div className="flex items-start gap-3 text-slate-300">
-                      <MapPin className="w-4 h-4 text-slate-400 mt-0.5" />
+                  {isEditingCustomer ? (
+                    <div className="space-y-3">
                       <div>
-                        <p>{job.address}</p>
-                        <p>{job.cityStateZip}</p>
+                        <label className="text-sm text-slate-400">Full Name</label>
+                        <Input
+                          value={customerForm.fullName}
+                          onChange={(e) => setCustomerForm({ ...customerForm, fullName: e.target.value })}
+                          className="bg-slate-700 border-slate-600 text-white mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400">Email</label>
+                        <Input
+                          type="email"
+                          value={customerForm.email}
+                          onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                          className="bg-slate-700 border-slate-600 text-white mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400">Phone</label>
+                        <Input
+                          value={customerForm.phone}
+                          onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                          className="bg-slate-700 border-slate-600 text-white mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400">Address</label>
+                        <Input
+                          value={customerForm.address}
+                          onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
+                          className="bg-slate-700 border-slate-600 text-white mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400">City, State, ZIP</label>
+                        <Input
+                          value={customerForm.cityStateZip}
+                          onChange={(e) => setCustomerForm({ ...customerForm, cityStateZip: e.target.value })}
+                          className="bg-slate-700 border-slate-600 text-white mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400">Lead Source</label>
+                        <Select
+                          value={customerForm.leadSource || "website"}
+                          onValueChange={(value) => setCustomerForm({ ...customerForm, leadSource: value })}
+                        >
+                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-700 border-slate-600">
+                            <SelectItem value="website" className="text-white hover:bg-slate-600">Website</SelectItem>
+                            <SelectItem value="referral" className="text-white hover:bg-slate-600">Referral</SelectItem>
+                            <SelectItem value="door_hanger" className="text-white hover:bg-slate-600">Door Hanger</SelectItem>
+                            <SelectItem value="cold_call" className="text-white hover:bg-slate-600">Cold Call</SelectItem>
+                            <SelectItem value="social_media" className="text-white hover:bg-slate-600">Social Media</SelectItem>
+                            <SelectItem value="other" className="text-white hover:bg-slate-600">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center">
+                          <span className="text-black font-bold text-lg">
+                            {job.fullName?.charAt(0) || "?"}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">{job.fullName}</p>
+                          <p className="text-sm text-slate-400">Customer</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3 pt-4 border-t border-slate-700">
+                        <div className="flex items-center gap-3 text-slate-300">
+                          <Phone className="w-4 h-4 text-slate-400" />
+                          <a href={`tel:${job.phone}`} className="hover:text-[#00d4aa]">{job.phone}</a>
+                        </div>
+                        <div className="flex items-center gap-3 text-slate-300">
+                          <Mail className="w-4 h-4 text-slate-400" />
+                          <a href={`mailto:${job.email}`} className="hover:text-[#00d4aa]">{job.email}</a>
+                        </div>
+                        <div className="flex items-start gap-3 text-slate-300">
+                          <MapPin className="w-4 h-4 text-slate-400 mt-0.5" />
+                          <div>
+                            <p>{job.address}</p>
+                            <p>{job.cityStateZip}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -358,7 +575,24 @@ export default function JobDetail() {
                     </div>
                     <div>
                       <p className="text-sm text-slate-400">Priority</p>
-                      <p className="font-medium text-white capitalize">{job.priority}</p>
+                      {canEdit ? (
+                        <Select
+                          value={job.priority}
+                          onValueChange={(value) => updateLead.mutate({ id: jobId, priority: value })}
+                        >
+                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white h-8 mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-700 border-slate-600">
+                            <SelectItem value="low" className="text-white hover:bg-slate-600">Low</SelectItem>
+                            <SelectItem value="medium" className="text-white hover:bg-slate-600">Medium</SelectItem>
+                            <SelectItem value="high" className="text-white hover:bg-slate-600">High</SelectItem>
+                            <SelectItem value="urgent" className="text-white hover:bg-slate-600">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="font-medium text-white capitalize">{job.priority}</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-slate-400">Roof Age</p>
@@ -405,36 +639,44 @@ export default function JobDetail() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm text-slate-400 mb-2">Assigned To</p>
-                    <Select
-                      value={job.assignedTo?.toString() || "unassigned"}
-                      onValueChange={(value) => updateLead.mutate({ 
-                        id: jobId, 
-                        assignedTo: value === "unassigned" ? undefined : parseInt(value) 
-                      })}
-                    >
-                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                        <SelectValue placeholder="Select team member" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-700 border-slate-600">
-                        <SelectItem value="unassigned" className="text-white hover:bg-slate-600">
-                          Unassigned
-                        </SelectItem>
-                        {team?.map((member) => (
-                          <SelectItem key={member.id} value={member.id.toString()} className="text-white hover:bg-slate-600">
-                            {member.name || member.email}
+                    {canEdit ? (
+                      <Select
+                        value={job.assignedTo?.toString() || "unassigned"}
+                        onValueChange={(value) => updateLead.mutate({ 
+                          id: jobId, 
+                          assignedTo: value === "unassigned" ? undefined : parseInt(value) 
+                        })}
+                      >
+                        <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                          <SelectValue placeholder="Select team member" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-700 border-slate-600">
+                          <SelectItem value="unassigned" className="text-white hover:bg-slate-600">
+                            Unassigned
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          {team?.map((member) => (
+                            <SelectItem key={member.id} value={member.id.toString()} className="text-white hover:bg-slate-600">
+                              {member.name || member.email} ({member.roleDisplayName})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-white">{assignedUser?.name || assignedUser?.email || "Unassigned"}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-slate-400 mb-2">Internal Notes</p>
-                    <Textarea
-                      placeholder="Add internal notes..."
-                      value={job.internalNotes || ""}
-                      onChange={(e) => updateLead.mutate({ id: jobId, internalNotes: e.target.value })}
-                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[120px]"
-                    />
+                    {canEdit ? (
+                      <Textarea
+                        placeholder="Add internal notes..."
+                        value={job.internalNotes || ""}
+                        onChange={(e) => updateLead.mutate({ id: jobId, internalNotes: e.target.value })}
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[120px]"
+                      />
+                    ) : (
+                      <p className="text-slate-300">{job.internalNotes || "No notes"}</p>
+                    )}
                   </div>
                   <div className="pt-4 border-t border-slate-700">
                     <p className="text-sm text-slate-400 mb-2">Created</p>
@@ -450,23 +692,25 @@ export default function JobDetail() {
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-white">Documents ({filteredDocuments.length})</h2>
-                <div>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={(e) => handleFileUpload(e, "document")}
-                    className="hidden"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
-                  />
-                  <Button 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {isUploading ? "Uploading..." : "Upload Document"}
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={(e) => handleFileUpload(e, "document")}
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                    />
+                    <Button 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isUploading ? "Uploading..." : "Upload Document"}
+                    </Button>
+                  </div>
+                )}
               </div>
               
               {filteredDocuments.length > 0 ? (
@@ -493,14 +737,16 @@ export default function JobDetail() {
                                 <Download className="w-4 h-4" />
                               </Button>
                             </a>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                              onClick={() => deleteDocument.mutate({ documentId: doc.id })}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {canDelete && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                onClick={() => deleteDocument.mutate({ documentId: doc.id })}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -512,13 +758,15 @@ export default function JobDetail() {
                   <CardContent className="py-12 text-center">
                     <FileText className="w-12 h-12 mx-auto mb-3 text-slate-500" />
                     <p className="text-slate-400">No documents uploaded yet</p>
-                    <Button 
-                      variant="link" 
-                      className="mt-2 text-[#00d4aa]"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Upload your first document
-                    </Button>
+                    {canEdit && (
+                      <Button 
+                        variant="link" 
+                        className="mt-2 text-[#00d4aa]"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Upload your first document
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -530,23 +778,25 @@ export default function JobDetail() {
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-white">Photos ({filteredPhotos.length})</h2>
-                <div>
-                  <input
-                    type="file"
-                    ref={photoInputRef}
-                    onChange={(e) => handleFileUpload(e, "photo")}
-                    className="hidden"
-                    accept="image/*"
-                  />
-                  <Button 
-                    onClick={() => photoInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {isUploading ? "Uploading..." : "Upload Photo"}
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div>
+                    <input
+                      type="file"
+                      ref={photoInputRef}
+                      onChange={(e) => handleFileUpload(e, "photo")}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    <Button 
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isUploading ? "Uploading..." : "Upload Photo"}
+                    </Button>
+                  </div>
+                )}
               </div>
               
               {filteredPhotos.length > 0 ? (
@@ -565,14 +815,16 @@ export default function JobDetail() {
                               <ExternalLink className="w-4 h-4" />
                             </Button>
                           </a>
-                          <Button 
-                            size="sm" 
-                            variant="secondary" 
-                            className="bg-red-500/20 hover:bg-red-500/30 text-red-400"
-                            onClick={() => deleteDocument.mutate({ documentId: photo.id })}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {canDelete && (
+                            <Button 
+                              size="sm" 
+                              variant="secondary" 
+                              className="bg-red-500/20 hover:bg-red-500/30 text-red-400"
+                              onClick={() => deleteDocument.mutate({ documentId: photo.id })}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                       <CardContent className="p-3">
@@ -587,13 +839,15 @@ export default function JobDetail() {
                   <CardContent className="py-12 text-center">
                     <Image className="w-12 h-12 mx-auto mb-3 text-slate-500" />
                     <p className="text-slate-400">No photos uploaded yet</p>
-                    <Button 
-                      variant="link" 
-                      className="mt-2 text-[#00d4aa]"
-                      onClick={() => photoInputRef.current?.click()}
-                    >
-                      Upload your first photo
-                    </Button>
+                    {canEdit && (
+                      <Button 
+                        variant="link" 
+                        className="mt-2 text-[#00d4aa]"
+                        onClick={() => photoInputRef.current?.click()}
+                      >
+                        Upload your first photo
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -608,26 +862,28 @@ export default function JobDetail() {
               </div>
 
               {/* New Message Input */}
-              <Card className="bg-slate-800 border-slate-700 mb-6">
-                <CardContent className="pt-4">
-                  <div className="flex gap-3">
-                    <Textarea
-                      placeholder="Add a note or message..."
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[80px] flex-1"
-                    />
-                    <Button 
-                      onClick={handleSendMessage}
-                      disabled={!newMessage.trim() || addMessage.isPending}
-                      className="bg-[#00d4aa] hover:bg-[#00b894] text-black self-end"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Send
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              {canEdit && (
+                <Card className="bg-slate-800 border-slate-700 mb-6">
+                  <CardContent className="pt-4">
+                    <div className="flex gap-3">
+                      <Textarea
+                        placeholder="Add a note or message..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[80px] flex-1"
+                      />
+                      <Button 
+                        onClick={handleSendMessage}
+                        disabled={!newMessage.trim() || addMessage.isPending}
+                        className="bg-[#00d4aa] hover:bg-[#00b894] text-black self-end"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Send
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Messages List */}
               {filteredMessages.length > 0 ? (
@@ -660,7 +916,9 @@ export default function JobDetail() {
                   <CardContent className="py-12 text-center">
                     <MessageSquare className="w-12 h-12 mx-auto mb-3 text-slate-500" />
                     <p className="text-slate-400">No messages yet</p>
-                    <p className="text-sm text-slate-500 mt-1">Start the conversation by adding a note above</p>
+                    {canEdit && (
+                      <p className="text-sm text-slate-500 mt-1">Start the conversation by adding a note above</p>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -722,6 +980,69 @@ export default function JobDetail() {
                   <CardContent className="py-12 text-center">
                     <History className="w-12 h-12 mx-auto mb-3 text-slate-500" />
                     <p className="text-slate-400">No activity recorded yet</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Edit History Tab (Owner/Admin only) */}
+          {activeTab === "edit_history" && canViewHistory && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-purple-400" />
+                  Edit History ({filteredEditHistory.length})
+                </h2>
+                <span className="text-sm text-slate-400">Audit trail for compliance and accountability</span>
+              </div>
+
+              {filteredEditHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredEditHistory.map((edit) => (
+                    <Card key={edit.id} className="bg-slate-800 border-slate-700">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start gap-4">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${EDIT_TYPE_COLORS[edit.editType] || "bg-gray-500"}`} />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-medium text-white capitalize">{edit.fieldName.replace(/([A-Z])/g, ' $1').trim()}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs text-white ${EDIT_TYPE_COLORS[edit.editType] || "bg-gray-500"}`}>
+                                {edit.editType.replace("_", " ")}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="text-slate-400 mb-1">Previous Value</p>
+                                <p className="text-slate-300 bg-slate-700/50 px-2 py-1 rounded font-mono text-xs">
+                                  {edit.oldValue || "(empty)"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-slate-400 mb-1">New Value</p>
+                                <p className="text-slate-300 bg-slate-700/50 px-2 py-1 rounded font-mono text-xs">
+                                  {edit.newValue || "(empty)"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+                              <span>
+                                Changed by: <span className="text-slate-400">{edit.user?.name || edit.user?.email || "Unknown"}</span>
+                              </span>
+                              <span>{new Date(edit.createdAt).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="bg-slate-800 border-slate-700">
+                  <CardContent className="py-12 text-center">
+                    <Eye className="w-12 h-12 mx-auto mb-3 text-slate-500" />
+                    <p className="text-slate-400">No edit history recorded yet</p>
+                    <p className="text-sm text-slate-500 mt-1">Changes to this job will be tracked here</p>
                   </CardContent>
                 </Card>
               )}

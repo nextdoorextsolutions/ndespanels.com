@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Download, Plus, Filter } from "lucide-react";
+import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Download, Plus, Filter, Shield, Eye, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 
@@ -31,6 +32,7 @@ export default function CRMLeads() {
   const [noteText, setNoteText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { data: permissions } = trpc.crm.getMyPermissions.useQuery();
   const { data: leads, isLoading, refetch } = trpc.crm.getLeads.useQuery({});
   const { data: leadDetail, refetch: refetchLead } = trpc.crm.getLead.useQuery(
     { id: selectedLead! },
@@ -122,8 +124,24 @@ export default function CRMLeads() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Jobs / Contacts</h1>
-            <p className="text-sm text-slate-400">{filteredLeads?.length || 0} total records</p>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-white">Jobs / Contacts</h1>
+              {permissions && (
+                <span className={`px-2 py-1 rounded text-xs font-medium text-white ${
+                  permissions.role === "owner" ? "bg-purple-500" :
+                  permissions.role === "admin" ? "bg-blue-500" :
+                  permissions.role === "team_lead" ? "bg-green-500" :
+                  "bg-cyan-500"
+                }`}>
+                  <Shield className="w-3 h-3 inline mr-1" />
+                  {permissions.roleDisplayName}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-slate-400">
+              {filteredLeads?.length || 0} {permissions?.role === "sales_rep" ? "assigned" : "total"} records
+              {permissions?.role === "team_lead" && " (your team)"}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
@@ -214,17 +232,28 @@ export default function CRMLeads() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <Dialog>
-                          <DialogTrigger asChild>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/crm/job/${lead.id}`}>
                             <Button 
                               variant="outline" 
                               size="sm" 
                               className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10 bg-transparent"
-                              onClick={() => setSelectedLead(lead.id)}
                             >
-                              View <ChevronRight className="w-4 h-4 ml-1" />
+                              <ExternalLink className="w-4 h-4 mr-1" />
+                              Open
                             </Button>
-                          </DialogTrigger>
+                          </Link>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-slate-400 hover:text-white hover:bg-slate-700"
+                                onClick={() => setSelectedLead(lead.id)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </DialogTrigger>
                           <DialogContent className="bg-slate-800 border-slate-700 max-w-3xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle className="text-xl text-white">{leadDetail?.fullName || lead.fullName}</DialogTitle>
@@ -395,6 +424,7 @@ export default function CRMLeads() {
                             )}
                           </DialogContent>
                         </Dialog>
+                        </div>
                       </td>
                     </tr>
                   ))}
