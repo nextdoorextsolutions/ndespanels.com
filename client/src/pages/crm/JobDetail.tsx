@@ -1378,13 +1378,7 @@ export default function JobDetail() {
             
             {/* Modal Content */}
             <div className="flex-1 overflow-auto p-4 bg-slate-800">
-              {previewDocument.type.includes('pdf') ? (
-                <iframe 
-                  src={previewDocument.url} 
-                  className="w-full h-[70vh] rounded border border-slate-700"
-                  title={previewDocument.name}
-                />
-              ) : previewDocument.type.includes('image') ? (
+              {previewDocument.type.includes('image') ? (
                 <div className="flex items-center justify-center h-[70vh]">
                   <img 
                     src={previewDocument.url} 
@@ -1394,15 +1388,24 @@ export default function JobDetail() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-[70vh] text-center">
-                  <FileText className="w-16 h-16 text-slate-500 mb-4" />
-                  <p className="text-slate-400 mb-2">Preview not available for this file type</p>
-                  <p className="text-sm text-slate-500 mb-4">{previewDocument.type || 'Unknown type'}</p>
-                  <a href={previewDocument.url} target="_blank" rel="noopener noreferrer">
-                    <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Open File
-                    </Button>
-                  </a>
+                  <FileText className="w-20 h-20 text-slate-500 mb-6" />
+                  <h4 className="text-xl font-semibold text-white mb-2">{previewDocument.name}</h4>
+                  <p className="text-slate-400 mb-1">File Type: {previewDocument.type || 'Unknown'}</p>
+                  <p className="text-sm text-slate-500 mb-6">Click below to view or download this document</p>
+                  <div className="flex gap-3">
+                    <a href={previewDocument.url} target="_blank" rel="noopener noreferrer">
+                      <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        View Document
+                      </Button>
+                    </a>
+                    <a href={previewDocument.url} download>
+                      <Button variant="outline" className="text-white border-slate-600 hover:bg-slate-700">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </a>
+                  </div>
                 </div>
               )}
             </div>

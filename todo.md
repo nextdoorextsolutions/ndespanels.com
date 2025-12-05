@@ -182,3 +182,4 @@
 
 ## Document Management
 - [x] Make uploaded documents viewable when clicked
+- [x] Fix document preview blocked by Chrome (use new tab instead of iframe)
