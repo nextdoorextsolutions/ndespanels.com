@@ -61,20 +61,50 @@ export const reportRequests = mysqlTable("report_requests", {
   salesRepCode: varchar("salesRepCode", { length: 50 }), // Attribution from promo code
   leadSource: varchar("leadSource", { length: 100 }).default("website"), // website, referral, door_hanger, etc.
   
-  // Pipeline status
+  // Pipeline status - new workflow (includes legacy values for migration)
   status: mysqlEnum("status", [
+    // New pipeline stages
+    "lead",
+    "appointment_set",
+    "prospect",
+    "approved",
+    "project_scheduled",
+    "completed",
+    "invoiced",
+    "lien_legal",
+    "closed_deal",
+    "closed_lost",
+    // Legacy values (for migration compatibility)
     "pending",
     "new_lead",
     "contacted",
-    "appointment_set",
     "inspection_scheduled",
     "inspection_complete",
     "report_sent",
     "follow_up",
     "closed_won",
-    "closed_lost",
     "cancelled"
-  ]).default("new_lead").notNull(),
+  ]).default("lead").notNull(),
+  
+  // Deal type - determines payment method
+  dealType: mysqlEnum("dealType", [
+    "insurance",
+    "cash",
+    "financed"
+  ]),
+  
+  // Lien rights tracking (90-day window from completion)
+  projectCompletedAt: timestamp("projectCompletedAt"), // When project was marked completed
+  lienRightsStatus: mysqlEnum("lienRightsStatus", [
+    "not_applicable", // Not yet completed
+    "active",         // 0-60 days - safe
+    "warning",        // 61-75 days - getting close
+    "critical",       // 76-89 days - urgent
+    "expired",        // 90+ days - rights lost
+    "legal"           // Moved to lien legal
+  ]).default("not_applicable"),
+  lienRightsExpiresAt: timestamp("lienRightsExpiresAt"), // 90 days from projectCompletedAt
+  lastLienRightsNotification: timestamp("lastLienRightsNotification"), // For weekly updates
   
   // Legacy status for payment tracking
   paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "refunded"]).default("pending").notNull(),

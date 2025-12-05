@@ -36,18 +36,18 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 
-// Status configuration
+// Status configuration - Updated for new pipeline
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  new_lead: { label: "New Lead", color: "bg-orange-500", icon: AlertCircle },
-  contacted: { label: "Contacted", color: "bg-yellow-500", icon: Phone },
-  appointment_set: { label: "Appointment Set", color: "bg-blue-500", icon: Calendar },
-  inspection_scheduled: { label: "Inspection Scheduled", color: "bg-blue-600", icon: Calendar },
-  inspection_complete: { label: "Inspection Complete", color: "bg-purple-500", icon: CheckCircle },
-  report_sent: { label: "Report Sent", color: "bg-teal-500", icon: FileText },
-  follow_up: { label: "Follow Up", color: "bg-yellow-600", icon: Phone },
-  closed_won: { label: "Closed Won", color: "bg-green-500", icon: CheckCircle },
+  lead: { label: "Lead", color: "bg-orange-500", icon: AlertCircle },
+  appointment_set: { label: "Appointment Set", color: "bg-yellow-500", icon: Calendar },
+  prospect: { label: "Prospect", color: "bg-blue-500", icon: User },
+  approved: { label: "Approved", color: "bg-purple-500", icon: CheckCircle },
+  project_scheduled: { label: "Project Scheduled", color: "bg-indigo-500", icon: Calendar },
+  completed: { label: "Completed", color: "bg-teal-500", icon: CheckCircle },
+  invoiced: { label: "Invoiced", color: "bg-cyan-500", icon: FileText },
+  lien_legal: { label: "Lien Legal", color: "bg-red-500", icon: AlertCircle },
+  closed_deal: { label: "Closed Deal", color: "bg-green-500", icon: CheckCircle },
   closed_lost: { label: "Closed Lost", color: "bg-red-500", icon: XCircle },
-  cancelled: { label: "Cancelled", color: "bg-gray-500", icon: XCircle },
 };
 
 // Activity type icons
@@ -335,7 +335,7 @@ export default function JobDetail() {
               {canEdit && (
                 <Select
                   value={job.status}
-                  onValueChange={(value) => updateLead.mutate({ id: jobId, status: value })}
+                  onValueChange={(value) => updateLead.mutate({ id: jobId, status: value as any })}
                 >
                   <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600 text-white">
                     <SelectValue placeholder="Change Status" />

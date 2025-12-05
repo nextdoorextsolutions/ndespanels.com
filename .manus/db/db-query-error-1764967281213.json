@@ -1,0 +1,8 @@
+{
+  "query": "UPDATE report_requests SET status = 'lead' WHERE status IN ('pending', 'new_lead', 'contacted'); UPDATE report_requests SET status = 'appointment_set' WHERE status = 'appointment_set'; UPDATE report_requests SET status = 'prospect' WHERE status IN ('inspection_scheduled', 'inspection_complete'); UPDATE report_requests SET status = 'closed_deal' WHERE status = 'closed_won'; UPDATE report_requests SET status = 'closed_lost' WHERE status IN ('closed_lost', 'cancelled'); UPDATE report_requests SET status = 'invoiced' WHERE status IN ('report_sent', 'follow_up');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3LkhXw7W2NLietY.root --database a7GnrUTuzTDTFdbLnSt79K --execute UPDATE report_requests SET status = 'lead' WHERE status IN ('pending', 'new_lead', 'contacted'); UPDATE report_requests SET status = 'appointment_set' WHERE status = 'appointment_set'; UPDATE report_requests SET status = 'prospect' WHERE status IN ('inspection_scheduled', 'inspection_complete'); UPDATE report_requests SET status = 'closed_deal' WHERE status = 'closed_won'; UPDATE report_requests SET status = 'closed_lost' WHERE status IN ('closed_lost', 'cancelled'); UPDATE report_requests SET status = 'invoiced' WHERE status IN ('report_sent', 'follow_up');",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1265 (01000) at line 1: Data truncated for column '%s' at row %d"
+  ]
+}

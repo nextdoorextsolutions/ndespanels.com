@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   Users,
@@ -14,29 +14,41 @@ import {
   DollarSign,
   BarChart3,
   Target,
+  AlertTriangle,
+  Shield,
+  Banknote,
+  CreditCard,
+  Gavel,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import CRMLayout from "@/components/crm/CRMLayout";
 
-// Pipeline stage configuration with AccuLynx-style colors
+// New pipeline stage configuration
 const pipelineStages = [
-  { key: "new_lead", label: "Lead", short: "L", color: "bg-orange-500" },
-  { key: "contacted", label: "Contacted", short: "C", color: "bg-yellow-500" },
-  { key: "appointment_set", label: "Scheduled", short: "S", color: "bg-blue-500" },
-  { key: "inspection_complete", label: "Inspected", short: "I", color: "bg-purple-500" },
-  { key: "report_sent", label: "Report Sent", short: "R", color: "bg-teal-500" },
-  { key: "closed_won", label: "Closed", short: "W", color: "bg-green-500" },
+  { key: "lead", label: "Lead", short: "L", color: "bg-orange-500" },
+  { key: "appointment_set", label: "Appt Set", short: "A", color: "bg-yellow-500" },
+  { key: "prospect", label: "Prospect", short: "P", color: "bg-blue-500" },
+  { key: "approved", label: "Approved", short: "V", color: "bg-purple-500" },
+  { key: "project_scheduled", label: "Scheduled", short: "S", color: "bg-indigo-500" },
+  { key: "completed", label: "Completed", short: "C", color: "bg-teal-500" },
+  { key: "invoiced", label: "Invoiced", short: "I", color: "bg-cyan-500" },
+  { key: "lien_legal", label: "Lien Legal", short: "LL", color: "bg-red-500" },
+  { key: "closed_deal", label: "Closed", short: "W", color: "bg-green-500" },
 ];
 
-// Category tabs configuration
+// Category tabs configuration - updated for new pipeline
 const categoryTabs = [
-  { key: "prospect", label: "Prospects", color: "bg-orange-500" },
-  { key: "in_progress", label: "In Progress", color: "bg-blue-500" },
-  { key: "completed", label: "Completed", color: "bg-purple-500" },
-  { key: "invoiced", label: "Invoiced", color: "bg-green-500" },
-  { key: "closed_lost", label: "Closed Lost", color: "bg-red-500" },
+  { key: "lead", label: "Leads", color: "bg-orange-500" },
+  { key: "appointment_set", label: "Appt Set", color: "bg-yellow-500" },
+  { key: "prospect", label: "Prospects", color: "bg-blue-500" },
+  { key: "approved", label: "Approved", color: "bg-purple-500" },
+  { key: "project_scheduled", label: "Scheduled", color: "bg-indigo-500" },
+  { key: "completed", label: "Completed", color: "bg-teal-500" },
+  { key: "invoiced", label: "Invoiced", color: "bg-cyan-500" },
+  { key: "closed_deal", label: "Closed", color: "bg-green-500" },
+  { key: "closed_lost", label: "Lost", color: "bg-red-500" },
 ];
 
 // Action items configuration
@@ -44,9 +56,9 @@ const actionItems = [
   { key: "unassigned", label: "Unassigned Leads", icon: Users, color: "text-orange-400" },
   { key: "follow_up", label: "Needs Follow-up", icon: Phone, color: "text-yellow-400" },
   { key: "pending_inspection", label: "Pending Inspection", icon: Calendar, color: "text-blue-400" },
-  { key: "report_pending", label: "Reports Pending", icon: FileText, color: "text-purple-400" },
-  { key: "watch_list", label: "Watch List", icon: Eye, color: "text-red-400" },
-  { key: "overdue", label: "Overdue Tasks", icon: AlertCircle, color: "text-red-500" },
+  { key: "lien_warning", label: "Lien Rights Warning", icon: AlertTriangle, color: "text-yellow-500" },
+  { key: "lien_critical", label: "Lien Rights Critical", icon: AlertCircle, color: "text-red-500" },
+  { key: "overdue", label: "Overdue Tasks", icon: Clock, color: "text-red-400" },
 ];
 
 // Simple chart component using canvas
@@ -100,90 +112,78 @@ function LeadTrendChart({ data }: { data: { month: string; leads: number; closed
 
       // Month label
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "11px Inter, sans-serif";
+      ctx.font = "10px sans-serif";
       ctx.textAlign = "center";
-      const monthLabel = new Date(item.month + "-01").toLocaleDateString("en-US", { month: "short" });
-      ctx.fillText(monthLabel, x + barWidth, canvas.height - 10);
+      ctx.fillText(item.month, x + barWidth, canvas.height - 10);
     });
 
-    // Y-axis labels
+    // Legend
+    ctx.fillStyle = "#00d4aa";
+    ctx.fillRect(padding, 10, 12, 12);
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "10px Inter, sans-serif";
-    ctx.textAlign = "right";
-    for (let i = 0; i <= 4; i++) {
-      const value = Math.round((maxValue / 4) * (4 - i));
-      const y = padding + (chartHeight / 4) * i + 4;
-      ctx.fillText(value.toString(), padding - 8, y);
-    }
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("Leads", padding + 18, 20);
+
+    ctx.fillStyle = "#22c55e";
+    ctx.fillRect(padding + 70, 10, 12, 12);
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText("Closed", padding + 88, 20);
   }, [data]);
 
   return (
-    <div className="relative">
-      <canvas ref={canvasRef} width={400} height={200} className="w-full" />
-      <div className="flex justify-center gap-6 mt-2">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-[#00d4aa] rounded" />
-          <span className="text-xs text-slate-400">New Leads</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-500 rounded" />
-          <span className="text-xs text-slate-400">Closed Won</span>
-        </div>
-      </div>
-    </div>
+    <canvas
+      ref={canvasRef}
+      width={400}
+      height={200}
+      className="w-full h-[200px]"
+    />
   );
 }
 
 // Conversion funnel component
-function ConversionFunnel({ categoryCounts }: { categoryCounts: Record<string, number> }) {
-  const total = Object.values(categoryCounts).reduce((a, b) => a + b, 0) || 1;
-  
+function ConversionFunnel({ stats }: { stats: any }) {
+  if (!stats) return null;
+
   const stages = [
-    { key: "prospect", label: "Prospects", count: categoryCounts.prospect || 0, color: "#f97316" },
-    { key: "in_progress", label: "In Progress", count: categoryCounts.in_progress || 0, color: "#3b82f6" },
-    { key: "completed", label: "Completed", count: categoryCounts.completed || 0, color: "#a855f7" },
-    { key: "invoiced", label: "Invoiced", count: categoryCounts.invoiced || 0, color: "#22c55e" },
+    { label: "Leads", count: stats.leadCount || 0, color: "bg-orange-500" },
+    { label: "Prospects", count: stats.prospectCount || 0, color: "bg-blue-500" },
+    { label: "Approved", count: stats.approvedCount || 0, color: "bg-purple-500" },
+    { label: "Completed", count: stats.completedCount || 0, color: "bg-teal-500" },
+    { label: "Closed", count: stats.closedDealCount || 0, color: "bg-green-500" },
   ];
+
+  const maxCount = Math.max(...stages.map(s => s.count), 1);
 
   return (
     <div className="space-y-3">
-      {stages.map((stage, index) => {
-        const percentage = ((stage.count / total) * 100).toFixed(0);
-        const width = Math.max(20, 100 - index * 15);
-        return (
-          <div key={stage.key} className="flex items-center gap-3">
-            <div className="w-24 text-right">
-              <span className="text-sm text-slate-400">{stage.label}</span>
-            </div>
-            <div 
-              className="h-8 rounded flex items-center justify-between px-3 transition-all"
-              style={{ 
-                backgroundColor: stage.color + "40",
-                borderLeft: `4px solid ${stage.color}`,
-                width: `${width}%`,
-              }}
-            >
-              <span className="text-white font-semibold">{stage.count}</span>
-              <span className="text-xs text-slate-300">{percentage}%</span>
-            </div>
+      {stages.map((stage, index) => (
+        <div key={stage.label} className="flex items-center gap-3">
+          <div className="w-20 text-xs text-slate-400">{stage.label}</div>
+          <div className="flex-1 h-6 bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full ${stage.color} transition-all duration-500`}
+              style={{ width: `${(stage.count / maxCount) * 100}%` }}
+            />
           </div>
-        );
-      })}
+          <div className="w-10 text-right text-sm font-semibold text-white">{stage.count}</div>
+        </div>
+      ))}
     </div>
   );
 }
 
 export default function CRMDashboard() {
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState("all");
   
   const { data: stats, isLoading: statsLoading } = trpc.crm.getStats.useQuery();
-  const { data: recentLeads } = trpc.crm.getLeads.useQuery({ limit: 5 });
   const { data: appointments } = trpc.crm.getAppointments.useQuery({
     startDate: new Date().toISOString().split("T")[0],
     endDate: new Date().toISOString().split("T")[0],
   });
   const { data: monthlyTrends } = trpc.crm.getMonthlyTrends.useQuery({ months: 6 });
   const { data: categoryCounts } = trpc.crm.getCategoryCounts.useQuery();
+  const { data: lienRightsJobs } = trpc.crm.getLienRightsJobs.useQuery();
   const { data: categoryLeads } = trpc.crm.getLeadsByCategory.useQuery(
     { category: activeTab as any },
     { enabled: activeTab !== "all" }
@@ -193,14 +193,34 @@ export default function CRMDashboard() {
   const getPipelineCount = (stage: string) => {
     if (!stats) return 0;
     const stageMap: Record<string, number> = {
-      new_lead: stats.newLeads || 0,
-      contacted: 0,
-      appointment_set: stats.scheduledLeads || 0,
-      inspection_complete: 0,
-      report_sent: 0,
-      closed_won: stats.completedLeads || 0,
+      lead: stats.leadCount || 0,
+      appointment_set: stats.appointmentSetCount || 0,
+      prospect: stats.prospectCount || 0,
+      approved: stats.approvedCount || 0,
+      project_scheduled: stats.projectScheduledCount || 0,
+      completed: stats.completedCount || 0,
+      invoiced: stats.invoicedCount || 0,
+      lien_legal: stats.lienLegalCount || 0,
+      closed_deal: stats.closedDealCount || 0,
     };
     return stageMap[stage] || 0;
+  };
+
+  // Get action item counts
+  const getActionCount = (key: string) => {
+    if (!stats) return 0;
+    switch (key) {
+      case "unassigned":
+        return stats.leadCount || 0;
+      case "pending_inspection":
+        return stats.appointmentSetCount || 0;
+      case "lien_warning":
+        return stats.lienWarningCount || 0;
+      case "lien_critical":
+        return stats.lienCriticalCount || 0;
+      default:
+        return 0;
+    }
   };
 
   if (statsLoading) {
@@ -228,6 +248,22 @@ export default function CRMDashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Lien Rights Alert Banner */}
+        {lienRightsJobs && lienRightsJobs.filter((j: any) => j.urgencyLevel === "critical").length > 0 && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-red-900/50 to-orange-900/50 border border-red-500/50 rounded-lg animate-pulse">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-6 h-6 text-red-400" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-white">Lien Rights Critical Alert!</h3>
+                <p className="text-sm text-slate-300">
+                  {lienRightsJobs.filter((j: any) => j.urgencyLevel === "critical").length} jobs have less than 14 days remaining on lien rights. 
+                  <Link href="/crm/pipeline" className="text-[#00d4aa] ml-1 hover:underline">View Pipeline →</Link>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* KPI Cards Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -265,7 +301,7 @@ export default function CRMDashboard() {
                 <div>
                   <p className="text-sm text-slate-400">Conversion Rate</p>
                   <p className="text-2xl font-bold text-white">
-                    {stats?.totalLeads ? ((stats.completedLeads / stats.totalLeads) * 100).toFixed(1) : 0}%
+                    {stats?.totalLeads ? ((stats.closedDealCount / stats.totalLeads) * 100).toFixed(1) : 0}%
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
@@ -281,7 +317,7 @@ export default function CRMDashboard() {
                 <div>
                   <p className="text-sm text-slate-400">Avg. Deal Value</p>
                   <p className="text-2xl font-bold text-white">
-                    ${stats?.completedLeads ? ((stats.totalRevenue || 0) / stats.completedLeads).toFixed(0) : 0}
+                    ${stats?.closedDealCount ? ((stats.totalRevenue || 0) / stats.closedDealCount).toFixed(0) : 0}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -291,6 +327,72 @@ export default function CRMDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Deal Type Summary */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-blue-500">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <Shield className="w-8 h-8 text-blue-400" />
+                <div>
+                  <p className="text-sm text-slate-400">Insurance Deals</p>
+                  <p className="text-xl font-bold text-white">{stats?.insuranceCount || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-green-500">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <Banknote className="w-8 h-8 text-green-400" />
+                <div>
+                  <p className="text-sm text-slate-400">Cash Deals</p>
+                  <p className="text-xl font-bold text-white">{stats?.cashCount || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-purple-500">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-8 h-8 text-purple-400" />
+                <div>
+                  <p className="text-sm text-slate-400">Financed Deals</p>
+                  <p className="text-xl font-bold text-white">{stats?.financedCount || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Pipeline Badges */}
+        <Card className="bg-slate-800 border-slate-700 mb-6">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-300">Pipeline Overview</h3>
+              <Link href="/crm/pipeline">
+                <Button variant="ghost" size="sm" className="text-[#00d4aa] hover:text-[#00b894]">
+                  View Pipeline <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {pipelineStages.map((stage) => (
+                <Link key={stage.key} href={`/crm/pipeline?stage=${stage.key}`}>
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${stage.color} bg-opacity-20 hover:bg-opacity-30 cursor-pointer transition-colors`}>
+                    <span className={`w-6 h-6 rounded-full ${stage.color} flex items-center justify-center text-white text-xs font-bold`}>
+                      {stage.short}
+                    </span>
+                    <span className="text-white text-sm">{stage.label}</span>
+                    <span className="text-white font-bold">{getPipelineCount(stage.key)}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Category Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
@@ -350,57 +452,30 @@ export default function CRMDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {categoryCounts ? (
-                    <ConversionFunnel categoryCounts={categoryCounts} />
-                  ) : (
-                    <div className="h-[200px] flex items-center justify-center text-slate-400">
-                      <p>No funnel data available</p>
-                    </div>
-                  )}
+                  <ConversionFunnel stats={stats} />
                 </CardContent>
               </Card>
             </div>
 
-            {/* Current Pipeline - AccuLynx Style */}
+            {/* Quick Actions */}
             <Card className="bg-slate-800 border-slate-700">
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold text-white">Current Pipeline</CardTitle>
-                  <span className="text-sm text-slate-300">
-                    {stats?.totalLeads || 0} Active Jobs
-                  </span>
-                </div>
+                <CardTitle className="text-lg font-semibold text-white">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap justify-center gap-4 py-4">
-                  {pipelineStages.map((stage) => {
-                    const count = getPipelineCount(stage.key);
-                    return (
-                      <Link key={stage.key} href={`/crm/leads?status=${stage.key}`}>
-                        <div className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity">
-                          <div
-                            className={`w-14 h-14 md:w-16 md:h-16 rounded-full ${stage.color} flex items-center justify-center shadow-lg`}
-                          >
-                            <span className="text-white text-xl md:text-2xl font-bold">
-                              {stage.short}
-                            </span>
-                          </div>
-                          <span className="mt-2 text-xs font-medium text-slate-300">
-                            {stage.label}
-                          </span>
-                          <span className="text-lg font-bold text-white">{count}</span>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-
-                {/* Quick Action Buttons */}
-                <div className="flex flex-wrap justify-center gap-3 pt-4 border-t border-slate-700 mt-4">
-                  <Button variant="outline" className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10 bg-transparent">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Generate Report
-                  </Button>
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/crm/leads?new=true">
+                    <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add New Job
+                    </Button>
+                  </Link>
+                  <Link href="/crm/reports">
+                    <Button variant="outline" className="border-purple-400 text-purple-400 hover:bg-purple-400/10 bg-transparent">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Generate Report
+                    </Button>
+                  </Link>
                   <Link href="/crm/calendar">
                     <Button variant="outline" className="border-blue-400 text-blue-400 hover:bg-blue-400/10 bg-transparent">
                       <Calendar className="w-4 h-4 mr-2" />
@@ -415,17 +490,16 @@ export default function CRMDashboard() {
             <Card className="bg-slate-800 border-slate-700">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-semibold text-white">
-                  Action Items ({stats?.newLeads || 0})
+                  Action Items
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {actionItems.map((item) => {
-                    const count = item.key === "unassigned" ? (stats?.newLeads || 0) : 
-                                  item.key === "pending_inspection" ? (stats?.scheduledLeads || 0) : 0;
+                    const count = getActionCount(item.key);
                     return (
                       <Link key={item.key} href={`/crm/leads?filter=${item.key}`}>
-                        <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-600 hover:bg-slate-700 cursor-pointer transition-colors">
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border border-slate-600 hover:bg-slate-700 cursor-pointer transition-colors ${item.key.includes('lien') && count > 0 ? 'border-red-500/50 animate-pulse' : ''}`}>
                           <item.icon className={`w-5 h-5 ${item.color}`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-slate-300 truncate">{item.label}</p>
@@ -442,6 +516,43 @@ export default function CRMDashboard() {
 
           {/* Right Sidebar */}
           <div className="lg:col-span-1 space-y-6">
+            {/* Lien Rights Summary */}
+            {lienRightsJobs && lienRightsJobs.length > 0 && (
+              <Card className="bg-slate-800 border-slate-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Gavel className="w-5 h-5 text-red-400" />
+                    Lien Rights (90 Days)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-2 rounded bg-green-500/10 border border-green-500/30">
+                      <span className="text-green-400 text-sm">Active (60+ days)</span>
+                      <span className="font-bold text-white">{lienRightsJobs.filter((j: any) => j.urgencyLevel === "active").length}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
+                      <span className="text-yellow-400 text-sm">Warning (15-30 days)</span>
+                      <span className="font-bold text-white">{lienRightsJobs.filter((j: any) => j.urgencyLevel === "warning").length}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-red-500/10 border border-red-500/30 animate-pulse">
+                      <span className="text-red-400 text-sm">Critical (&lt;14 days)</span>
+                      <span className="font-bold text-white">{lienRightsJobs.filter((j: any) => j.urgencyLevel === "critical").length}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-slate-600/30 border border-slate-600">
+                      <span className="text-slate-400 text-sm">Expired</span>
+                      <span className="font-bold text-white">{lienRightsJobs.filter((j: any) => j.urgencyLevel === "expired").length}</span>
+                    </div>
+                  </div>
+                  <Link href="/crm/pipeline">
+                    <Button variant="ghost" size="sm" className="w-full mt-3 text-[#00d4aa] hover:text-[#00b894]">
+                      View All in Pipeline <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Today's Schedule */}
             <Card className="bg-slate-800 border-slate-700">
               <CardHeader className="pb-2">
@@ -498,46 +609,33 @@ export default function CRMDashboard() {
             {/* Activity Feed */}
             <Card className="bg-slate-800 border-slate-700">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold text-white">Activity Feed</CardTitle>
+                <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-400" />
+                  Recent Activity
+                </CardTitle>
               </CardHeader>
-              <CardContent className="max-h-[400px] overflow-y-auto">
-                {recentLeads && recentLeads.length > 0 ? (
-                  <div className="space-y-4">
-                    {recentLeads.map((lead: any) => (
+              <CardContent>
+                <div className="space-y-3">
+                  {categoryLeads && categoryLeads.length > 0 ? (
+                    categoryLeads.slice(0, 5).map((lead: any) => (
                       <Link key={lead.id} href={`/crm/job/${lead.id}`}>
-                        <div className="flex gap-3 pb-4 border-b border-slate-700 last:border-0 hover:bg-slate-700/50 rounded p-2 -mx-2 cursor-pointer transition-colors">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center flex-shrink-0">
-                            <span className="text-black font-semibold text-sm">
-                              {lead.name?.charAt(0) || lead.fullName?.charAt(0) || "?"}
+                        <div className="flex items-center gap-3 p-2 rounded hover:bg-slate-700 cursor-pointer transition-colors">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center">
+                            <span className="text-black font-semibold text-xs">
+                              {lead.fullName?.charAt(0) || "?"}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm">
-                              <span className="font-medium text-[#00d4aa]">New Lead:</span>{" "}
-                              <span className="font-medium text-white">{lead.name || lead.fullName}</span>
-                            </p>
-                            <p className="text-xs text-slate-400 truncate">
-                              {lead.address}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">
-                              {new Date(lead.createdAt).toLocaleDateString()}
-                            </p>
-                            {lead.promoCode && (
-                              <span className="inline-block mt-1 px-2 py-0.5 bg-green-900/50 text-green-400 text-xs rounded">
-                                Via: {lead.salesRepCode || lead.promoCode}
-                              </span>
-                            )}
+                            <p className="text-sm font-medium text-white truncate">{lead.fullName}</p>
+                            <p className="text-xs text-slate-400">{lead.status}</p>
                           </div>
                         </div>
                       </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-slate-400">
-                    <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">No recent activity</p>
-                  </div>
-                )}
+                    ))
+                  ) : (
+                    <p className="text-center text-slate-400 py-4">No recent activity</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

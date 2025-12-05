@@ -281,30 +281,93 @@ export const appRouter = router({
 
       const whereClause = roleConditions.length > 0 ? and(...roleConditions) : undefined;
 
+      // Pipeline stage counts
       const [totalLeads] = await db.select({ count: sql<number>`COUNT(*)` })
         .from(reportRequests)
         .where(whereClause);
-      const [newLeads] = await db.select({ count: sql<number>`COUNT(*)` })
+      const [leadCount] = await db.select({ count: sql<number>`COUNT(*)` })
         .from(reportRequests)
-        .where(whereClause ? and(whereClause, eq(reportRequests.status, "new_lead")) : eq(reportRequests.status, "new_lead"));
-      const [scheduledLeads] = await db.select({ count: sql<number>`COUNT(*)` })
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "lead")) : eq(reportRequests.status, "lead"));
+      const [appointmentSetCount] = await db.select({ count: sql<number>`COUNT(*)` })
         .from(reportRequests)
-        .where(whereClause 
-          ? and(whereClause, or(eq(reportRequests.status, "appointment_set"), eq(reportRequests.status, "inspection_scheduled")))
-          : or(eq(reportRequests.status, "appointment_set"), eq(reportRequests.status, "inspection_scheduled"))
-        );
-      const [completedLeads] = await db.select({ count: sql<number>`COUNT(*)` })
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "appointment_set")) : eq(reportRequests.status, "appointment_set"));
+      const [prospectCount] = await db.select({ count: sql<number>`COUNT(*)` })
         .from(reportRequests)
-        .where(whereClause ? and(whereClause, eq(reportRequests.status, "closed_won")) : eq(reportRequests.status, "closed_won"));
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "prospect")) : eq(reportRequests.status, "prospect"));
+      const [approvedCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "approved")) : eq(reportRequests.status, "approved"));
+      const [projectScheduledCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "project_scheduled")) : eq(reportRequests.status, "project_scheduled"));
+      const [completedCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "completed")) : eq(reportRequests.status, "completed"));
+      const [invoicedCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "invoiced")) : eq(reportRequests.status, "invoiced"));
+      const [lienLegalCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "lien_legal")) : eq(reportRequests.status, "lien_legal"));
+      const [closedDealCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "closed_deal")) : eq(reportRequests.status, "closed_deal"));
+      const [closedLostCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.status, "closed_lost")) : eq(reportRequests.status, "closed_lost"));
+      
+      // Deal type counts
+      const [insuranceCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.dealType, "insurance")) : eq(reportRequests.dealType, "insurance"));
+      const [cashCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.dealType, "cash")) : eq(reportRequests.dealType, "cash"));
+      const [financedCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.dealType, "financed")) : eq(reportRequests.dealType, "financed"));
+      
+      // Lien rights urgency counts
+      const [lienActiveCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.lienRightsStatus, "active")) : eq(reportRequests.lienRightsStatus, "active"));
+      const [lienWarningCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.lienRightsStatus, "warning")) : eq(reportRequests.lienRightsStatus, "warning"));
+      const [lienCriticalCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.lienRightsStatus, "critical")) : eq(reportRequests.lienRightsStatus, "critical"));
+      const [lienExpiredCount] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(reportRequests)
+        .where(whereClause ? and(whereClause, eq(reportRequests.lienRightsStatus, "expired")) : eq(reportRequests.lienRightsStatus, "expired"));
+      
       const [totalRevenue] = await db.select({ sum: sql<number>`COALESCE(SUM(amountPaid), 0)` })
         .from(reportRequests)
         .where(whereClause);
 
       return {
         totalLeads: totalLeads?.count || 0,
-        newLeads: newLeads?.count || 0,
-        scheduledLeads: scheduledLeads?.count || 0,
-        completedLeads: completedLeads?.count || 0,
+        // Pipeline stages
+        leadCount: leadCount?.count || 0,
+        appointmentSetCount: appointmentSetCount?.count || 0,
+        prospectCount: prospectCount?.count || 0,
+        approvedCount: approvedCount?.count || 0,
+        projectScheduledCount: projectScheduledCount?.count || 0,
+        completedCount: completedCount?.count || 0,
+        invoicedCount: invoicedCount?.count || 0,
+        lienLegalCount: lienLegalCount?.count || 0,
+        closedDealCount: closedDealCount?.count || 0,
+        closedLostCount: closedLostCount?.count || 0,
+        // Deal types
+        insuranceCount: insuranceCount?.count || 0,
+        cashCount: cashCount?.count || 0,
+        financedCount: financedCount?.count || 0,
+        // Lien rights
+        lienActiveCount: lienActiveCount?.count || 0,
+        lienWarningCount: lienWarningCount?.count || 0,
+        lienCriticalCount: lienCriticalCount?.count || 0,
+        lienExpiredCount: lienExpiredCount?.count || 0,
+        // Revenue
         totalRevenue: (totalRevenue?.sum || 0) / 100,
       };
     }),
@@ -362,7 +425,12 @@ export const appRouter = router({
     updateLead: protectedProcedure
       .input(z.object({
         id: z.number(),
-        status: z.string().optional(),
+        status: z.enum([
+          "lead", "appointment_set", "prospect", "approved", 
+          "project_scheduled", "completed", "invoiced", 
+          "lien_legal", "closed_deal", "closed_lost"
+        ]).optional(),
+        dealType: z.enum(["insurance", "cash", "financed"]).optional(),
         priority: z.string().optional(),
         assignedTo: z.number().optional(),
         internalNotes: z.string().optional(),
@@ -389,7 +457,34 @@ export const appRouter = router({
         if (input.status && input.status !== currentLead.status) {
           updateData.status = input.status;
           await logEditHistory(db, input.id, user!.id, "status", currentLead.status, input.status, "status_change", ctx);
+          
+          // Handle lien rights tracking when status changes to "completed"
+          if (input.status === "completed" && currentLead.status !== "completed") {
+            const completedAt = new Date();
+            const expiresAt = new Date(completedAt);
+            expiresAt.setDate(expiresAt.getDate() + 90); // 90 days from completion
+            
+            updateData.projectCompletedAt = completedAt;
+            updateData.lienRightsExpiresAt = expiresAt;
+            updateData.lienRightsStatus = "active";
+            
+            await logEditHistory(db, input.id, user!.id, "projectCompletedAt", null, completedAt.toISOString(), "update", ctx);
+            await logEditHistory(db, input.id, user!.id, "lienRightsStatus", currentLead.lienRightsStatus || "not_applicable", "active", "update", ctx);
+          }
+          
+          // Handle lien_legal status
+          if (input.status === "lien_legal") {
+            updateData.lienRightsStatus = "legal";
+            await logEditHistory(db, input.id, user!.id, "lienRightsStatus", currentLead.lienRightsStatus || "not_applicable", "legal", "update", ctx);
+          }
         }
+        
+        // Handle deal type changes
+        if (input.dealType && input.dealType !== currentLead.dealType) {
+          updateData.dealType = input.dealType;
+          await logEditHistory(db, input.id, user!.id, "dealType", currentLead.dealType || "", input.dealType, "update", ctx);
+        }
+        
         if (input.priority && input.priority !== currentLead.priority) {
           updateData.priority = input.priority;
           await logEditHistory(db, input.id, user!.id, "priority", currentLead.priority, input.priority, "update", ctx);
@@ -1098,36 +1193,25 @@ export const appRouter = router({
         }));
       }),
 
-    // Get leads by category tabs (role-based)
+    // Get leads by category tabs (role-based) - Updated for new pipeline
     getLeadsByCategory: protectedProcedure
       .input(z.object({
-        category: z.enum(["prospect", "in_progress", "completed", "invoiced", "closed_lost"]),
+        category: z.enum(["lead", "appointment_set", "prospect", "approved", "project_scheduled", "completed", "invoiced", "lien_legal", "closed_deal", "closed_lost"]),
+        dealType: z.enum(["insurance", "cash", "financed", "all"]).optional(),
       }))
       .query(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        let statusFilter: string[] = [];
-        switch (input.category) {
-          case "prospect":
-            statusFilter = ["new_lead", "contacted"];
-            break;
-          case "in_progress":
-            statusFilter = ["appointment_set", "inspection_scheduled", "inspection_complete"];
-            break;
-          case "completed":
-            statusFilter = ["report_sent", "follow_up"];
-            break;
-          case "invoiced":
-            statusFilter = ["closed_won"];
-            break;
-          case "closed_lost":
-            statusFilter = ["closed_lost", "cancelled"];
-            break;
+        let conditions: any[] = [eq(reportRequests.status, input.category as any)];
+        
+        // Filter by deal type if specified
+        if (input.dealType && input.dealType !== "all") {
+          conditions.push(eq(reportRequests.dealType, input.dealType));
         }
-
+        
         let leads = await db.select().from(reportRequests)
-          .where(inArray(reportRequests.status, statusFilter as any))
+          .where(and(...conditions))
           .orderBy(desc(reportRequests.createdAt));
 
         // Filter by role
@@ -1136,13 +1220,71 @@ export const appRouter = router({
         return leads;
       }),
 
-    // Get category counts for tabs (role-based)
+    // Get lien rights jobs with urgency tracking
+    getLienRightsJobs: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Get all jobs with lien rights tracking (completed or invoiced status)
+      let leads = await db.select().from(reportRequests)
+        .where(
+          and(
+            or(
+              eq(reportRequests.status, "completed"),
+              eq(reportRequests.status, "invoiced")
+            ),
+            isNotNull(reportRequests.projectCompletedAt)
+          )
+        )
+        .orderBy(reportRequests.lienRightsExpiresAt);
+
+      // Filter by role
+      leads = await filterLeadsByRole(db, ctx.user, leads);
+
+      // Calculate days remaining and update status if needed
+      const now = new Date();
+      const jobsWithLienInfo = leads.map(lead => {
+        const expiresAt = lead.lienRightsExpiresAt ? new Date(lead.lienRightsExpiresAt) : null;
+        const completedAt = lead.projectCompletedAt ? new Date(lead.projectCompletedAt) : null;
+        
+        if (!expiresAt || !completedAt) {
+          return { ...lead, daysRemaining: null, urgencyLevel: "not_applicable" };
+        }
+        
+        const daysRemaining = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const daysSinceCompletion = Math.ceil((now.getTime() - completedAt.getTime()) / (1000 * 60 * 60 * 24));
+        
+        let urgencyLevel: string;
+        if (daysRemaining <= 0) {
+          urgencyLevel = "expired";
+        } else if (daysRemaining <= 14) {
+          urgencyLevel = "critical";
+        } else if (daysRemaining <= 30) {
+          urgencyLevel = "warning";
+        } else {
+          urgencyLevel = "active";
+        }
+        
+        return {
+          ...lead,
+          daysRemaining,
+          daysSinceCompletion,
+          urgencyLevel,
+        };
+      });
+
+      return jobsWithLienInfo;
+    }),
+
+    // Get category counts for tabs (role-based) - Updated for new pipeline
     getCategoryCounts: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       let leads = await db.select({
         status: reportRequests.status,
+        dealType: reportRequests.dealType,
+        lienRightsStatus: reportRequests.lienRightsStatus,
         assignedTo: reportRequests.assignedTo,
       }).from(reportRequests);
 
@@ -1153,13 +1295,42 @@ export const appRouter = router({
         acc[lead.status] = (acc[lead.status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
+      
+      const dealTypeMap = leads.reduce((acc, lead) => {
+        if (lead.dealType) {
+          acc[lead.dealType] = (acc[lead.dealType] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const lienStatusMap = leads.reduce((acc, lead) => {
+        if (lead.lienRightsStatus) {
+          acc[lead.lienRightsStatus] = (acc[lead.lienRightsStatus] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
 
       return {
-        prospect: (statusMap["new_lead"] || 0) + (statusMap["contacted"] || 0),
-        in_progress: (statusMap["appointment_set"] || 0) + (statusMap["inspection_scheduled"] || 0) + (statusMap["inspection_complete"] || 0),
-        completed: (statusMap["report_sent"] || 0) + (statusMap["follow_up"] || 0),
-        invoiced: statusMap["closed_won"] || 0,
-        closed_lost: (statusMap["closed_lost"] || 0) + (statusMap["cancelled"] || 0),
+        // Pipeline stages
+        lead: statusMap["lead"] || 0,
+        appointment_set: statusMap["appointment_set"] || 0,
+        prospect: statusMap["prospect"] || 0,
+        approved: statusMap["approved"] || 0,
+        project_scheduled: statusMap["project_scheduled"] || 0,
+        completed: statusMap["completed"] || 0,
+        invoiced: statusMap["invoiced"] || 0,
+        lien_legal: statusMap["lien_legal"] || 0,
+        closed_deal: statusMap["closed_deal"] || 0,
+        closed_lost: statusMap["closed_lost"] || 0,
+        // Deal types
+        insurance: dealTypeMap["insurance"] || 0,
+        cash: dealTypeMap["cash"] || 0,
+        financed: dealTypeMap["financed"] || 0,
+        // Lien rights status
+        lien_active: lienStatusMap["active"] || 0,
+        lien_warning: lienStatusMap["warning"] || 0,
+        lien_critical: lienStatusMap["critical"] || 0,
+        lien_expired: lienStatusMap["expired"] || 0,
       };
     }),
 

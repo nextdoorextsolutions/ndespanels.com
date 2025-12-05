@@ -13,15 +13,16 @@ import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 
 const STATUS_OPTIONS = [
-  { value: "new_lead", label: "New Lead", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
-  { value: "contacted", label: "Contacted", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
-  { value: "appointment_set", label: "Appointment Set", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
-  { value: "inspection_scheduled", label: "Inspection Scheduled", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
-  { value: "inspection_complete", label: "Inspection Complete", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
-  { value: "report_sent", label: "Report Sent", color: "bg-teal-500/20 text-teal-400 border-teal-500/30" },
-  { value: "follow_up", label: "Follow Up", color: "bg-pink-500/20 text-pink-400 border-pink-500/30" },
-  { value: "closed_won", label: "Closed Won", color: "bg-green-500/20 text-green-400 border-green-500/30" },
-  { value: "closed_lost", label: "Closed Lost", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+  { value: "lead", label: "Lead", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
+  { value: "appointment_set", label: "Appointment Set", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
+  { value: "prospect", label: "Prospect", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+  { value: "approved", label: "Approved", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
+  { value: "project_scheduled", label: "Project Scheduled", color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30" },
+  { value: "completed", label: "Completed", color: "bg-teal-500/20 text-teal-400 border-teal-500/30" },
+  { value: "invoiced", label: "Invoiced", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
+  { value: "lien_legal", label: "Lien Legal", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+  { value: "closed_deal", label: "Closed Deal", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+  { value: "closed_lost", label: "Closed Lost", color: "bg-red-600/20 text-red-300 border-red-600/30" },
 ];
 
 export default function CRMLeads() {
@@ -294,7 +295,7 @@ export default function CRMLeads() {
                                     <p className="text-sm text-slate-400 mb-2">Update Status</p>
                                     <Select 
                                       value={leadDetail.status} 
-                                      onValueChange={(value) => updateLead.mutate({ id: leadDetail.id, status: value })}
+                                      onValueChange={(value) => updateLead.mutate({ id: leadDetail.id, status: value as any })}
                                     >
                                       <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                                         <SelectValue />

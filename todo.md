@@ -116,3 +116,17 @@
 - [x] Update createTeamAccount endpoint to send welcome email
 - [x] Include Manus login URL and role information in email
 - [x] Test email delivery
+
+## Pipeline Redesign with Lien Rights Tracking
+- [x] Update database schema with new pipeline stages
+- [x] Add deal type field (insurance, cash, financed)
+- [x] Add completedAt date field for lien rights tracking
+- [x] Add lienRightsStatus field (active, warning, critical, expired, legal)
+- [x] Create new pipeline stages: Lead, Appointment Set, Prospect, Approved, Project Scheduled, Completed, Invoiced, Lien Legal, Closed Deal
+- [x] Update backend with lien rights calculation (90-day window)
+- [x] Redesign Pipeline page with new kanban columns
+- [x] Add deal type subsections under Approved stage
+- [x] Add lien rights countdown timer with urgency indicators
+- [x] Add weekly urgency updates for lien rights
+- [x] Update Dashboard with new pipeline stages
+- [x] Update Leads page with new status options

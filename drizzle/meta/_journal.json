@@ -50,6 +50,13 @@
       "when": 1764961409992,
       "tag": "0006_pink_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1764967800000,
+      "tag": "0007_pipeline_update",
+      "breakpoints": true
     }
   ]
 }
