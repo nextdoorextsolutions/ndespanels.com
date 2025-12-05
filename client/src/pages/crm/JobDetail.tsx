@@ -182,6 +182,158 @@ function CustomerStatusEditor({
   );
 }
 
+// Internal Notes Editor - Only updates on Enter/Ctrl+Enter or Save button
+function InternalNotesEditor({ 
+  jobId, 
+  initialNotes, 
+  canEdit, 
+  onUpdate 
+}: { 
+  jobId: number; 
+  initialNotes: string; 
+  canEdit: boolean; 
+  onUpdate: () => void;
+}) {
+  const [notes, setNotes] = useState(initialNotes);
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  const updateLead = trpc.crm.updateLead.useMutation({
+    onSuccess: () => {
+      toast.success("Internal notes updated");
+      setHasChanges(false);
+      onUpdate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleSave = () => {
+    updateLead.mutate({ id: jobId, internalNotes: notes });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && e.ctrlKey) {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
+  // Update local state when initialNotes changes
+  useEffect(() => {
+    setNotes(initialNotes);
+    setHasChanges(false);
+  }, [initialNotes]);
+
+  if (!canEdit) {
+    return <p className="text-slate-300">{initialNotes || "No notes"}</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <Textarea
+        placeholder="Add internal notes..."
+        value={notes}
+        onChange={(e) => {
+          setNotes(e.target.value);
+          setHasChanges(e.target.value !== initialNotes);
+        }}
+        onKeyDown={handleKeyDown}
+        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[120px]"
+      />
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500">
+          Press <kbd className="px-1.5 py-0.5 bg-slate-600 rounded text-slate-300">Ctrl+Enter</kbd> to save
+        </p>
+        {hasChanges && (
+          <Button 
+            onClick={handleSave}
+            disabled={updateLead.isPending}
+            size="sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            {updateLead.isPending ? "Saving..." : "Save Notes"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Scheduled Date Editor - Only updates on blur or Enter
+function ScheduledDateEditor({ 
+  jobId, 
+  initialDate, 
+  canEdit, 
+  onUpdate 
+}: { 
+  jobId: number; 
+  initialDate: string | null; 
+  canEdit: boolean; 
+  onUpdate: () => void;
+}) {
+  const [date, setDate] = useState(initialDate ? new Date(initialDate).toISOString().slice(0, 16) : "");
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  const updateLead = trpc.crm.updateLead.useMutation({
+    onSuccess: () => {
+      toast.success("Scheduled date updated");
+      setHasChanges(false);
+      onUpdate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleSave = () => {
+    if (date) {
+      updateLead.mutate({ id: jobId, scheduledDate: new Date(date).toISOString() });
+    }
+  };
+
+  // Update local state when initialDate changes
+  useEffect(() => {
+    setDate(initialDate ? new Date(initialDate).toISOString().slice(0, 16) : "");
+    setHasChanges(false);
+  }, [initialDate]);
+
+  if (!canEdit) {
+    return (
+      <p className="font-medium text-white">
+        {initialDate ? new Date(initialDate).toLocaleString() : "Not scheduled"}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <Input
+          type="datetime-local"
+          value={date}
+          onChange={(e) => {
+            setDate(e.target.value);
+            setHasChanges(e.target.value !== (initialDate ? new Date(initialDate).toISOString().slice(0, 16) : ""));
+          }}
+          onBlur={handleSave}
+          className="bg-slate-700 border-slate-600 text-white h-8 flex-1"
+        />
+        {hasChanges && (
+          <Button 
+            onClick={handleSave}
+            disabled={updateLead.isPending}
+            size="sm"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white h-8"
+          >
+            {updateLead.isPending ? "..." : "Save"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function JobDetail() {
   const params = useParams<{ id: string }>();
   const jobId = parseInt(params.id || "0");
@@ -754,22 +906,12 @@ export default function JobDetail() {
                     {/* Scheduled Date */}
                     <div>
                       <p className="text-sm text-slate-400 mb-1">Scheduled Date</p>
-                      {canEdit ? (
-                        <Input
-                          type="datetime-local"
-                          value={job.scheduledDate ? new Date(job.scheduledDate).toISOString().slice(0, 16) : ""}
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              updateLead.mutate({ id: jobId, scheduledDate: new Date(e.target.value).toISOString() });
-                            }
-                          }}
-                          className="bg-slate-700 border-slate-600 text-white h-8"
-                        />
-                      ) : (
-                        <p className="font-medium text-white">
-                          {job.scheduledDate ? new Date(job.scheduledDate).toLocaleString() : "Not scheduled"}
-                        </p>
-                      )}
+                      <ScheduledDateEditor
+                        jobId={jobId}
+                        initialDate={job.scheduledDate ? job.scheduledDate.toISOString() : null}
+                        canEdit={canEdit}
+                        onUpdate={refetch}
+                      />
                     </div>
 
                     {/* Roof Age */}
@@ -897,16 +1039,12 @@ export default function JobDetail() {
                   </div>
                   <div>
                     <p className="text-sm text-slate-400 mb-2">Internal Notes</p>
-                    {canEdit ? (
-                      <Textarea
-                        placeholder="Add internal notes..."
-                        value={job.internalNotes || ""}
-                        onChange={(e) => updateLead.mutate({ id: jobId, internalNotes: e.target.value })}
-                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[120px]"
-                      />
-                    ) : (
-                      <p className="text-slate-300">{job.internalNotes || "No notes"}</p>
-                    )}
+                    <InternalNotesEditor
+                      jobId={jobId}
+                      initialNotes={job.internalNotes || ""}
+                      canEdit={canEdit}
+                      onUpdate={refetch}
+                    />
                   </div>
                   <div className="pt-4 border-t border-slate-700">
                     <p className="text-sm text-slate-400 mb-2">Created</p>
