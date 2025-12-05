@@ -594,6 +594,293 @@ export const appRouter = router({
           conversionRate: `${conversionRate}%`,
         };
       }),
+
+    // ============ DASHBOARD ANALYTICS ============
+
+    // Get monthly lead trends for charts
+    getMonthlyTrends: protectedProcedure
+      .input(z.object({
+        months: z.number().default(6),
+      }).optional())
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const monthsBack = input?.months || 6;
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - monthsBack);
+
+        const leads = await db.select({
+          id: reportRequests.id,
+          status: reportRequests.status,
+          amountPaid: reportRequests.amountPaid,
+          createdAt: reportRequests.createdAt,
+        })
+        .from(reportRequests)
+        .where(gte(reportRequests.createdAt, startDate))
+        .orderBy(reportRequests.createdAt);
+
+        // Group by month
+        const monthlyData: Record<string, { leads: number; closed: number; revenue: number }> = {};
+        
+        leads.forEach(lead => {
+          const monthKey = lead.createdAt.toISOString().slice(0, 7); // YYYY-MM
+          if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = { leads: 0, closed: 0, revenue: 0 };
+          }
+          monthlyData[monthKey].leads++;
+          if (lead.status === "closed_won") {
+            monthlyData[monthKey].closed++;
+            monthlyData[monthKey].revenue += (lead.amountPaid || 0) / 100;
+          }
+        });
+
+        return Object.entries(monthlyData).map(([month, data]) => ({
+          month,
+          ...data,
+          conversionRate: data.leads > 0 ? ((data.closed / data.leads) * 100).toFixed(1) : "0",
+        }));
+      }),
+
+    // Get leads by category tabs (Prospect, Completed, Invoiced, etc.)
+    getLeadsByCategory: protectedProcedure
+      .input(z.object({
+        category: z.enum(["prospect", "in_progress", "completed", "invoiced", "closed_lost"]),
+      }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        let statusFilter: string[] = [];
+        switch (input.category) {
+          case "prospect":
+            statusFilter = ["new_lead", "contacted"];
+            break;
+          case "in_progress":
+            statusFilter = ["appointment_set", "inspection_scheduled", "inspection_complete"];
+            break;
+          case "completed":
+            statusFilter = ["report_sent", "follow_up"];
+            break;
+          case "invoiced":
+            statusFilter = ["closed_won"];
+            break;
+          case "closed_lost":
+            statusFilter = ["closed_lost", "cancelled"];
+            break;
+        }
+
+        const leads = await db.select().from(reportRequests)
+          .where(sql`${reportRequests.status} IN (${sql.raw(statusFilter.map(s => `'${s}'`).join(","))})`)
+          .orderBy(desc(reportRequests.createdAt));
+
+        return leads;
+      }),
+
+    // Get category counts for tabs
+    getCategoryCounts: protectedProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const counts = await db.select({
+        status: reportRequests.status,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(reportRequests)
+      .groupBy(reportRequests.status);
+
+      const statusMap = counts.reduce((acc, { status, count }) => {
+        acc[status] = count;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return {
+        prospect: (statusMap["new_lead"] || 0) + (statusMap["contacted"] || 0),
+        in_progress: (statusMap["appointment_set"] || 0) + (statusMap["inspection_scheduled"] || 0) + (statusMap["inspection_complete"] || 0),
+        completed: (statusMap["report_sent"] || 0) + (statusMap["follow_up"] || 0),
+        invoiced: statusMap["closed_won"] || 0,
+        closed_lost: (statusMap["closed_lost"] || 0) + (statusMap["cancelled"] || 0),
+      };
+    }),
+
+    // ============ JOB DETAIL PAGE ============
+
+    // Get comprehensive job detail with all related data
+    getJobDetail: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const [job] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.id));
+        if (!job) throw new Error("Job not found");
+
+        // Get assigned user info
+        let assignedUser = null;
+        if (job.assignedTo) {
+          const [user] = await db.select().from(users).where(eq(users.id, job.assignedTo));
+          assignedUser = user;
+        }
+
+        // Get all activities (timeline)
+        const jobActivities = await db.select({
+          id: activities.id,
+          activityType: activities.activityType,
+          description: activities.description,
+          metadata: activities.metadata,
+          createdAt: activities.createdAt,
+          userId: activities.userId,
+        })
+        .from(activities)
+        .where(eq(activities.reportRequestId, input.id))
+        .orderBy(desc(activities.createdAt));
+
+        // Enrich activities with user names
+        const userIds = Array.from(new Set(jobActivities.map(a => a.userId).filter((id): id is number => id !== null && id !== undefined)));
+        const activityUsers = userIds.length > 0
+          ? await db.select({ id: users.id, name: users.name, email: users.email })
+              .from(users)
+              .where(sql`${users.id} IN (${sql.raw(userIds.join(","))})`)
+          : [];
+        const userMap = activityUsers.reduce((acc, u) => { acc[u.id] = u; return acc; }, {} as Record<number, any>);
+
+        const enrichedActivities = jobActivities.map(a => ({
+          ...a,
+          user: a.userId ? userMap[a.userId] : null,
+        }));
+
+        // Get all documents
+        const jobDocuments = await db.select().from(documents)
+          .where(eq(documents.reportRequestId, input.id))
+          .orderBy(desc(documents.createdAt));
+
+        // Separate photos from other documents
+        const photos = jobDocuments.filter(d => 
+          d.category === "drone_photo" || 
+          d.category === "inspection_photo" ||
+          d.fileType?.startsWith("image/")
+        );
+        const docs = jobDocuments.filter(d => 
+          d.category !== "drone_photo" && 
+          d.category !== "inspection_photo" &&
+          !d.fileType?.startsWith("image/")
+        );
+
+        // Get messages (notes with type 'message')
+        const messages = enrichedActivities.filter(a => 
+          a.activityType === "message" || a.activityType === "note_added"
+        );
+
+        return {
+          job,
+          assignedUser,
+          activities: enrichedActivities,
+          documents: docs,
+          photos,
+          messages,
+          timeline: enrichedActivities,
+        };
+      }),
+
+    // Add message to job
+    addMessage: protectedProcedure
+      .input(z.object({
+        jobId: z.number(),
+        message: z.string().min(1),
+        isInternal: z.boolean().default(true),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        await db.insert(activities).values({
+          reportRequestId: input.jobId,
+          userId: ctx.user?.id,
+          activityType: "message",
+          description: input.message,
+          metadata: JSON.stringify({ isInternal: input.isInternal }),
+        });
+
+        return { success: true };
+      }),
+
+    // Upload photo to job
+    uploadPhoto: protectedProcedure
+      .input(z.object({
+        jobId: z.number(),
+        fileName: z.string(),
+        fileData: z.string(), // Base64
+        fileType: z.string(),
+        category: z.enum(["drone_photo", "inspection_photo"]).default("inspection_photo"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const buffer = Buffer.from(input.fileData, "base64");
+        const fileSize = buffer.length;
+
+        const timestamp = Date.now();
+        const safeName = input.fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const filePath = `jobs/${input.jobId}/photos/${timestamp}_${safeName}`;
+
+        const { url } = await storagePut(filePath, buffer, input.fileType);
+
+        const [result] = await db.insert(documents).values({
+          reportRequestId: input.jobId,
+          uploadedBy: ctx.user?.id,
+          fileName: input.fileName,
+          fileUrl: url,
+          fileType: input.fileType,
+          fileSize: fileSize,
+          category: input.category,
+        });
+
+        await db.insert(activities).values({
+          reportRequestId: input.jobId,
+          userId: ctx.user?.id,
+          activityType: "photo_uploaded",
+          description: `Uploaded photo: ${input.fileName}`,
+        });
+
+        return { success: true, documentId: result.insertId, url };
+      }),
+
+    // Search within job (documents, notes, messages)
+    searchJob: protectedProcedure
+      .input(z.object({
+        jobId: z.number(),
+        query: z.string().min(1),
+        type: z.enum(["all", "documents", "notes", "photos"]).default("all"),
+      }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const searchTerm = `%${input.query}%`;
+        const results: { documents: any[]; activities: any[] } = { documents: [], activities: [] };
+
+        if (input.type === "all" || input.type === "documents" || input.type === "photos") {
+          const docs = await db.select().from(documents)
+            .where(and(
+              eq(documents.reportRequestId, input.jobId),
+              like(documents.fileName, searchTerm)
+            ));
+          results.documents = docs;
+        }
+
+        if (input.type === "all" || input.type === "notes") {
+          const acts = await db.select().from(activities)
+            .where(and(
+              eq(activities.reportRequestId, input.jobId),
+              like(activities.description, searchTerm)
+            ))
+            .orderBy(desc(activities.createdAt));
+          results.activities = acts;
+        }
+
+        return results;
+      }),
   }),
 });
 

@@ -106,7 +106,9 @@ export const activities = mysqlTable("activities", {
     "document_uploaded",
     "payment_received",
     "assigned",
-    "created"
+    "created",
+    "message",
+    "photo_uploaded"
   ]).notNull(),
   
   description: text("description").notNull(),

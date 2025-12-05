@@ -13,6 +13,7 @@ import CRMTeam from "./pages/crm/Team";
 import CRMLogin from "./pages/crm/Login";
 import CRMCalendar from "./pages/crm/Calendar";
 import CRMReports from "./pages/crm/Reports";
+import JobDetail from "./pages/crm/JobDetail";
 import { trpc } from "./lib/trpc";
 
 // Protected route wrapper for CRM
@@ -59,6 +60,9 @@ function Router() {
       </Route>
       <Route path={"/crm/reports"}>
         <ProtectedCRMRoute component={CRMReports} />
+      </Route>
+      <Route path={"/crm/job/:id"}>
+        <ProtectedCRMRoute component={JobDetail} />
       </Route>
       <Route path={"/crm/login"} component={CRMLogin} />
       
