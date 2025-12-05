@@ -8,6 +8,7 @@ import { reportRequests, users, activities, documents, editHistory } from "../dr
 import { PRODUCTS, validatePromoCode } from "./products";
 import { notifyOwner } from "./_core/notification";
 import { sendSMSNotification } from "./sms";
+import { sendWelcomeEmail } from "./email";
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { eq, desc, and, or, like, sql, gte, lte, inArray, isNotNull } from "drizzle-orm";
@@ -720,11 +721,30 @@ export const appRouter = router({
           isActive: true,
         }).$returningId();
 
+        // Send welcome email notification to owner with login details to share
+        const loginUrl = process.env.NODE_ENV === 'production' 
+          ? `https://${process.env.VITE_APP_ID}.manus.space/crm`
+          : 'http://localhost:3000/crm';
+        
+        try {
+          await sendWelcomeEmail({
+            recipientEmail: input.email,
+            recipientName: input.name,
+            role: input.role,
+            loginUrl,
+            companyName: 'NextDoor Exterior Solutions',
+          });
+        } catch (emailError) {
+          console.error('[CreateAccount] Failed to send welcome email:', emailError);
+          // Don't fail the account creation if email fails
+        }
+
         return {
           id: newUser.id,
           name: input.name,
           email: input.email,
           role: input.role,
+          loginUrl,
         };
       }),
 

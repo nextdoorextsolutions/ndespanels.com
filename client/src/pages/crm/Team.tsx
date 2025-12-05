@@ -105,7 +105,8 @@ export default function CRMTeam() {
 
   const copyCredentials = () => {
     if (!createdAccount) return;
-    const text = `CRM Account Created\n\nName: ${createdAccount.name}\nEmail: ${createdAccount.email}\nRole: ${ROLE_OPTIONS.find(r => r.value === createdAccount.role)?.label}\n\nLogin URL: ${window.location.origin}/crm\n\nPlease log in using your Manus account with the email above.`;
+    const loginUrl = createdAccount.loginUrl || `${window.location.origin}/crm`;
+    const text = `CRM Account Created\n\nName: ${createdAccount.name}\nEmail: ${createdAccount.email}\nRole: ${ROLE_OPTIONS.find(r => r.value === createdAccount.role)?.label}\n\nLogin URL: ${loginUrl}\n\nPlease log in using your Manus account with the email above.`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -161,7 +162,7 @@ export default function CRMTeam() {
                     <div className="space-y-4 pt-4">
                       <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
                         <p className="text-green-400 font-medium mb-2">Account created successfully!</p>
-                        <p className="text-sm text-slate-300">Share the following details with the team member:</p>
+                        <p className="text-sm text-slate-300">A notification has been sent with the login details. Share the following with the team member:</p>
                       </div>
                       
                       <div className="bg-slate-700 rounded-lg p-4 space-y-2">
@@ -181,7 +182,7 @@ export default function CRMTeam() {
                         </div>
                         <div>
                           <p className="text-xs text-slate-400">Login URL</p>
-                          <code className="text-[#00d4aa] text-sm">{window.location.origin}/crm</code>
+                          <code className="text-[#00d4aa] text-sm">{createdAccount.loginUrl || `${window.location.origin}/crm`}</code>
                         </div>
                       </div>
                       

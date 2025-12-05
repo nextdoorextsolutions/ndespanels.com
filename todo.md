@@ -109,3 +109,10 @@
 - [x] Add backend endpoint for owner to create team member accounts
 - [x] Show credentials after account creation for owner to share
 - [x] Clean up database - removed test admin accounts
+
+## Email Notification for New Team Accounts
+- [x] Set up email service using built-in notification API
+- [x] Create welcome email template with login instructions
+- [x] Update createTeamAccount endpoint to send welcome email
+- [x] Include Manus login URL and role information in email
+- [x] Test email delivery
