@@ -186,3 +186,11 @@
 
 ## Input Field Improvements
 - [x] Fix all text inputs to only update on Enter key press, not on every keystroke
+
+## Supabase Integration
+- [x] Set up Supabase credentials as environment variables
+- [x] Install Supabase JS client
+- [x] Create Supabase storage helper functions
+- [x] Update file upload/download to use Supabase Storage (crm-files bucket)
+- [x] Add real-time subscriptions for live updates
+- [x] Test all storage operations (90 tests passing)

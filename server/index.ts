@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { initializeStorageBuckets } from "./storage";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,6 +10,14 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Initialize Supabase storage buckets
+  try {
+    await initializeStorageBuckets();
+    console.log("Supabase storage buckets initialized");
+  } catch (error) {
+    console.warn("Failed to initialize Supabase buckets:", error);
+  }
 
   // Serve static files from dist/public in production
   const staticPath =

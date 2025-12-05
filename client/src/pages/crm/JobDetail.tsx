@@ -35,6 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
+import { useRealtimeJob } from "@/hooks/useRealtimeJob";
 
 // Status configuration - Updated for new pipeline
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -363,6 +364,20 @@ export default function JobDetail() {
     { enabled: jobId > 0 }
   );
   const { data: permissions } = trpc.crm.getMyPermissions.useQuery();
+
+  // Real-time updates - auto-refresh when other users make changes
+  const { broadcast } = useRealtimeJob({
+    jobId,
+    enabled: jobId > 0,
+    onUpdate: (payload) => {
+      // Refetch data when another user makes changes
+      refetch();
+      toast.info(`Job updated: ${payload.updateType}`, {
+        description: "Data refreshed automatically",
+        duration: 2000,
+      });
+    },
+  });
   const { data: searchResults } = trpc.crm.searchJob.useQuery(
     { jobId, query: searchQuery, type: "all" },
     { enabled: searchQuery.length > 2 }
@@ -378,6 +393,8 @@ export default function JobDetail() {
     onSuccess: () => {
       toast.success("Job updated successfully");
       refetch();
+      // Broadcast update to other users viewing this job
+      broadcast("status", { updated: true });
     },
     onError: (error) => toast.error(error.message),
   });
