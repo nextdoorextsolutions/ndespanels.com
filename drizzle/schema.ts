@@ -113,6 +113,9 @@ export const reportRequests = mysqlTable("report_requests", {
   priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default("medium").notNull(),
   internalNotes: text("internalNotes"),
   
+  // Customer-facing status message (shown in customer portal)
+  customerStatusMessage: text("customerStatusMessage"),
+  
   // Scheduling
   scheduledDate: timestamp("scheduledDate"),
   completedDate: timestamp("completedDate"),
@@ -145,7 +148,10 @@ export const activities = mysqlTable("activities", {
     "assigned",
     "created",
     "message",
-    "photo_uploaded"
+    "photo_uploaded",
+    "customer_message",
+    "callback_requested",
+    "inspection_complete"
   ]).notNull(),
   
   description: text("description").notNull(),

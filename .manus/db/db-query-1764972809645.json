@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, phone, fullName, address FROM report_requests LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3LkhXw7W2NLietY.root --database a7GnrUTuzTDTFdbLnSt79K --execute SELECT id, phone, fullName, address FROM report_requests LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "phone": "555-123-4567",
+      "fullName": "John Smith",
+      "address": "123 Main St"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tphone\tfullName\taddress\n1\t555-123-4567\tJohn Smith\t123 Main St\n",
+  "stderr": "",
+  "execution_time_ms": 92
+}

@@ -492,6 +492,7 @@ export const appRouter = router({
         assignedTo: z.number().optional(),
         internalNotes: z.string().optional(),
         scheduledDate: z.string().optional(),
+        customerStatusMessage: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -557,6 +558,10 @@ export const appRouter = router({
         if (input.scheduledDate) {
           updateData.scheduledDate = new Date(input.scheduledDate);
           await logEditHistory(db, input.id, user!.id, "scheduledDate", currentLead.scheduledDate?.toISOString() || "", input.scheduledDate, "update", ctx);
+        }
+        if (input.customerStatusMessage !== undefined && input.customerStatusMessage !== currentLead.customerStatusMessage) {
+          updateData.customerStatusMessage = input.customerStatusMessage;
+          await logEditHistory(db, input.id, user!.id, "customerStatusMessage", currentLead.customerStatusMessage || "", input.customerStatusMessage, "update", ctx);
         }
 
         if (Object.keys(updateData).length > 0) {
@@ -1646,6 +1651,201 @@ export const appRouter = router({
         const result = await sendLienRightsAlertNotification(crmUrl);
         
         return result;
+      }),
+  }),
+
+  // ============ CUSTOMER PORTAL (PUBLIC) ============
+  portal: router({
+    // Look up job by phone number (public - no auth required)
+    lookupJob: publicProcedure
+      .input(z.object({
+        phone: z.string().min(10),
+      }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Normalize phone number - remove all non-digits
+        const normalizedPhone = input.phone.replace(/\D/g, "");
+        
+        // Search for jobs with matching phone number
+        const jobs = await db.select({
+          id: reportRequests.id,
+          fullName: reportRequests.fullName,
+          address: reportRequests.address,
+          cityStateZip: reportRequests.cityStateZip,
+          status: reportRequests.status,
+          customerStatusMessage: reportRequests.customerStatusMessage,
+          scheduledDate: reportRequests.scheduledDate,
+          createdAt: reportRequests.createdAt,
+        })
+        .from(reportRequests)
+        .where(
+          or(
+            like(reportRequests.phone, `%${normalizedPhone}%`),
+            like(reportRequests.phone, `%${input.phone}%`)
+          )
+        )
+        .orderBy(desc(reportRequests.createdAt));
+
+        if (jobs.length === 0) {
+          return { found: false, jobs: [] };
+        }
+
+        // Get timeline for each job (limited public view)
+        const jobsWithTimeline = await Promise.all(jobs.map(async (job) => {
+          const timeline = await db.select({
+            id: activities.id,
+            activityType: activities.activityType,
+            description: activities.description,
+            createdAt: activities.createdAt,
+          })
+          .from(activities)
+          .where(
+            and(
+              eq(activities.reportRequestId, job.id),
+              // Only show certain activity types to customers
+              inArray(activities.activityType, [
+                "status_change",
+                "appointment_scheduled",
+                "inspection_complete",
+                "document_uploaded",
+                "customer_message",
+                "callback_requested"
+              ])
+            )
+          )
+          .orderBy(desc(activities.createdAt))
+          .limit(20);
+
+          return {
+            ...job,
+            timeline,
+          };
+        }));
+
+        return { found: true, jobs: jobsWithTimeline };
+      }),
+
+    // Send a message to job file (public)
+    sendMessage: publicProcedure
+      .input(z.object({
+        jobId: z.number(),
+        phone: z.string().min(10),
+        message: z.string().min(1).max(1000),
+        senderName: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Verify phone matches the job
+        const normalizedPhone = input.phone.replace(/\D/g, "");
+        const [job] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
+        
+        if (!job) {
+          throw new Error("Job not found");
+        }
+
+        const jobPhone = job.phone?.replace(/\D/g, "") || "";
+        if (!jobPhone.includes(normalizedPhone) && !normalizedPhone.includes(jobPhone)) {
+          throw new Error("Phone number does not match job record");
+        }
+
+        // Add activity/note to job
+        await db.insert(activities).values({
+          reportRequestId: input.jobId,
+          activityType: "customer_message",
+          description: `Customer Message from ${input.senderName || job.fullName}: ${input.message}`,
+          metadata: JSON.stringify({
+            phone: input.phone,
+            senderName: input.senderName || job.fullName,
+            message: input.message,
+            sentAt: new Date().toISOString(),
+          }),
+        });
+
+        // Notify admins/owners about the customer message
+        const admins = await db.select({ id: users.id, email: users.email, name: users.name })
+          .from(users)
+          .where(
+            and(
+              isNotNull(users.email),
+              isNotNull(users.name),
+              inArray(users.role, ["owner", "admin"])
+            )
+          );
+
+        // Send notification to owner
+        try {
+          await notifyOwner({
+            title: "New Customer Message",
+            content: `${job.fullName} sent a message regarding job #${job.id}: "${input.message.substring(0, 100)}${input.message.length > 100 ? '...' : ''}"`
+          });
+        } catch (e) {
+          console.error("Failed to send customer message notification:", e);
+        }
+
+        return { success: true, message: "Your message has been sent to our team." };
+      }),
+
+    // Request a callback (public)
+    requestCallback: publicProcedure
+      .input(z.object({
+        jobId: z.number(),
+        phone: z.string().min(10),
+        preferredTime: z.string().optional(),
+        notes: z.string().max(500).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Verify phone matches the job
+        const normalizedPhone = input.phone.replace(/\D/g, "");
+        const [job] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
+        
+        if (!job) {
+          throw new Error("Job not found");
+        }
+
+        const jobPhone = job.phone?.replace(/\D/g, "") || "";
+        if (!jobPhone.includes(normalizedPhone) && !normalizedPhone.includes(jobPhone)) {
+          throw new Error("Phone number does not match job record");
+        }
+
+        // Add activity to job
+        await db.insert(activities).values({
+          reportRequestId: input.jobId,
+          activityType: "callback_requested",
+          description: `Callback Requested: Customer ${job.fullName} requested a call${input.preferredTime ? ` (preferred: ${input.preferredTime})` : ""}${input.notes ? `. Notes: ${input.notes}` : ""}`,
+          metadata: JSON.stringify({
+            phone: input.phone,
+            preferredTime: input.preferredTime,
+            notes: input.notes,
+            requestedAt: new Date().toISOString(),
+          }),
+        });
+
+        // Update job priority to indicate callback needed
+        await db.update(reportRequests)
+          .set({ priority: "high" })
+          .where(eq(reportRequests.id, input.jobId));
+
+        // Notify admins/owners about the callback request
+        try {
+          await notifyOwner({
+            title: "Callback Requested",
+            content: `${job.fullName} (${job.phone}) requested a callback for job #${job.id}${input.preferredTime ? ` - Preferred time: ${input.preferredTime}` : ""}`
+          });
+        } catch (e) {
+          console.error("Failed to send callback request notification:", e);
+        }
+
+        return { 
+          success: true, 
+          message: "Your callback request has been received. A team member will contact you within 48 business hours." 
+        };
       }),
   }),
 });

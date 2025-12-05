@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "1b64e510-51ba-4805-9497-b8318dd47b72",
-  "prevId": "a7cb5bbd-2fee-47d1-9679-f19bc60fc6a9",
+  "id": "3c1dffae-1fb5-4224-8613-3f9acbe3a792",
+  "prevId": "1b64e510-51ba-4805-9497-b8318dd47b72",
   "tables": {
     "activities": {
       "name": "activities",
@@ -30,7 +30,7 @@
         },
         "activityType": {
           "name": "activityType",
-          "type": "enum('status_change','note_added','call_logged','email_sent','sms_sent','appointment_scheduled','document_uploaded','payment_received','assigned','created','message','photo_uploaded')",
+          "type": "enum('status_change','note_added','call_logged','email_sent','sms_sent','appointment_scheduled','document_uploaded','payment_received','assigned','created','message','photo_uploaded','customer_message','callback_requested','inspection_complete')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -430,6 +430,13 @@
         },
         "internalNotes": {
           "name": "internalNotes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "customerStatusMessage": {
+          "name": "customerStatusMessage",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

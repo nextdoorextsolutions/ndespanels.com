@@ -154,3 +154,16 @@
 - [x] Fix Reports page NaN% conversion rate issue
 - [x] Add New Job creation form with dialog to Leads page
 - [x] Add createJob backend endpoint for owners/admins
+
+## Customer Portal
+- [x] Create public endpoint for job lookup by phone number
+- [x] Create endpoint for customer to send message to their job file
+- [x] Create endpoint for customer to request a callback
+- [x] Add customerStatusMessage field to schema for custom status display
+- [x] Add editable Customer Status Message section in Job Detail page
+- [x] Build customer portal page with phone number lookup form
+- [x] Display only the custom status message to customers (not internal data)
+- [x] Add message form to send inquiry to job file
+- [x] Add "Request a Call" button with 48 business hours confirmation
+- [x] Send notification to admins when customer sends message or requests call
+- [x] Add route for customer portal in App.tsx (/portal)

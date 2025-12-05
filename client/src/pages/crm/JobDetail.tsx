@@ -628,6 +628,42 @@ export default function JobDetail() {
                 </CardContent>
               </Card>
 
+              {/* Customer Portal Status Message */}
+              <Card className="bg-slate-800 border-slate-700 lg:col-span-3">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <ExternalLink className="w-5 h-5 text-cyan-400" />
+                    Customer Portal Status
+                    <span className="text-xs font-normal text-slate-400 ml-2">
+                      (This message is shown to customers in the portal)
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {canEdit ? (
+                    <div className="space-y-3">
+                      <Textarea
+                        placeholder="Enter a status message for the customer to see in their portal... (e.g., 'Your inspection is scheduled for Monday. Our team will arrive between 9am-12pm.')" 
+                        value={job.customerStatusMessage || ""}
+                        onChange={(e) => updateLead.mutate({ id: jobId, customerStatusMessage: e.target.value })}
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[100px]"
+                      />
+                      <p className="text-xs text-slate-500">
+                        Customers can view their job status at: <span className="text-cyan-400">/portal</span>
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      {job.customerStatusMessage ? (
+                        <p className="text-slate-300 whitespace-pre-wrap">{job.customerStatusMessage}</p>
+                      ) : (
+                        <p className="text-slate-500 italic">No customer status message set</p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Assignment & Notes */}
               <Card className="bg-slate-800 border-slate-700">
                 <CardHeader>
