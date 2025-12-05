@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import {
   ArrowLeft,
@@ -84,6 +84,103 @@ const TABS = [
   { key: "timeline", label: "Timeline", icon: History },
   { key: "edit_history", label: "Edit History", icon: Eye, requiresPermission: "canViewHistory" },
 ];
+
+// Customer Status Editor - Only updates on Enter key
+function CustomerStatusEditor({ 
+  jobId, 
+  initialMessage, 
+  canEdit, 
+  onUpdate 
+}: { 
+  jobId: number; 
+  initialMessage: string; 
+  canEdit: boolean; 
+  onUpdate: () => void;
+}) {
+  const [message, setMessage] = useState(initialMessage);
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  const updateLead = trpc.crm.updateLead.useMutation({
+    onSuccess: () => {
+      toast.success("Customer status message updated");
+      setHasChanges(false);
+      onUpdate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleSave = () => {
+    updateLead.mutate({ id: jobId, customerStatusMessage: message });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
+  // Update local state when initialMessage changes (e.g., after refetch)
+  useEffect(() => {
+    setMessage(initialMessage);
+    setHasChanges(false);
+  }, [initialMessage]);
+
+  return (
+    <Card className="bg-slate-800 border-slate-700 lg:col-span-3">
+      <CardHeader>
+        <CardTitle className="text-white flex items-center gap-2">
+          <ExternalLink className="w-5 h-5 text-cyan-400" />
+          Customer Portal Status
+          <span className="text-xs font-normal text-slate-400 ml-2">
+            (This message is shown to customers in the portal)
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {canEdit ? (
+          <div className="space-y-3">
+            <Textarea
+              placeholder="Enter a status message for the customer to see in their portal... (e.g., 'Your inspection is scheduled for Monday. Our team will arrive between 9am-12pm.')" 
+              value={message}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                setHasChanges(e.target.value !== initialMessage);
+              }}
+              onKeyDown={handleKeyDown}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[100px]"
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                Press <kbd className="px-1.5 py-0.5 bg-slate-600 rounded text-slate-300">Enter</kbd> to save, or use the button. Customers can view at: <span className="text-cyan-400">/portal</span>
+              </p>
+              {hasChanges && (
+                <Button 
+                  onClick={handleSave}
+                  disabled={updateLead.isPending}
+                  size="sm"
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                >
+                  {updateLead.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            {initialMessage ? (
+              <p className="text-slate-300 whitespace-pre-wrap">{initialMessage}</p>
+            ) : (
+              <p className="text-slate-500 italic">No customer status message set</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function JobDetail() {
   const params = useParams<{ id: string }>();
@@ -629,40 +726,12 @@ export default function JobDetail() {
               </Card>
 
               {/* Customer Portal Status Message */}
-              <Card className="bg-slate-800 border-slate-700 lg:col-span-3">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <ExternalLink className="w-5 h-5 text-cyan-400" />
-                    Customer Portal Status
-                    <span className="text-xs font-normal text-slate-400 ml-2">
-                      (This message is shown to customers in the portal)
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {canEdit ? (
-                    <div className="space-y-3">
-                      <Textarea
-                        placeholder="Enter a status message for the customer to see in their portal... (e.g., 'Your inspection is scheduled for Monday. Our team will arrive between 9am-12pm.')" 
-                        value={job.customerStatusMessage || ""}
-                        onChange={(e) => updateLead.mutate({ id: jobId, customerStatusMessage: e.target.value })}
-                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[100px]"
-                      />
-                      <p className="text-xs text-slate-500">
-                        Customers can view their job status at: <span className="text-cyan-400">/portal</span>
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      {job.customerStatusMessage ? (
-                        <p className="text-slate-300 whitespace-pre-wrap">{job.customerStatusMessage}</p>
-                      ) : (
-                        <p className="text-slate-500 italic">No customer status message set</p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <CustomerStatusEditor 
+                jobId={jobId}
+                initialMessage={job.customerStatusMessage || ""}
+                canEdit={canEdit}
+                onUpdate={refetch}
+              />
 
               {/* Assignment & Notes */}
               <Card className="bg-slate-800 border-slate-700">
@@ -924,28 +993,52 @@ export default function JobDetail() {
               {/* Messages List */}
               {filteredMessages.length > 0 ? (
                 <div className="space-y-4">
-                  {filteredMessages.map((msg) => (
-                    <Card key={msg.id} className="bg-slate-800 border-slate-700">
-                      <CardContent className="pt-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center flex-shrink-0">
-                            <span className="text-black font-semibold text-sm">
-                              {msg.user?.name?.charAt(0) || msg.user?.email?.charAt(0) || "?"}
-                            </span>
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-medium text-white">{msg.user?.name || msg.user?.email || "System"}</p>
-                              <span className="text-xs text-slate-500">
-                                {new Date(msg.createdAt).toLocaleString()}
+                  {filteredMessages.map((msg) => {
+                    const isCustomerMessage = msg.activityType === "customer_message";
+                    const isCallbackRequest = msg.activityType === "callback_requested";
+                    const isFromCustomer = isCustomerMessage || isCallbackRequest;
+                    
+                    return (
+                      <Card 
+                        key={msg.id} 
+                        className={`border ${isFromCustomer ? 'bg-amber-900/20 border-amber-500/30' : 'bg-slate-800 border-slate-700'}`}
+                      >
+                        <CardContent className="pt-4">
+                          <div className="flex items-start gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              isFromCustomer 
+                                ? 'bg-gradient-to-br from-amber-500 to-orange-500' 
+                                : 'bg-gradient-to-br from-[#00d4aa] to-[#00b894]'
+                            }`}>
+                              <span className={`font-semibold text-sm ${isFromCustomer ? 'text-white' : 'text-black'}`}>
+                                {isFromCustomer ? 'C' : (msg.user?.name?.charAt(0) || msg.user?.email?.charAt(0) || "?")}
                               </span>
                             </div>
-                            <p className="text-slate-300 whitespace-pre-wrap">{msg.description}</p>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <p className="font-medium text-white">
+                                  {isFromCustomer ? 'Customer' : (msg.user?.name || msg.user?.email || "System")}
+                                </p>
+                                {isFromCustomer && (
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    isCallbackRequest 
+                                      ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                  }`}>
+                                    {isCallbackRequest ? '📞 Callback Requested' : '💬 Customer Message'}
+                                  </span>
+                                )}
+                                <span className="text-xs text-slate-500">
+                                  {new Date(msg.createdAt).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-slate-300 whitespace-pre-wrap">{msg.description}</p>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <Card className="bg-slate-800 border-slate-700">

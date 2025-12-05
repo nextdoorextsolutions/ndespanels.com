@@ -5,12 +5,13 @@ import { User, ReportRequest } from "../../drizzle/schema";
  * 
  * Roles:
  * - owner: Full access - view, edit, delete everything, view edit history
- * - admin: View all jobs, edit everything, cannot delete
+ * - admin: View all jobs, edit everything, cannot delete (Office Staff)
+ * - field_crew: View scope of work and upload photos only (Laborers)
  * - team_lead: View own jobs + jobs of team members assigned to them
  * - sales_rep: View and edit only their own assigned jobs, no delete
  */
 
-export type CRMRole = "owner" | "admin" | "team_lead" | "sales_rep" | "office" | "project_manager" | "user";
+export type CRMRole = "owner" | "admin" | "field_crew" | "team_lead" | "sales_rep" | "office" | "project_manager" | "user";
 
 // Map legacy roles to new role system
 export function normalizeRole(role: string): CRMRole {
@@ -20,6 +21,8 @@ export function normalizeRole(role: string): CRMRole {
     case "admin":
     case "office":
       return "admin"; // Office staff = Admin
+    case "field_crew":
+      return "field_crew";
     case "team_lead":
       return "team_lead";
     case "sales_rep":
@@ -41,6 +44,12 @@ export function isAdmin(user: User | null): boolean {
   if (!user) return false;
   const role = normalizeRole(user.role);
   return role === "owner" || role === "admin";
+}
+
+// Check if user has field crew role
+export function isFieldCrew(user: User | null): boolean {
+  if (!user) return false;
+  return user.role === "field_crew";
 }
 
 // Check if user has team lead role
@@ -71,6 +80,11 @@ export function canViewJob(user: User | null, job: ReportRequest, teamMemberIds:
     return true;
   }
   
+  // Field crew can view jobs they're assigned to (for scope of work)
+  if (role === "field_crew") {
+    return job.assignedTo === user.id;
+  }
+  
   // Team leads can view their own jobs + team members' jobs
   if (role === "team_lead") {
     // Their own job
@@ -99,6 +113,11 @@ export function canEditJob(user: User | null, job: ReportRequest, teamMemberIds:
     return true;
   }
   
+  // Field crew cannot edit jobs - only view and upload photos
+  if (role === "field_crew") {
+    return false;
+  }
+  
   // Team leads can edit their own jobs + team members' jobs
   if (role === "team_lead") {
     if (job.assignedTo === user.id) return true;
@@ -107,6 +126,37 @@ export function canEditJob(user: User | null, job: ReportRequest, teamMemberIds:
   }
   
   // Sales reps can only edit their assigned jobs
+  if (role === "sales_rep") {
+    return job.assignedTo === user.id;
+  }
+  
+  return false;
+}
+
+// Can user upload photos? (Field crew can do this)
+export function canUploadPhotos(user: User | null, job: ReportRequest, teamMemberIds: number[] = []): boolean {
+  if (!user) return false;
+  
+  const role = normalizeRole(user.role);
+  
+  // Owners and Admins can upload to any job
+  if (role === "owner" || role === "admin") {
+    return true;
+  }
+  
+  // Field crew can upload photos to their assigned jobs
+  if (role === "field_crew") {
+    return job.assignedTo === user.id;
+  }
+  
+  // Team leads can upload to their own jobs + team members' jobs
+  if (role === "team_lead") {
+    if (job.assignedTo === user.id) return true;
+    if (job.assignedTo && teamMemberIds.includes(job.assignedTo)) return true;
+    return false;
+  }
+  
+  // Sales reps can upload to their assigned jobs
   if (role === "sales_rep") {
     return job.assignedTo === user.id;
   }
@@ -142,8 +192,8 @@ export function canAssignTeamMembers(user: User | null): boolean {
 export function canCreateJob(user: User | null): boolean {
   if (!user) return false;
   const role = normalizeRole(user.role);
-  // Everyone except basic users can create jobs
-  return role !== "user";
+  // Everyone except basic users and field crew can create jobs
+  return role !== "user" && role !== "field_crew";
 }
 
 // Get role display name
@@ -152,7 +202,9 @@ export function getRoleDisplayName(role: string): string {
     case "owner":
       return "Owner";
     case "admin":
-      return "Admin";
+      return "Office Staff";
+    case "field_crew":
+      return "Field Crew";
     case "team_lead":
       return "Team Lead";
     case "sales_rep":
@@ -169,6 +221,8 @@ export function getRoleBadgeColor(role: string): string {
       return "bg-purple-500";
     case "admin":
       return "bg-blue-500";
+    case "field_crew":
+      return "bg-orange-500";
     case "team_lead":
       return "bg-green-500";
     case "sales_rep":

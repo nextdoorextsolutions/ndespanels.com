@@ -167,3 +167,8 @@
 - [x] Add "Request a Call" button with 48 business hours confirmation
 - [x] Send notification to admins when customer sends message or requests call
 - [x] Add route for customer portal in App.tsx (/portal)
+
+## Role System & Portal Updates
+- [x] Replace Admin role with Field Crew role (limited to viewing scope of work and uploading photos)
+- [x] Fix portal status field to only update when Enter is pressed
+- [x] Add customer messages display in Notes/Messages section of job detail

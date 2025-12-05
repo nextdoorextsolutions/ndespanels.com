@@ -11,10 +11,10 @@ import CRMLayout from "@/components/crm/CRMLayout";
 
 const ROLE_OPTIONS = [
   { value: "owner", label: "Owner", description: "Full access - view, edit, delete, history", color: "bg-purple-500/20 text-purple-400" },
-  { value: "admin", label: "Admin", description: "View all, edit all, no delete", color: "bg-blue-500/20 text-blue-400" },
+  { value: "admin", label: "Office Staff", description: "View all, edit all, no delete", color: "bg-blue-500/20 text-blue-400" },
+  { value: "field_crew", label: "Field Crew", description: "View scope of work, upload photos only", color: "bg-orange-500/20 text-orange-400" },
   { value: "team_lead", label: "Team Lead", description: "View own + team members' jobs", color: "bg-green-500/20 text-green-400" },
   { value: "sales_rep", label: "Sales Rep", description: "View & edit assigned jobs only", color: "bg-cyan-500/20 text-cyan-400" },
-  { value: "office", label: "Office Staff", description: "Same as Admin", color: "bg-blue-500/20 text-blue-400" },
 ];
 
 export default function CRMTeam() {
@@ -126,6 +126,7 @@ export default function CRMTeam() {
   // Group team members by role
   const owners = team?.filter(m => m.role === "owner") || [];
   const admins = team?.filter(m => m.role === "admin" || m.role === "office") || [];
+  const fieldCrew = team?.filter(m => m.role === "field_crew") || [];
   const teamLeadsList = team?.filter(m => m.role === "team_lead") || [];
   const salesReps = team?.filter(m => m.role === "sales_rep" || m.role === "project_manager") || [];
 
@@ -324,7 +325,7 @@ export default function CRMTeam() {
             <div>
               <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-blue-500" />
-                Admins / Office Staff ({admins.length})
+                Office Staff ({admins.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {admins.map((member) => (
@@ -335,6 +336,29 @@ export default function CRMTeam() {
                     canEditRoles={canEditRoles}
                     getRoleColor={getRoleColor}
                     onEdit={openEditDialog}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Field Crew */}
+          {fieldCrew.length > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-orange-500" />
+                Field Crew ({fieldCrew.length})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {fieldCrew.map((member) => (
+                  <TeamMemberCard
+                    key={member.id}
+                    member={member}
+                    currentUser={currentUser}
+                    canEditRoles={canEditRoles}
+                    getRoleColor={getRoleColor}
+                    onEdit={openEditDialog}
+                    showTeamLead
                   />
                 ))}
               </div>
@@ -435,8 +459,8 @@ export default function CRMTeam() {
                   </p>
                 </div>
                 
-                {/* Team Lead Assignment (for Sales Reps) */}
-                {(selectedRole === "sales_rep") && (
+                {/* Team Lead Assignment (for Sales Reps and Field Crew) */}
+                {(selectedRole === "sales_rep" || selectedRole === "field_crew") && (
                   <div>
                     <p className="text-sm text-slate-400 mb-2">Assign to Team Lead</p>
                     <Select 

@@ -4,7 +4,8 @@ import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "d
  * CRM Users table - team members with role-based access
  * Roles:
  * - owner: Full access - view, edit, delete everything, view edit history
- * - admin: View all jobs, edit everything, cannot delete
+ * - admin: View all jobs, edit everything, cannot delete (Office Staff)
+ * - field_crew: View scope of work and upload photos only (Laborers)
  * - team_lead: View own jobs + jobs of team members assigned to them
  * - sales_rep: View and edit only their own assigned jobs, no delete
  */
@@ -16,7 +17,7 @@ export const users = mysqlTable("users", {
   phone: varchar("phone", { length: 50 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   // CRM roles: owner, admin, team_lead, sales_rep
-  role: mysqlEnum("role", ["user", "admin", "owner", "office", "sales_rep", "project_manager", "team_lead"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "owner", "office", "sales_rep", "project_manager", "team_lead", "field_crew"]).default("user").notNull(),
   // Sales rep specific fields
   repCode: varchar("repCode", { length: 20 }), // e.g., "MJS26" - their promo code suffix
   // Team assignment - for team_lead to manage their team members
