@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { 
   supabase, 
+  isSupabaseAvailable,
   subscribeToJobUpdates, 
   broadcastJobUpdate, 
   unsubscribe 
@@ -26,7 +27,7 @@ export function useRealtimeJob({ jobId, onUpdate, enabled = true }: UseRealtimeJ
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    if (!enabled || !jobId) return;
+    if (!enabled || !jobId || !isSupabaseAvailable()) return;
 
     // Subscribe to job updates
     channelRef.current = subscribeToJobUpdates(jobId, (payload) => {
@@ -46,7 +47,7 @@ export function useRealtimeJob({ jobId, onUpdate, enabled = true }: UseRealtimeJ
   // Function to broadcast updates to other users
   const broadcast = useCallback(
     async (updateType: JobUpdateType, data: any) => {
-      if (!jobId) return;
+      if (!jobId || !isSupabaseAvailable()) return;
       await broadcastJobUpdate(jobId, updateType as any, data);
     },
     [jobId]
@@ -60,6 +61,8 @@ export function useRealtimeCRM(onUpdate?: (payload: any) => void) {
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
+    if (!isSupabaseAvailable() || !supabase) return;
+    
     // Subscribe to a general CRM channel for list updates
     channelRef.current = supabase
       .channel("crm-updates")
@@ -80,6 +83,8 @@ export function useRealtimeCRM(onUpdate?: (payload: any) => void) {
 
   // Broadcast CRM-wide updates
   const broadcastCRM = useCallback(async (updateType: string, data: any) => {
+    if (!isSupabaseAvailable() || !supabase) return;
+    
     const channel = supabase.channel("crm-updates");
     await channel.send({
       type: "broadcast",

@@ -1,16 +1,22 @@
-import { createClient, RealtimeChannel } from "@supabase/supabase-js";
+import { createClient, RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
 // Client-side Supabase client with anon key (limited access)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-});
+// Only create client if credentials are available
+export const supabase: SupabaseClient | null = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    })
+  : null;
+
+// Check if Supabase is available
+export const isSupabaseAvailable = (): boolean => supabase !== null;
 
 // Real-time subscription types
 export type RealtimeEvent = "INSERT" | "UPDATE" | "DELETE" | "*";
@@ -20,7 +26,9 @@ export function subscribeToTable(
   table: string,
   callback: (payload: any) => void,
   event: RealtimeEvent = "*"
-): RealtimeChannel {
+): RealtimeChannel | null {
+  if (!supabase) return null;
+  
   const channel = supabase
     .channel(`${table}-changes`)
     .on(
@@ -43,7 +51,9 @@ export function subscribeToTable(
 export function subscribeToStorage(
   bucket: string,
   callback: (payload: any) => void
-): RealtimeChannel {
+): RealtimeChannel | null {
+  if (!supabase) return null;
+  
   const channel = supabase
     .channel(`storage-${bucket}`)
     .on("broadcast", { event: "file-change" }, (payload) => {
@@ -61,6 +71,8 @@ export async function broadcastStorageChange(
   filePath: string,
   metadata?: any
 ) {
+  if (!supabase) return;
+  
   const channel = supabase.channel(`storage-${bucket}`);
   
   await channel.send({
@@ -77,7 +89,8 @@ export async function broadcastStorageChange(
 }
 
 // Unsubscribe from a channel
-export function unsubscribe(channel: RealtimeChannel) {
+export function unsubscribe(channel: RealtimeChannel | null) {
+  if (!supabase || !channel) return;
   supabase.removeChannel(channel);
 }
 
@@ -85,7 +98,9 @@ export function unsubscribe(channel: RealtimeChannel) {
 export function subscribeToJobUpdates(
   jobId: number,
   callback: (payload: any) => void
-): RealtimeChannel {
+): RealtimeChannel | null {
+  if (!supabase) return null;
+  
   const channel = supabase
     .channel(`job-${jobId}`)
     .on("broadcast", { event: "job-update" }, (payload) => {
@@ -102,6 +117,8 @@ export async function broadcastJobUpdate(
   updateType: "status" | "note" | "document" | "photo" | "assignment",
   data: any
 ) {
+  if (!supabase) return;
+  
   const channel = supabase.channel(`job-${jobId}`);
   
   await channel.send({
