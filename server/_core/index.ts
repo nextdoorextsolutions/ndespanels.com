@@ -51,7 +51,8 @@ async function startServer() {
       event = stripe.webhooks.constructEvent(req.body, sig, ENV.stripeWebhookSecret);
     } catch (err: any) {
       console.error("[Webhook] Signature verification failed:", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
+      // Security fix: Return generic error message to prevent information disclosure
+      return res.status(400).send("Webhook signature verification failed");
     }
 
     // Handle test events
@@ -69,25 +70,27 @@ async function startServer() {
         const requestId = session.metadata?.request_id;
         
         if (requestId) {
-          const db = await getDb();
-          if (db) {
-            // Update the report request status
-            await db.update(reportRequests)
-              .set({
-                paymentStatus: "paid",
-                amountPaid: session.amount_total || 19900,
-                stripePaymentIntentId: session.payment_intent as string,
-              })
-              .where(eq(reportRequests.id, parseInt(requestId)));
+          try {
+            const db = await getDb();
+            if (db) {
+              // Update the report request status
+              await db.update(reportRequests)
+                .set({
+                  paymentStatus: "paid",
+                  amountPaid: session.amount_total || 19900,
+                  stripePaymentIntentId: session.payment_intent as string,
+                })
+                .where(eq(reportRequests.id, parseInt(requestId)));
 
-            // Get the request details for notification
-            const [request] = await db.select().from(reportRequests).where(eq(reportRequests.id, parseInt(requestId)));
-            
-            if (request) {
-              // Send email notification to owner
-              await notifyOwner({
-                title: "💰 New PAID Storm Report Request",
-                content: `
+              // Get the request details for notification
+              const [request] = await db.select().from(reportRequests).where(eq(reportRequests.id, parseInt(requestId)));
+              
+              if (request) {
+                // Send email notification to owner
+                try {
+                  await notifyOwner({
+                    title: "💰 New PAID Storm Report Request",
+                    content: `
 **New Paid Report Request Received**
 
 **Customer Details:**
@@ -105,18 +108,30 @@ async function startServer() {
 - Payment ID: ${session.payment_intent}
 
 **Status:** Paid - Ready for Scheduling
-                `.trim(),
-              });
+                    `.trim(),
+                  });
+                } catch (notifyError) {
+                  console.error("[Webhook] Failed to send owner notification:", notifyError);
+                }
 
-              // Send SMS notification to owner
-              await sendSMSNotification({
-                customerName: request.fullName,
-                customerPhone: request.phone,
-                address: `${request.address}, ${request.cityStateZip}`,
-                isPaid: true,
-                amount: session.amount_total || 19900,
-              });
+                // Send SMS notification to owner
+                try {
+                  await sendSMSNotification({
+                    customerName: request.fullName,
+                    customerPhone: request.phone,
+                    address: `${request.address}, ${request.cityStateZip}`,
+                    isPaid: true,
+                    amount: session.amount_total || 19900,
+                  });
+                } catch (smsError) {
+                  console.error("[Webhook] Failed to send SMS notification:", smsError);
+                }
+              }
             }
+          } catch (dbError) {
+            // Stability fix: Catch database errors to prevent crash loops
+            console.error("[Webhook] Database operation failed:", dbError);
+            // Don't throw - we still want to acknowledge the webhook
           }
         }
         break;
@@ -128,9 +143,9 @@ async function startServer() {
     res.json({ received: true });
   });
 
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Configure body parser with safe size limits
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
