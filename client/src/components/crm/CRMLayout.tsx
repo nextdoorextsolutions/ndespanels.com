@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase";
 
 interface CRMLayoutProps {
   children: React.ReactNode;
@@ -74,7 +75,17 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
   const logoutMutation = trpc.auth.logout.useMutation();
 
   const handleLogout = async () => {
-    await logoutMutation.mutateAsync();
+    try {
+      // Sign out from Supabase
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+      // Clear server session cookie
+      await logoutMutation.mutateAsync();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    // Always redirect to login
     window.location.href = "/login";
   };
 

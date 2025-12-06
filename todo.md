@@ -269,3 +269,4 @@
 
 ## Bug Fixes
 - [x] Fix sign out button not working (redirect to /login instead of /crm/login)
+- [x] Fix sign out button - added Supabase signOut and error handling
