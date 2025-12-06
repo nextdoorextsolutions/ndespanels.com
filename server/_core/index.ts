@@ -304,7 +304,6 @@ app.use((err: any, req: any, res: any, _next: any) => {
 // ============================================
 // Export for Vercel Serverless
 // ============================================
-module.exports = app;
 export default app;
 
 // ============================================
