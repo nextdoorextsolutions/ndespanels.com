@@ -213,3 +213,9 @@
 - [x] Upload photos to Supabase storage under jobs/{id}/photos/
 - [x] Show progress bar and success message with hammer animation
 - [x] Add Copy Upload Link button on Photos tab for owners to share with field crew
+
+## Photos Gallery Redesign
+- [x] Create sleek gallery layout with larger thumbnails and hover effects
+- [x] Add lightbox viewer for full-screen photo viewing
+- [x] Add navigation arrows to browse photos in lightbox
+- [x] Show photo count and metadata in gallery view
