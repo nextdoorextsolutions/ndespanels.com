@@ -1628,6 +1628,73 @@ export const appRouter = router({
         return { success: true, documentId: result.insertId, url };
       }),
 
+    // ============ FIELD UPLOAD (PUBLIC) ============
+
+    // Get job info for field upload page (public - no auth required)
+    getJobForUpload: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const [job] = await db.select({
+          id: reportRequests.id,
+          fullName: reportRequests.fullName,
+          address: reportRequests.address,
+          cityStateZip: reportRequests.cityStateZip,
+        }).from(reportRequests).where(eq(reportRequests.id, input.id));
+
+        if (!job) throw new Error("Job not found");
+        return job;
+      }),
+
+    // Upload photo from field (public - no auth required for field staff)
+    uploadFieldPhoto: publicProcedure
+      .input(z.object({
+        jobId: z.number(),
+        fileName: z.string(),
+        fileData: z.string(), // Base64
+        fileType: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Verify job exists
+        const [job] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
+        if (!job) throw new Error("Job not found");
+
+        const buffer = Buffer.from(input.fileData, "base64");
+        const fileSize = buffer.length;
+
+        const timestamp = Date.now();
+        const safeName = input.fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const filePath = `jobs/${input.jobId}/photos/${timestamp}_${safeName}`;
+
+        const { url } = await storagePut(filePath, buffer, input.fileType);
+
+        // Save document record
+        const [result] = await db.insert(documents).values({
+          reportRequestId: input.jobId,
+          uploadedBy: null, // Field upload - no user
+          fileName: input.fileName,
+          fileUrl: url,
+          fileType: input.fileType,
+          fileSize: fileSize,
+          category: "inspection_photo",
+        });
+
+        // Log activity
+        await db.insert(activities).values({
+          reportRequestId: input.jobId,
+          userId: null,
+          activityType: "photo_uploaded",
+          description: `Field upload: ${input.fileName}`,
+        });
+
+        return { success: true, documentId: result.insertId, url };
+      }),
+
     // Search within job (documents, notes, messages)
     searchJob: protectedProcedure
       .input(z.object({

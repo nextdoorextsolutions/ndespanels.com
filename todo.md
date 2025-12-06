@@ -205,3 +205,10 @@
 - [x] Change job row click to navigate directly to job page (remove modal)
 - [x] Ensure all clickable job boxes link to their respective job pages
 - [x] Make lead source, roof age, roof concerns, and hands-on inspection editable by admin/owners
+
+## Field Upload Page
+- [x] Create /upload page with ?id= parameter for job ID
+- [x] Fetch customer name and address from job ID
+- [x] Create large touch-friendly photo upload button (huge, glove-friendly)
+- [x] Upload photos to Supabase storage under jobs/{id}/photos/
+- [x] Show progress bar and success message with hammer animation
