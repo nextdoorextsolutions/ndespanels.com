@@ -1,6 +1,6 @@
 import "dotenv/config";
-import express from "express";
-import type { Request, Response, Express, NextFunction } from "express";
+// @ts-ignore - Vercel Node.js runtime compatibility
+const express = require("express");
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -75,12 +75,12 @@ try {
 // ============================================
 // Create Express App
 // ============================================
-const app: Express = express();
+const app = express();
 
 // ============================================
 // DEBUG: Request Logging Middleware (FIRST)
 // ============================================
-app.use((req: Request, _res: Response, next: NextFunction) => {
+app.use((req: any, _res: any, next: any) => {
   console.log('[DEBUG] === Incoming Request ===');
   console.log('[DEBUG] Method:', req.method);
   console.log('[DEBUG] Original URL:', req.originalUrl);
@@ -100,7 +100,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 // ============================================
 // Stripe Webhook Route (MUST be before express.json())
 // ============================================
-app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req: Request, res: Response) => {
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req: any, res: any) => {
   console.log("[Webhook] Route hit: /api/stripe/webhook");
   
   if (!stripe) {
@@ -229,7 +229,7 @@ app.use(express.urlencoded({ limit: "1mb", extended: true }));
 // ============================================
 // Health Check Endpoint
 // ============================================
-app.get("/api/health", (_req: Request, res: Response) => {
+app.get("/api/health", (_req: any, res: any) => {
   console.log("[Health] Route hit: /api/health");
   res.json({
     status: "ok",
@@ -258,7 +258,7 @@ app.use(
   createExpressMiddleware({
     router: appRouter,
     createContext,
-    onError: ({ error, path }) => {
+    onError: ({ error, path }: { error: any; path: string | undefined }) => {
       console.error(`[tRPC] Error in ${path}:`, error.message);
     },
   })
@@ -281,7 +281,7 @@ if (app._router && app._router.stack) {
 // ============================================
 // 404 Handler (MUST be after all routes)
 // ============================================
-app.use((req: Request, res: Response) => {
+app.use((req: any, res: any) => {
   console.log('[404] No route matched for:', req.method, req.path);
   console.log('[404] Original URL:', req.originalUrl);
   res.status(404).json({ 
@@ -295,7 +295,7 @@ app.use((req: Request, res: Response) => {
 // ============================================
 // Error Handler (MUST be last)
 // ============================================
-app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+app.use((err: any, req: any, res: any, _next: any) => {
   console.error('[ERROR] Unhandled error:', err);
   console.error('[ERROR] Request was:', req.method, req.path);
   res.status(500).json({ error: 'Internal server error', message: err.message });
@@ -304,6 +304,7 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 // ============================================
 // Export for Vercel Serverless
 // ============================================
+module.exports = app;
 export default app;
 
 // ============================================
