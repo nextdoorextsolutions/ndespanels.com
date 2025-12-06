@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase";
 import { User, Mail, Shield, Edit2, UserCheck, Users, Plus, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
@@ -33,16 +34,7 @@ export default function CRMTeam() {
     },
   });
 
-  const createAccount = trpc.crm.createTeamAccount.useMutation({
-    onSuccess: (data) => {
-      toast.success("Account created successfully");
-      setCreatedAccount(data);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  const [isCreating, setIsCreating] = useState(false);
 
   const [editingMember, setEditingMember] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -80,18 +72,51 @@ export default function CRMTeam() {
     setSelectedTeamLead(member.teamLeadId?.toString() || "none");
   };
 
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
     if (!newAccountName.trim() || !newAccountEmail.trim()) {
       toast.error("Please fill in all required fields");
       return;
     }
     
-    createAccount.mutate({
-      name: newAccountName,
-      email: newAccountEmail,
-      role: newAccountRole as any,
-      teamLeadId: newAccountTeamLead === "none" ? undefined : parseInt(newAccountTeamLead),
-    });
+    setIsCreating(true);
+    
+    try {
+      // Get the current session token
+      const { data: { session } } = await supabase!.auth.getSession();
+      if (!session?.access_token) {
+        toast.error("Not authenticated");
+        setIsCreating(false);
+        return;
+      }
+
+      const response = await fetch('/api/team/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          name: newAccountName,
+          email: newAccountEmail,
+          role: newAccountRole,
+          teamLeadId: newAccountTeamLead === "none" ? undefined : parseInt(newAccountTeamLead),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create account');
+      }
+
+      toast.success("Account created successfully");
+      setCreatedAccount(data);
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create account');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const resetCreateForm = () => {
@@ -281,10 +306,10 @@ export default function CRMTeam() {
                         </Button>
                         <Button 
                           onClick={handleCreateAccount}
-                          disabled={createAccount.isPending || !newAccountName.trim() || !newAccountEmail.trim()}
+                          disabled={isCreating || !newAccountName.trim() || !newAccountEmail.trim()}
                           className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
                         >
-                          {createAccount.isPending ? "Creating..." : "Create Account"}
+                          {isCreating ? "Creating..." : "Create Account"}
                         </Button>
                       </div>
                     </div>
