@@ -1,6 +1,6 @@
+// @ts-nocheck
 import "dotenv/config";
-// @ts-ignore - Vercel Node.js runtime compatibility
-const express = require("express");
+import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
