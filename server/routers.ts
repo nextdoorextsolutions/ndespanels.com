@@ -277,21 +277,10 @@ export const appRouter = router({
         
 
          // Landing page/inspection submissions disabled - client portal only  
-        throw new Error("Storm report submissions are not available. Please contact us directly.");
+        // Return a disabled response instead of throwing to maintain type safety
+        return { success: false, requiresPayment: false, checkoutUrl: null, requestId: null, error: "Storm report submissions are not available. Please contact us directly." };
       }),
   }),
-
-  // CRM procedures (protected - requires login)
-  crm: router({
-
-      
-          
-       
-
- 
-
-          
-         
 
   // CRM procedures (protected - requires login)
   crm: router({
