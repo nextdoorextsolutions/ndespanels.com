@@ -187,6 +187,12 @@ export const documents = mysqlTable("documents", {
     "other"
   ]).default("other").notNull(),
   
+  // Photo metadata (extracted from EXIF)
+  photoTakenAt: timestamp("photoTakenAt"), // When the photo was actually taken
+  latitude: varchar("latitude", { length: 50 }), // GPS latitude
+  longitude: varchar("longitude", { length: 50 }), // GPS longitude
+  cameraModel: varchar("cameraModel", { length: 100 }), // Device/camera model
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

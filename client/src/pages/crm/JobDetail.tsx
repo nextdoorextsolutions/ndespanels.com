@@ -1283,7 +1283,20 @@ export default function JobDetail() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-200">
                           <div className="absolute bottom-0 left-0 right-0 p-3">
                             <p className="text-white text-sm font-medium truncate">{photo.fileName}</p>
-                            <p className="text-slate-300 text-xs">{new Date(photo.createdAt).toLocaleDateString()}</p>
+                            {/* Show photo taken date if available, otherwise upload date */}
+                            <p className="text-slate-300 text-xs flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {photo.photoTakenAt 
+                                ? new Date(photo.photoTakenAt).toLocaleString() 
+                                : new Date(photo.createdAt).toLocaleDateString()}
+                            </p>
+                            {/* Show GPS location if available */}
+                            {photo.latitude && photo.longitude && (
+                              <p className="text-[#00d4aa] text-xs flex items-center gap-1 mt-1">
+                                <MapPin className="w-3 h-3" />
+                                GPS: {parseFloat(photo.latitude).toFixed(4)}°, {parseFloat(photo.longitude).toFixed(4)}°
+                              </p>
+                            )}
                           </div>
                           <div className="absolute top-2 right-2 flex gap-1">
                             <button 
@@ -1354,14 +1367,48 @@ export default function JobDetail() {
                         <div className="max-w-4xl mx-auto flex items-center justify-between">
                           <div>
                             <p className="text-white font-medium">{filteredPhotos[lightboxIndex].fileName}</p>
-                            <p className="text-slate-400 text-sm">
-                              Uploaded {new Date(filteredPhotos[lightboxIndex].createdAt).toLocaleDateString('en-US', { 
-                                weekday: 'long', 
-                                year: 'numeric', 
-                                month: 'long', 
-                                day: 'numeric' 
-                              })}
-                            </p>
+                            {/* Show photo taken date if available */}
+                            {filteredPhotos[lightboxIndex].photoTakenAt ? (
+                              <p className="text-slate-400 text-sm flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                Taken {new Date(filteredPhotos[lightboxIndex].photoTakenAt).toLocaleString('en-US', { 
+                                  weekday: 'long', 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            ) : (
+                              <p className="text-slate-400 text-sm">
+                                Uploaded {new Date(filteredPhotos[lightboxIndex].createdAt).toLocaleDateString('en-US', { 
+                                  weekday: 'long', 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric' 
+                                })}
+                              </p>
+                            )}
+                            {/* Show GPS location with link to Google Maps */}
+                            {filteredPhotos[lightboxIndex].latitude && filteredPhotos[lightboxIndex].longitude && (
+                              <a 
+                                href={`https://www.google.com/maps?q=${filteredPhotos[lightboxIndex].latitude},${filteredPhotos[lightboxIndex].longitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#00d4aa] text-sm flex items-center gap-2 mt-1 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MapPin className="w-4 h-4" />
+                                View location on Google Maps
+                              </a>
+                            )}
+                            {/* Show camera model if available */}
+                            {filteredPhotos[lightboxIndex].cameraModel && (
+                              <p className="text-slate-500 text-xs mt-1">
+                                📷 {filteredPhotos[lightboxIndex].cameraModel}
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <a 

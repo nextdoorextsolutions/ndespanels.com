@@ -15,6 +15,7 @@ import { ENV } from "./_core/env";
 import { eq, desc, and, or, like, sql, gte, lte, inArray, isNotNull } from "drizzle-orm";
 import { storagePut, storageGet, STORAGE_BUCKET } from "./storage";
 import { supabaseAdmin } from "./lib/supabase";
+import { extractExifMetadata } from "./lib/exif";
 import { 
   normalizeRole, 
   isOwner, 
@@ -1602,6 +1603,9 @@ export const appRouter = router({
         const buffer = Buffer.from(input.fileData, "base64");
         const fileSize = buffer.length;
 
+        // Extract EXIF metadata from photo
+        const exifData = extractExifMetadata(buffer);
+
         const timestamp = Date.now();
         const safeName = input.fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
         const filePath = `jobs/${input.jobId}/photos/${timestamp}_${safeName}`;
@@ -1616,6 +1620,11 @@ export const appRouter = router({
           fileType: input.fileType,
           fileSize: fileSize,
           category: input.category,
+          // Photo metadata from EXIF
+          photoTakenAt: exifData.photoTakenAt,
+          latitude: exifData.latitude,
+          longitude: exifData.longitude,
+          cameraModel: exifData.cameraModel,
         });
 
         await db.insert(activities).values({
@@ -1667,13 +1676,16 @@ export const appRouter = router({
         const buffer = Buffer.from(input.fileData, "base64");
         const fileSize = buffer.length;
 
+        // Extract EXIF metadata from photo
+        const exifData = extractExifMetadata(buffer);
+
         const timestamp = Date.now();
         const safeName = input.fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
         const filePath = `jobs/${input.jobId}/photos/${timestamp}_${safeName}`;
 
         const { url } = await storagePut(filePath, buffer, input.fileType);
 
-        // Save document record
+        // Save document record with EXIF metadata
         const [result] = await db.insert(documents).values({
           reportRequestId: input.jobId,
           uploadedBy: null, // Field upload - no user
@@ -1682,6 +1694,11 @@ export const appRouter = router({
           fileType: input.fileType,
           fileSize: fileSize,
           category: "inspection_photo",
+          // Photo metadata from EXIF
+          photoTakenAt: exifData.photoTakenAt,
+          latitude: exifData.latitude,
+          longitude: exifData.longitude,
+          cameraModel: exifData.cameraModel,
         });
 
         // Log activity

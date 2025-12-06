@@ -78,6 +78,13 @@
       "when": 1764974524060,
       "tag": "0010_smart_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1764982343179,
+      "tag": "0011_first_toro",
+      "breakpoints": true
     }
   ]
 }

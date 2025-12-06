@@ -219,3 +219,9 @@
 - [x] Add lightbox viewer for full-screen photo viewing
 - [x] Add navigation arrows to browse photos in lightbox
 - [x] Show photo count and metadata in gallery view
+
+## Photo Metadata Extraction
+- [x] Install EXIF parsing library (exif-parser)
+- [x] Add metadata fields to documents schema (photoTakenAt, latitude, longitude, cameraModel)
+- [x] Extract EXIF data on photo upload (timestamp, GPS coordinates, camera model)
+- [x] Display photo timestamp and location in gallery view with Google Maps link
