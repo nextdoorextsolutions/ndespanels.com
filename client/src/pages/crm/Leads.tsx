@@ -232,7 +232,11 @@ export default function CRMLeads() {
                 </thead>
                 <tbody>
                   {filteredLeads?.map((lead) => (
-                    <tr key={lead.id} className="border-b border-slate-700 hover:bg-slate-700/50 transition">
+                    <tr 
+                      key={lead.id} 
+                      className="border-b border-slate-700 hover:bg-slate-700/50 transition cursor-pointer"
+                      onClick={() => setSelectedLead(lead.id)}
+                    >
                       <td className="p-4">
                         <div>
                           <p className="font-medium text-white">{lead.fullName}</p>
@@ -286,187 +290,17 @@ export default function CRMLeads() {
                               Open
                             </Button>
                           </Link>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-slate-400 hover:text-white hover:bg-slate-700"
-                                onClick={() => setSelectedLead(lead.id)}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </DialogTrigger>
-                          <DialogContent className="bg-slate-800 border-slate-700 max-w-3xl max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle className="text-xl text-white">{leadDetail?.fullName || lead.fullName}</DialogTitle>
-                            </DialogHeader>
-                            {leadDetail && (
-                              <Tabs defaultValue="details">
-                                <TabsList className="bg-slate-700">
-                                  <TabsTrigger value="details" className="data-[state=active]:bg-slate-600 text-slate-300 data-[state=active]:text-white">Details</TabsTrigger>
-                                  <TabsTrigger value="documents" className="data-[state=active]:bg-slate-600 text-slate-300 data-[state=active]:text-white">Documents ({leadDetail.documents?.length || 0})</TabsTrigger>
-                                  <TabsTrigger value="activity" className="data-[state=active]:bg-slate-600 text-slate-300 data-[state=active]:text-white">Activity</TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="details" className="space-y-6 mt-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <p className="text-sm text-slate-400 mb-1">Email</p>
-                                      <p className="text-white">{leadDetail.email}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm text-slate-400 mb-1">Phone</p>
-                                      <a href={`tel:${leadDetail.phone}`} className="text-[#00d4aa] hover:underline">{leadDetail.phone}</a>
-                                    </div>
-                                    <div className="col-span-2">
-                                      <p className="text-sm text-slate-400 mb-1">Address</p>
-                                      <p className="text-white">{leadDetail.address}, {leadDetail.cityStateZip}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm text-slate-400 mb-1">Roof Age</p>
-                                      <p className="text-white">{leadDetail.roofAge || "Not specified"}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm text-slate-400 mb-1">Payment</p>
-                                      <p className="text-white">${(leadDetail.amountPaid / 100).toFixed(2)}</p>
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-sm text-slate-400 mb-2">Update Status</p>
-                                    <Select 
-                                      value={leadDetail.status} 
-                                      onValueChange={(value) => updateLead.mutate({ id: leadDetail.id, status: value as any })}
-                                    >
-                                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent className="bg-slate-700 border-slate-600">
-                                        {STATUS_OPTIONS.map((status) => (
-                                          <SelectItem key={status.value} value={status.value} className="text-white hover:bg-slate-600">{status.label}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-
-                                  {leadDetail.roofConcerns && (
-                                    <div>
-                                      <p className="text-sm text-slate-400 mb-1">Roof Concerns</p>
-                                      <p className="text-white bg-slate-700 p-3 rounded border border-slate-600">{leadDetail.roofConcerns}</p>
-                                    </div>
-                                  )}
-
-                                  <div className="flex items-center gap-2">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                      leadDetail.handsOnInspection ? "bg-[#00d4aa]/20 text-[#00d4aa]" : "bg-slate-700 text-slate-400"
-                                    }`}>
-                                      {leadDetail.handsOnInspection ? "✓ Hands-On Inspection Requested" : "Drone Only"}
-                                    </span>
-                                  </div>
-                                </TabsContent>
-
-                                <TabsContent value="documents" className="mt-4">
-                                  <div className="mb-4">
-                                    <input
-                                      type="file"
-                                      ref={fileInputRef}
-                                      onChange={handleFileUpload}
-                                      className="hidden"
-                                      accept="image/*,.pdf,.doc,.docx"
-                                    />
-                                    <Button 
-                                      onClick={() => fileInputRef.current?.click()}
-                                      disabled={uploading}
-                                      className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
-                                    >
-                                      <Upload className="w-4 h-4 mr-2" />
-                                      {uploading ? "Uploading..." : "Upload Document"}
-                                    </Button>
-                                    <p className="text-xs text-slate-400 mt-2">
-                                      Supported: Images, PDFs, Word documents
-                                    </p>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    {leadDetail.documents?.map((doc: any) => (
-                                      <div key={doc.id} className="flex items-center justify-between bg-slate-700 p-3 rounded border border-slate-600">
-                                        <div className="flex items-center gap-3">
-                                          {getFileIcon(doc.fileType)}
-                                          <div>
-                                            <p className="text-sm text-white">{doc.fileName}</p>
-                                            <p className="text-xs text-slate-400">
-                                              {new Date(doc.createdAt).toLocaleDateString()} • {doc.uploadedBy?.name || "System"}
-                                            </p>
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                                            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-600">
-                                              <Download className="w-4 h-4" />
-                                            </Button>
-                                          </a>
-                                          <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            className="text-red-400 hover:text-red-300 hover:bg-slate-600"
-                                            onClick={() => deleteDocument.mutate({ documentId: doc.id })}
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                    {(!leadDetail.documents || leadDetail.documents.length === 0) && (
-                                      <p className="text-center text-slate-400 py-8">No documents uploaded yet</p>
-                                    )}
-                                  </div>
-                                </TabsContent>
-
-                                <TabsContent value="activity" className="mt-4">
-                                  <div className="mb-4">
-                                    <Textarea
-                                      placeholder="Add a note..."
-                                      value={noteText}
-                                      onChange={(e) => setNoteText(e.target.value)}
-                                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
-                                    />
-                                    <Button 
-                                      onClick={() => {
-                                        if (noteText.trim()) {
-                                          addNote.mutate({ leadId: selectedLead!, note: noteText });
-                                        }
-                                      }}
-                                      disabled={!noteText.trim()}
-                                      className="mt-2 bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
-                                    >
-                                      Add Note
-                                    </Button>
-                                  </div>
-
-                                  <div className="space-y-3">
-                                    {leadDetail.activities?.map((activity: any) => (
-                                      <div key={activity.id} className="flex gap-3 p-3 bg-slate-700 rounded border border-slate-600">
-                                        <div className="w-8 h-8 rounded-full bg-[#00d4aa]/20 flex items-center justify-center flex-shrink-0">
-                                          <FileText className="w-4 h-4 text-[#00d4aa]" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <p className="text-sm text-white">{activity.description}</p>
-                                          <p className="text-xs text-slate-400 mt-1">
-                                            {activity.user?.name || "System"} • {new Date(activity.createdAt).toLocaleString()}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    ))}
-                                    {(!leadDetail.activities || leadDetail.activities.length === 0) && (
-                                      <p className="text-center text-slate-400 py-8">No activity yet</p>
-                                    )}
-                                  </div>
-                                </TabsContent>
-                              </Tabs>
-                            )}
-                          </DialogContent>
-                        </Dialog>
+<Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-slate-400 hover:text-white hover:bg-slate-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLead(lead.id);
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -581,6 +415,189 @@ export default function CRMLeads() {
                 {createJob.isPending ? "Creating..." : "Create Job"}
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Job Detail Dialog - Opens when clicking a row */}
+        <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+          <DialogContent className="bg-slate-800 border-slate-700 max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-xl text-white">{leadDetail?.fullName || "Loading..."}</DialogTitle>
+                {leadDetail && (
+                  <Link href={`/crm/job/${leadDetail.id}`}>
+                    <Button variant="outline" size="sm" className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10">
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                      Full Details
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </DialogHeader>
+            {leadDetail && (
+              <Tabs defaultValue="details">
+                <TabsList className="bg-slate-700">
+                  <TabsTrigger value="details" className="data-[state=active]:bg-slate-600 text-slate-300 data-[state=active]:text-white">Details</TabsTrigger>
+                  <TabsTrigger value="documents" className="data-[state=active]:bg-slate-600 text-slate-300 data-[state=active]:text-white">Documents ({leadDetail.documents?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="activity" className="data-[state=active]:bg-slate-600 text-slate-300 data-[state=active]:text-white">Activity</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="details" className="space-y-6 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-slate-400 mb-1">Email</p>
+                      <p className="text-white">{leadDetail.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-400 mb-1">Phone</p>
+                      <a href={`tel:${leadDetail.phone}`} className="text-[#00d4aa] hover:underline">{leadDetail.phone}</a>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-sm text-slate-400 mb-1">Address</p>
+                      <p className="text-white">{leadDetail.address}, {leadDetail.cityStateZip}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-400 mb-1">Roof Age</p>
+                      <p className="text-white">{leadDetail.roofAge || "Not specified"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-400 mb-1">Payment</p>
+                      <p className="text-white">${(leadDetail.amountPaid / 100).toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-400 mb-2">Update Status</p>
+                    <Select 
+                      value={leadDetail.status} 
+                      onValueChange={(value) => updateLead.mutate({ id: leadDetail.id, status: value as any })}
+                    >
+                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-700 border-slate-600">
+                        {STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status.value} value={status.value} className="text-white hover:bg-slate-600">{status.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {leadDetail.roofConcerns && (
+                    <div>
+                      <p className="text-sm text-slate-400 mb-1">Roof Concerns</p>
+                      <p className="text-white bg-slate-700 p-3 rounded border border-slate-600">{leadDetail.roofConcerns}</p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      leadDetail.handsOnInspection ? "bg-[#00d4aa]/20 text-[#00d4aa]" : "bg-slate-700 text-slate-400"
+                    }`}>
+                      {leadDetail.handsOnInspection ? "✓ Hands-On Inspection Requested" : "Drone Only"}
+                    </span>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="documents" className="mt-4">
+                  <div className="mb-4">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      accept="image/*,.pdf,.doc,.docx"
+                    />
+                    <Button 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {uploading ? "Uploading..." : "Upload Document"}
+                    </Button>
+                    <p className="text-xs text-slate-400 mt-2">
+                      Supported: Images, PDFs, Word documents
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {leadDetail.documents?.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between bg-slate-700 p-3 rounded border border-slate-600">
+                        <div className="flex items-center gap-3">
+                          {getFileIcon(doc.fileType)}
+                          <div>
+                            <p className="text-sm text-white">{doc.fileName}</p>
+                            <p className="text-xs text-slate-400">
+                              {new Date(doc.createdAt).toLocaleDateString()} • {doc.uploadedBy?.name || "System"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-600">
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </a>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-red-400 hover:text-red-300 hover:bg-slate-600"
+                            onClick={() => deleteDocument.mutate({ documentId: doc.id })}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {(!leadDetail.documents || leadDetail.documents.length === 0) && (
+                      <p className="text-center text-slate-400 py-8">No documents uploaded yet</p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="activity" className="mt-4">
+                  <div className="mb-4">
+                    <Textarea
+                      placeholder="Add a note..."
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                    />
+                    <Button 
+                      onClick={() => {
+                        if (noteText.trim()) {
+                          addNote.mutate({ leadId: selectedLead!, note: noteText });
+                        }
+                      }}
+                      disabled={!noteText.trim()}
+                      className="mt-2 bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
+                    >
+                      Add Note
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {leadDetail.activities?.map((activity: any) => (
+                      <div key={activity.id} className="flex gap-3 p-3 bg-slate-700 rounded border border-slate-600">
+                        <div className="w-8 h-8 rounded-full bg-[#00d4aa]/20 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4 text-[#00d4aa]" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-white">{activity.description}</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {activity.user?.name || "System"} • {new Date(activity.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {(!leadDetail.activities || leadDetail.activities.length === 0) && (
+                      <p className="text-center text-slate-400 py-8">No activity yet</p>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            )}
           </DialogContent>
         </Dialog>
       </div>

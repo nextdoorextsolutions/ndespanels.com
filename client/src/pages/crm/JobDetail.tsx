@@ -1541,17 +1541,52 @@ export default function JobDetail() {
                     className="max-w-full max-h-full object-contain rounded"
                   />
                 </div>
+              ) : previewDocument.type.includes('pdf') || previewDocument.name.toLowerCase().endsWith('.pdf') ? (
+                <div className="h-[70vh] w-full">
+                  <iframe
+                    src={`${previewDocument.url}#toolbar=1&navpanes=0`}
+                    className="w-full h-full rounded border border-slate-700"
+                    title={previewDocument.name}
+                  />
+                </div>
+              ) : previewDocument.type.includes('video') ? (
+                <div className="flex items-center justify-center h-[70vh]">
+                  <video 
+                    src={previewDocument.url} 
+                    controls
+                    className="max-w-full max-h-full rounded"
+                  />
+                </div>
+              ) : previewDocument.type.includes('audio') ? (
+                <div className="flex flex-col items-center justify-center h-[70vh]">
+                  <div className="w-20 h-20 rounded-full bg-[#00d4aa]/20 flex items-center justify-center mb-6">
+                    <FileText className="w-10 h-10 text-[#00d4aa]" />
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-4">{previewDocument.name}</h4>
+                  <audio src={previewDocument.url} controls className="w-full max-w-md" />
+                </div>
+              ) : previewDocument.type.includes('text') || 
+                   previewDocument.name.match(/\.(txt|csv|json|xml|html|css|js|ts|md)$/i) ? (
+                <div className="h-[70vh] w-full">
+                  <iframe
+                    src={previewDocument.url}
+                    className="w-full h-full rounded border border-slate-700 bg-white"
+                    title={previewDocument.name}
+                  />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-[70vh] text-center">
-                  <FileText className="w-20 h-20 text-slate-500 mb-6" />
+                  <div className="w-24 h-24 rounded-2xl bg-slate-700 flex items-center justify-center mb-6">
+                    <FileText className="w-12 h-12 text-slate-400" />
+                  </div>
                   <h4 className="text-xl font-semibold text-white mb-2">{previewDocument.name}</h4>
                   <p className="text-slate-400 mb-1">File Type: {previewDocument.type || 'Unknown'}</p>
-                  <p className="text-sm text-slate-500 mb-6">Click below to view or download this document</p>
+                  <p className="text-sm text-slate-500 mb-6">This file type cannot be previewed in the browser</p>
                   <div className="flex gap-3">
                     <a href={previewDocument.url} target="_blank" rel="noopener noreferrer">
                       <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black">
                         <ExternalLink className="w-4 h-4 mr-2" />
-                        View Document
+                        Open in New Tab
                       </Button>
                     </a>
                     <a href={previewDocument.url} download>

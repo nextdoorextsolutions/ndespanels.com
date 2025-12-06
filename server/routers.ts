@@ -13,7 +13,8 @@ import { sendLienRightsAlertNotification, getLienRightsAlertJobs } from "./lienR
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { eq, desc, and, or, like, sql, gte, lte, inArray, isNotNull } from "drizzle-orm";
-import { storagePut, storageGet } from "./storage";
+import { storagePut, storageGet, STORAGE_BUCKET } from "./storage";
+import { supabaseAdmin } from "./lib/supabase";
 import { 
   normalizeRole, 
   isOwner, 
@@ -462,6 +463,21 @@ export const appRouter = router({
 
         const newJobId = result[0].id;
         const [newJob] = await db.select().from(reportRequests).where(eq(reportRequests.id, newJobId));
+
+        // Create dedicated folder in Supabase Storage for this job
+        try {
+          const folderPath = `jobs/${newJobId}/.folder`;
+          await supabaseAdmin.storage
+            .from(STORAGE_BUCKET)
+            .upload(folderPath, new Uint8Array(0), {
+              contentType: 'application/octet-stream',
+              upsert: true,
+            });
+          console.log(`Created storage folder for job ${newJobId}`);
+        } catch (folderError) {
+          console.warn(`Failed to create storage folder for job ${newJobId}:`, folderError);
+          // Don't fail the job creation if folder creation fails
+        }
 
         // Log the creation in edit history
         await logEditHistory(
@@ -983,9 +999,9 @@ export const appRouter = router({
         // Generate unique file path
         const timestamp = Date.now();
         const safeName = input.fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const filePath = `leads/${input.leadId}/${timestamp}_${safeName}`;
+        const filePath = `jobs/${input.leadId}/documents/${timestamp}_${safeName}`;
 
-        // Upload to S3
+        // Upload to Supabase Storage
         const { url } = await storagePut(filePath, buffer, input.fileType);
 
         // Save document record

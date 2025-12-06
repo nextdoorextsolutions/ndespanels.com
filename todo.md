@@ -194,3 +194,8 @@
 - [x] Update file upload/download to use Supabase Storage (crm-files bucket)
 - [x] Add real-time subscriptions for live updates
 - [x] Test all storage operations (90 tests passing)
+
+## File Preview & Organization Improvements
+- [x] Add in-browser preview for images and documents (PDF, video, audio, text files)
+- [x] Create job detail modal/drawer for clicking jobs in the list view
+- [x] Auto-create dedicated Supabase folder for each new job created (jobs/{id}/documents, jobs/{id}/photos)
