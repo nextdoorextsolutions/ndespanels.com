@@ -1,32 +1,12 @@
 {
   "version": 2,
-  "installCommand": "corepack enable && corepack prepare pnpm@10.4.1 --activate && pnpm install",
-  "buildCommand": "pnpm build --skipLibCheck",
   "builds": [
     {
       "src": "server/_core/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["server/**", "drizzle/**", "shared/**"]
-      }
+      "use": "@vercel/node"
     }
   ],
   "routes": [
-    {
-      "src": "/api/trpc/(.*)",
-      "dest": "server/_core/index.ts"
-    },
-    {
-      "src": "/api/team/(.*)",
-      "dest": "server/_core/index.ts"
-    },
-    {
-      "src": "/api/stripe/(.*)",
-      "dest": "server/_core/index.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/dist/public/$1"
-    }
+    { "src": "/api/(.*)", "dest": "server/_core/index.ts" }
   ]
 }
