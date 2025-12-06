@@ -106,6 +106,59 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    loginWithPassword: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        
+        // Find user by email
+        const [user] = await db.select()
+          .from(users)
+          .where(eq(users.email, input.email))
+          .limit(1);
+        
+        if (!user) {
+          throw new Error("Invalid email or password");
+        }
+        
+        if (!user.password) {
+          throw new Error("Password not set. Contact your administrator.");
+        }
+        
+        if (!user.isActive) {
+          throw new Error("Account is deactivated. Contact your administrator.");
+        }
+        
+        // Simple password comparison (in production, use bcrypt)
+        // For now, we'll do a simple comparison since passwords are stored as plain text during account creation
+        const crypto = await import("crypto");
+        const hashedInput = crypto.createHash("sha256").update(input.password).digest("hex");
+        
+        if (user.password !== hashedInput && user.password !== input.password) {
+          throw new Error("Invalid email or password");
+        }
+        
+        // Update last signed in
+        await db.update(users)
+          .set({ lastSignedIn: new Date() })
+          .where(eq(users.id, user.id));
+        
+        // Set session cookie using SDK
+        const { sdk } = await import("./_core/sdk");
+        const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || "",
+          expiresInMs: ONE_YEAR_MS,
+        });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        
+        return { success: true, user: { id: user.id, name: user.name, role: user.role } };
+      }),
   }),
 
   // Report request procedures (public landing page)

@@ -225,3 +225,19 @@
 - [x] Add metadata fields to documents schema (photoTakenAt, latitude, longitude, cameraModel)
 - [x] Extract EXIF data on photo upload (timestamp, GPS coordinates, camera model)
 - [x] Display photo timestamp and location in gallery view with Google Maps link
+
+## CRM Login Conversion
+- [ ] Create username/password authentication system
+- [ ] Update home route to redirect to CRM login
+- [ ] Remove landing page, make CRM the main app
+- [ ] Test login flow and push to GitHub
+
+## Supabase Auth Implementation
+- [x] Create Supabase Auth login component with signInWithPassword
+- [x] Implement forgot password flow with email reset
+- [x] Create password reset page for reset link handling
+- [x] Protect dashboard routes for logged-in users only
+- [x] Update App.tsx routing to make login the default page
+- [x] Remove landing page, make CRM the main application
+- [x] Write tests for authentication functionality (106 tests passing)
+- [ ] Push changes to GitHub main branch

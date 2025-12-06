@@ -22,6 +22,7 @@ export const users = mysqlTable("users", {
   repCode: varchar("repCode", { length: 20 }), // e.g., "MJS26" - their promo code suffix
   // Team assignment - for team_lead to manage their team members
   teamLeadId: int("teamLeadId"), // FK to users.id - who is this user's team lead
+  password: varchar("password", { length: 255 }), // Hashed password for direct login
   isActive: boolean("isActive").default(true).notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
