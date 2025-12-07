@@ -55,31 +55,21 @@ const app = express();
 // ============================================
 // CORS Configuration
 // ============================================
-const allowedOrigins = [
-  "https://ndespanels.com",
-  "https://www.ndespanels.com",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`[CORS] Blocked request from origin: ${origin}`);
-      callback(new Error("Not allowed by CORS"));
+    // Allow any Vercel preview deployment, local dev, or production
+    if (origin.endsWith(".vercel.app") || origin.includes("localhost") || origin === "https://ndespanels.com") {
+      return callback(null, true);
     }
+    console.warn(`[CORS] Blocked request from origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  credentials: true
 }));
 
-console.log("[Server] CORS configured for:", allowedOrigins);
+console.log("[Server] CORS configured: Vercel previews, localhost, and ndespanels.com allowed");
 
 // ============================================
 // DEBUG: Request Logging Middleware (FIRST)
