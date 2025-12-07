@@ -4,32 +4,77 @@ import postgres from "postgres";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
+// Singleton database connection
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
+let _isInitialized = false;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+/**
+ * Get or create database connection singleton
+ * Uses SUPABASE_URL or DATABASE_URL (SUPABASE_URL takes priority for Supabase projects)
+ * Connection pooling configured for Supabase Transaction Mode (port 6543)
+ */
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _client = postgres(process.env.DATABASE_URL, { 
-        ssl: 'require',
-        max: 10, // Maximum connections in pool
-        idle_timeout: 20, // Close idle connections after 20 seconds
-        connect_timeout: 30, // Connection timeout in seconds
-        max_lifetime: 60 * 30, // Max connection lifetime (30 minutes)
-        onnotice: () => {}, // Suppress notices
-      });
-      
-      // Force search_path to public schema for all queries
-      await _client.unsafe('SET search_path TO public');
-      
-      _db = drizzle(_client);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
+  if (_isInitialized && _db) {
+    return _db;
   }
-  return _db;
+
+  // Priority: SUPABASE_URL (recommended for Supabase) > DATABASE_URL
+  const connectionString = process.env.SUPABASE_URL || process.env.DATABASE_URL;
+  
+  if (!connectionString) {
+    console.error("❌ MISSING: SUPABASE_URL or DATABASE_URL environment variable");
+    console.error("Add SUPABASE_URL to Render Environment tab");
+    return null;
+  }
+
+  console.log(`[Server] ✓ Database URL configured: ${connectionString.substring(0, 20)}...`);
+
+  try {
+    // Create postgres client with Supabase-optimized settings
+    _client = postgres(connectionString, {
+      // CRITICAL: Disable prepared statements for Supabase Transaction Mode (port 6543)
+      prepare: false,
+      
+      // Connection pool settings
+      max: 10, // Maximum connections in pool (Supabase free tier allows ~15)
+      idle_timeout: 20, // Close idle connections after 20 seconds
+      connect_timeout: 30, // Connection timeout in seconds
+      max_lifetime: 60 * 30, // Max connection lifetime (30 minutes)
+      
+      // SSL for Supabase (required for production)
+      ssl: 'require',
+      
+      // Suppress PostgreSQL notices
+      onnotice: () => {},
+      
+      // Transform connection to set search_path on EACH connection
+      transform: {
+        undefined: undefined,
+        column: {},
+        value: {},
+        row: {}
+      }
+    });
+
+    // Set search_path to public schema BEFORE creating drizzle instance
+    // This ensures all queries use public schema instead of auth schema
+    await _client.unsafe('SET search_path TO public');
+    
+    // Create drizzle ORM instance
+    _db = drizzle(_client);
+    _isInitialized = true;
+    
+    console.log("✅ Database client initialized with connection pooling");
+    
+    return _db;
+  } catch (error) {
+    console.error("[Database] Failed to initialize:", error);
+    _db = null;
+    _client = null;
+    _isInitialized = false;
+    return null;
+  }
 }
 
 // Helper function to retry database operations
@@ -61,9 +106,7 @@ async function withRetry<T>(
       console.warn(`[Database] Attempt ${attempt} failed, retrying in ${delayMs}ms...`);
       await new Promise(resolve => setTimeout(resolve, delayMs));
       
-      // Reset connection on retry
-      _db = null;
-      _client = null;
+      // DO NOT reset connection - use existing singleton pool
     }
   }
   
