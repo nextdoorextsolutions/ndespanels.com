@@ -66,7 +66,9 @@ app.use(cors({
     console.warn(`[CORS] Blocked request from origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
+  // CRITICAL: Allow Authorization header for Bearer token authentication
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
 }));
 
 console.log("[Server] CORS configured: Vercel previews, localhost, and ndespanels.com allowed");
