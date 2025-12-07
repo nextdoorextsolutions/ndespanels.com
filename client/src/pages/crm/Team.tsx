@@ -113,8 +113,9 @@ export default function CRMTeam() {
 
   const copyCredentials = () => {
     if (!createdAccount) return;
-    const loginUrl = createdAccount.loginUrl || `${window.location.origin}/crm`;
-    const text = `CRM Account Created\n\nName: ${createdAccount.name}\nEmail: ${createdAccount.email}\nRole: ${ROLE_OPTIONS.find(r => r.value === createdAccount.role)?.label}\n\nLogin URL: ${loginUrl}\n\nPlease log in using your Manus account with the email above.`;
+    const loginUrl = createdAccount.loginUrl || `${window.location.origin}/login`;
+    const passwordLine = createdAccount.tempPassword ? `\nTemporary Password: ${createdAccount.tempPassword}\n(Please change after first login)` : '';
+    const text = `CRM Account Created\n\nName: ${createdAccount.name}\nEmail: ${createdAccount.email}\nRole: ${ROLE_OPTIONS.find(r => r.value === createdAccount.role)?.label}${passwordLine}\n\nLogin URL: ${loginUrl}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -190,8 +191,15 @@ export default function CRMTeam() {
                         </div>
                         <div>
                           <p className="text-xs text-slate-400">Login URL</p>
-                          <code className="text-[#00d4aa] text-sm">{createdAccount.loginUrl || `${window.location.origin}/crm`}</code>
+                          <code className="text-[#00d4aa] text-sm">{createdAccount.loginUrl || `${window.location.origin}/login`}</code>
                         </div>
+                        {createdAccount.tempPassword && (
+                          <div>
+                            <p className="text-xs text-slate-400">Temporary Password</p>
+                            <code className="text-yellow-400 text-sm font-mono bg-slate-800 px-2 py-1 rounded">{createdAccount.tempPassword}</code>
+                            <p className="text-xs text-slate-500 mt-1">User should change this after first login</p>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex gap-2">

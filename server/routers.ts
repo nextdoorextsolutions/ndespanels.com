@@ -947,6 +947,7 @@ export const appRouter = router({
         email: z.string().email(),
         role: z.enum(["admin", "owner", "office", "sales_rep", "team_lead", "field_crew"]),
         teamLeadId: z.number().optional(),
+        password: z.string().min(6).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -957,16 +958,38 @@ export const appRouter = router({
           throw new Error("Only owners can create team accounts");
         }
 
-        // Check if email already exists
+        // Check if email already exists in our users table
         const existing = await db.select().from(users).where(eq(users.email, input.email));
         if (existing.length > 0) {
           throw new Error("An account with this email already exists");
         }
 
-        // Create the user account with a placeholder openId (will be updated on first login)
-        const placeholderOpenId = `pending_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        // Generate a temporary password if not provided
+        const tempPassword = input.password || `Temp${Math.random().toString(36).substring(2, 10)}!`;
+
+        // Create Supabase Auth user first
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: input.email,
+          password: tempPassword,
+          email_confirm: true, // Auto-confirm the email
+          user_metadata: {
+            name: input.name,
+            role: input.role,
+          },
+        });
+
+        if (authError) {
+          console.error('[CreateAccount] Supabase Auth error:', authError);
+          throw new Error(`Failed to create auth account: ${authError.message}`);
+        }
+
+        if (!authData.user) {
+          throw new Error("Failed to create auth account - no user returned");
+        }
+
+        // Create the user in our users table with the Supabase Auth user ID
         const [newUser] = await db.insert(users).values({
-          openId: placeholderOpenId,
+          openId: authData.user.id,
           name: input.name,
           email: input.email,
           role: input.role,
@@ -974,10 +997,8 @@ export const appRouter = router({
           isActive: true,
         }).returning({ id: users.id });
 
-        // Send welcome email notification to owner with login details to share
-        const loginUrl = process.env.NODE_ENV === 'production' 
-          ? `https://${process.env.VITE_APP_ID}.manus.space/crm`
-          : 'http://localhost:3000/crm';
+        // Login URL
+        const loginUrl = 'https://ndespanels.com/login';
         
         try {
           await sendWelcomeEmail({
@@ -998,6 +1019,7 @@ export const appRouter = router({
           email: input.email,
           role: input.role,
           loginUrl,
+          tempPassword, // Return temp password so owner can share it
         };
       }),
 
