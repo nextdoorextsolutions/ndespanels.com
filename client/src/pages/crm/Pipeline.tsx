@@ -8,17 +8,57 @@ import { Link } from "wouter";
 
 type PipelineStatus = "lead" | "appointment_set" | "prospect" | "approved" | "project_scheduled" | "completed" | "invoiced" | "lien_legal" | "closed_deal" | "closed_lost";
 
-const PIPELINE_STAGES: { key: PipelineStatus; label: string; color: string; borderColor: string; description: string }[] = [
-  { key: "lead", label: "Lead", color: "bg-orange-500", borderColor: "border-orange-500", description: "New incoming leads" },
-  { key: "appointment_set", label: "Appointment Set", color: "bg-yellow-500", borderColor: "border-yellow-500", description: "Inspection scheduled" },
-  { key: "prospect", label: "Prospect", color: "bg-blue-500", borderColor: "border-blue-500", description: "Qualified prospects" },
-  { key: "approved", label: "Approved", color: "bg-purple-500", borderColor: "border-purple-500", description: "Deal approved" },
-  { key: "project_scheduled", label: "Project Scheduled", color: "bg-indigo-500", borderColor: "border-indigo-500", description: "Work scheduled" },
-  { key: "completed", label: "Completed", color: "bg-teal-500", borderColor: "border-teal-500", description: "Project finished" },
-  { key: "invoiced", label: "Invoiced", color: "bg-cyan-500", borderColor: "border-cyan-500", description: "Invoice sent" },
-  { key: "lien_legal", label: "Lien Legal", color: "bg-red-500", borderColor: "border-red-500", description: "Legal action" },
-  { key: "closed_deal", label: "Closed Deal", color: "bg-green-500", borderColor: "border-green-500", description: "Payment received" },
+const PIPELINE_STAGES: { key: PipelineStatus; label: string; color: string; borderColor: string; bgGradient: string; description: string; stageIndex: number }[] = [
+  { key: "lead", label: "Lead", color: "bg-slate-500", borderColor: "border-slate-400", bgGradient: "from-slate-600 to-slate-500", description: "New incoming leads", stageIndex: 0 },
+  { key: "appointment_set", label: "Appointment Set", color: "bg-cyan-500", borderColor: "border-cyan-400", bgGradient: "from-cyan-600 to-cyan-500", description: "Inspection scheduled", stageIndex: 1 },
+  { key: "prospect", label: "Prospect", color: "bg-teal-500", borderColor: "border-teal-400", bgGradient: "from-teal-600 to-teal-500", description: "Qualified prospects", stageIndex: 2 },
+  { key: "approved", label: "Approved", color: "bg-emerald-500", borderColor: "border-emerald-400", bgGradient: "from-emerald-600 to-emerald-500", description: "Deal approved", stageIndex: 3 },
+  { key: "project_scheduled", label: "Project Scheduled", color: "bg-green-500", borderColor: "border-green-400", bgGradient: "from-green-600 to-green-500", description: "Work scheduled", stageIndex: 4 },
+  { key: "completed", label: "Completed", color: "bg-green-400", borderColor: "border-green-300", bgGradient: "from-green-500 to-green-400", description: "Project finished", stageIndex: 5 },
+  { key: "invoiced", label: "Invoiced", color: "bg-lime-500", borderColor: "border-lime-400", bgGradient: "from-lime-600 to-lime-500", description: "Invoice sent", stageIndex: 6 },
+  { key: "lien_legal", label: "Lien Legal", color: "bg-red-600", borderColor: "border-red-500", bgGradient: "from-red-700 to-red-600", description: "Legal action", stageIndex: -1 },
+  { key: "closed_deal", label: "💰 Closed Deal 💰", color: "bg-gradient-to-r from-yellow-500 to-green-500", borderColor: "border-yellow-400", bgGradient: "from-yellow-500 via-green-500 to-green-600", description: "Payment received", stageIndex: 7 },
 ];
+
+// Wave animation CSS - inject into document
+const waveAnimationStyle = `
+  @keyframes wave-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.02); }
+  }
+  .animate-wave-1 { animation: wave-pulse 2s ease-in-out infinite; animation-delay: 0s; }
+  .animate-wave-2 { animation: wave-pulse 2s ease-in-out infinite; animation-delay: 0.15s; }
+  .animate-wave-3 { animation: wave-pulse 2s ease-in-out infinite; animation-delay: 0.3s; }
+  .animate-wave-4 { animation: wave-pulse 2s ease-in-out infinite; animation-delay: 0.45s; }
+  .animate-wave-5 { animation: wave-pulse 2s ease-in-out infinite; animation-delay: 0.6s; }
+  .animate-wave-6 { animation: wave-pulse 2s ease-in-out infinite; animation-delay: 0.75s; }
+  .animate-wave-7 { animation: wave-pulse 2s ease-in-out infinite; animation-delay: 0.9s; }
+  .animate-wave-8 { animation: wave-pulse 2s ease-in-out infinite; animation-delay: 1.05s; }
+  .closed-deal-glow {
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.5), 0 0 40px rgba(34, 197, 94, 0.3);
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(234, 179, 8, 0.5), 0 0 40px rgba(34, 197, 94, 0.3); }
+    50% { box-shadow: 0 0 30px rgba(234, 179, 8, 0.7), 0 0 60px rgba(34, 197, 94, 0.5); }
+  }
+`;
+
+// Inject styles on load
+if (typeof document !== 'undefined') {
+  const styleEl = document.getElementById('pipeline-wave-styles') || document.createElement('style');
+  styleEl.id = 'pipeline-wave-styles';
+  styleEl.textContent = waveAnimationStyle;
+  if (!document.getElementById('pipeline-wave-styles')) {
+    document.head.appendChild(styleEl);
+  }
+}
+
+// Helper to get wave animation class based on stage index
+const getWaveClass = (stageIndex: number): string => {
+  if (stageIndex < 0) return '';
+  return `animate-wave-${Math.min(stageIndex + 1, 8)}`;
+};
 
 const DEAL_TYPES = [
   { key: "insurance", label: "Insurance", icon: Shield, color: "text-blue-400" },
@@ -225,8 +265,8 @@ export default function CRMPipeline() {
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, stage.key)}
               >
-                {/* Column Header */}
-                <div className={`bg-slate-800 rounded-t-lg p-3 border-t-4 ${stage.borderColor}`}>
+                {/* Column Header with Wave Animation */}
+                <div className={`bg-slate-800 rounded-t-lg p-3 border-t-4 ${stage.borderColor} ${getWaveClass(stage.stageIndex)} ${stage.key === 'closed_deal' ? 'closed-deal-glow' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {isApproved && (
@@ -237,9 +277,9 @@ export default function CRMPipeline() {
                           {expandedApproved ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         </button>
                       )}
-                      <h3 className="font-semibold text-white">{stage.label}</h3>
+                      <h3 className={`font-semibold ${stage.key === 'closed_deal' ? 'text-yellow-300' : 'text-white'}`}>{stage.label}</h3>
                     </div>
-                    <span className={`${stage.color} text-white text-xs font-bold px-2 py-1 rounded-full`}>
+                    <span className={`bg-gradient-to-r ${stage.bgGradient} text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg`}>
                       {leads.length}
                     </span>
                   </div>

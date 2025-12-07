@@ -46,16 +46,16 @@ import { useRealtimeJob } from "@/hooks/useRealtimeJob";
 
 // Status configuration - Updated for new pipeline
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  lead: { label: "Lead", color: "bg-orange-500", icon: AlertCircle },
-  appointment_set: { label: "Appointment Set", color: "bg-yellow-500", icon: Calendar },
-  prospect: { label: "Prospect", color: "bg-blue-500", icon: User },
-  approved: { label: "Approved", color: "bg-purple-500", icon: CheckCircle },
-  project_scheduled: { label: "Project Scheduled", color: "bg-indigo-500", icon: Calendar },
-  completed: { label: "Completed", color: "bg-teal-500", icon: CheckCircle },
-  invoiced: { label: "Invoiced", color: "bg-cyan-500", icon: FileText },
-  lien_legal: { label: "Lien Legal", color: "bg-red-500", icon: AlertCircle },
-  closed_deal: { label: "Closed Deal", color: "bg-green-500", icon: CheckCircle },
-  closed_lost: { label: "Closed Lost", color: "bg-red-500", icon: XCircle },
+  lead: { label: "Lead", color: "bg-slate-500", icon: AlertCircle },
+  appointment_set: { label: "Appointment Set", color: "bg-cyan-500", icon: Calendar },
+  prospect: { label: "Prospect", color: "bg-teal-500", icon: User },
+  approved: { label: "Approved", color: "bg-emerald-500", icon: CheckCircle },
+  project_scheduled: { label: "Project Scheduled", color: "bg-green-500", icon: Calendar },
+  completed: { label: "Completed", color: "bg-green-400", icon: CheckCircle },
+  invoiced: { label: "Invoiced", color: "bg-lime-500", icon: FileText },
+  lien_legal: { label: "Lien Legal", color: "bg-red-600", icon: AlertCircle },
+  closed_deal: { label: "💰 Closed Deal 💰", color: "bg-gradient-to-r from-yellow-500 to-green-500", icon: CheckCircle },
+  closed_lost: { label: "Closed Lost", color: "bg-slate-600", icon: XCircle },
 };
 
 // Activity type icons

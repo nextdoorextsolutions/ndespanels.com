@@ -13,16 +13,16 @@ import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 
 const STATUS_OPTIONS = [
-  { value: "lead", label: "Lead", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
-  { value: "appointment_set", label: "Appointment Set", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
-  { value: "prospect", label: "Prospect", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
-  { value: "approved", label: "Approved", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
-  { value: "project_scheduled", label: "Project Scheduled", color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30" },
-  { value: "completed", label: "Completed", color: "bg-teal-500/20 text-teal-400 border-teal-500/30" },
-  { value: "invoiced", label: "Invoiced", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
-  { value: "lien_legal", label: "Lien Legal", color: "bg-red-500/20 text-red-400 border-red-500/30" },
-  { value: "closed_deal", label: "Closed Deal", color: "bg-green-500/20 text-green-400 border-green-500/30" },
-  { value: "closed_lost", label: "Closed Lost", color: "bg-red-600/20 text-red-300 border-red-600/30" },
+  { value: "lead", label: "Lead", color: "bg-slate-500/20 text-slate-300 border-slate-400/30" },
+  { value: "appointment_set", label: "Appointment Set", color: "bg-cyan-500/20 text-cyan-400 border-cyan-400/30" },
+  { value: "prospect", label: "Prospect", color: "bg-teal-500/20 text-teal-400 border-teal-400/30" },
+  { value: "approved", label: "Approved", color: "bg-emerald-500/20 text-emerald-400 border-emerald-400/30" },
+  { value: "project_scheduled", label: "Project Scheduled", color: "bg-green-500/20 text-green-400 border-green-400/30" },
+  { value: "completed", label: "Completed", color: "bg-green-400/20 text-green-300 border-green-300/30" },
+  { value: "invoiced", label: "Invoiced", color: "bg-lime-500/20 text-lime-400 border-lime-400/30" },
+  { value: "lien_legal", label: "Lien Legal", color: "bg-red-600/20 text-red-400 border-red-500/30" },
+  { value: "closed_deal", label: "💰 Closed Deal", color: "bg-gradient-to-r from-yellow-500/20 to-green-500/20 text-yellow-300 border-yellow-400/30" },
+  { value: "closed_lost", label: "Closed Lost", color: "bg-slate-600/20 text-slate-400 border-slate-500/30" },
 ];
 
 export default function CRMLeads() {
