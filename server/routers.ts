@@ -3,6 +3,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "./db";
 import { reportRequests, users, activities, documents, editHistory } from "../drizzle/schema";
@@ -109,35 +110,57 @@ export const appRouter = router({
     syncSupabaseUser: publicProcedure
       .input(z.object({
         supabaseUserId: z.string(),
-        email: z.string().email(),
+        email: z.string(),
         name: z.string().optional(),
+        role: z.string().optional(),
+        repCode: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
+        console.log(`[Sync] Attempting sync for: ${input.email}`);
         
-        // Check if user already exists by email
-        const [existingUser] = await db.select()
-          .from(users)
-          .where(eq(users.email, input.email))
-          .limit(1);
-        
-        if (existingUser) {
-          // Update existing user with Supabase ID if not set
-          if (!existingUser.openId || existingUser.openId !== input.supabaseUserId) {
-            await db.update(users)
-              .set({ 
-                openId: input.supabaseUserId,
-                lastSignedIn: new Date()
-              })
-              .where(eq(users.id, existingUser.id));
+        try {
+          const db = await getDb();
+          if (!db) {
+            console.error('[Sync] Database not available');
+            throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
           }
+          
+          // 1. Check if it's the very first user (Owner logic)
+          const allUsers = await db.select({ id: users.id }).from(users).limit(1);
+          const isFirstUser = allUsers.length === 0;
+          
+          // 2. Determine Role
+          let targetRole = input.role || 'user';
+          if (isFirstUser) targetRole = 'owner';
+          
+          // 3. UPSERT (Insert or Update if Email exists)
+          const [result] = await db
+            .insert(users)
+            .values({
+              openId: input.supabaseUserId,
+              email: input.email,
+              name: input.name || input.email.split('@')[0],
+              role: targetRole as any,
+              isActive: true,
+              lastSignedIn: new Date(),
+              repCode: input.repCode || null,
+            })
+            .onConflictDoUpdate({
+              target: users.email,
+              set: {
+                openId: input.supabaseUserId,
+                lastSignedIn: new Date(),
+              },
+            })
+            .returning();
+          
+          console.log(`[Sync] Successfully synced user: ${result.email} (Role: ${result.role})`);
           
           // Set session cookie
           const { sdk } = await import("./_core/sdk");
           const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
           const sessionToken = await sdk.createSessionToken(input.supabaseUserId, {
-            name: existingUser.name || input.name || "",
+            name: result.name || input.name || "",
             expiresInMs: ONE_YEAR_MS,
           });
           const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -145,48 +168,22 @@ export const appRouter = router({
           
           return { 
             success: true, 
-            user: { id: existingUser.id, name: existingUser.name, role: existingUser.role, email: existingUser.email },
-            isNewUser: false
+            user: { id: result.id, name: result.name, role: result.role, email: result.email },
+            isNewUser: isFirstUser,
+            isOwner: result.role === 'owner'
           };
+        } catch (error: any) {
+          console.error('❌ CRITICAL ERROR in syncSupabaseUser:');
+          console.error('Message:', error.message);
+          console.error('Code:', error.code);
+          console.error('Detail:', error.detail);
+          
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: `Sync failed: ${error.message}`,
+            cause: error,
+          });
         }
-        
-        // Check if this is the first user (make them owner)
-        const [userCount] = await db.select({ count: sql<number>`COUNT(*)` }).from(users);
-        const isFirstUser = !userCount || userCount.count === 0;
-        
-        // Create new user
-        const [result] = await db.insert(users).values({
-          openId: input.supabaseUserId,
-          email: input.email,
-          name: input.name || input.email.split('@')[0],
-          role: isFirstUser ? 'owner' : 'user',
-          isActive: true,
-          lastSignedIn: new Date(),
-        }).returning({ id: users.id });
-        
-        const newUserId = result.id;
-        
-        // Set session cookie
-        const { sdk } = await import("./_core/sdk");
-        const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-        const sessionToken = await sdk.createSessionToken(input.supabaseUserId, {
-          name: input.name || input.email.split('@')[0],
-          expiresInMs: ONE_YEAR_MS,
-        });
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-        
-        return { 
-          success: true, 
-          user: { 
-            id: Number(newUserId), 
-            name: input.name || input.email.split('@')[0], 
-            role: isFirstUser ? 'owner' : 'user',
-            email: input.email
-          },
-          isNewUser: true,
-          isOwner: isFirstUser
-        };
       }),
     loginWithPassword: publicProcedure
       .input(z.object({
