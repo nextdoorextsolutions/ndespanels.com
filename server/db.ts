@@ -17,12 +17,18 @@ export async function getDb() {
         idle_timeout: 20, // Close idle connections after 20 seconds
         connect_timeout: 30, // Connection timeout in seconds
         max_lifetime: 60 * 30, // Max connection lifetime (30 minutes)
-        // CRITICAL: Force postgres-js to use public schema
-        connection: {
-          search_path: 'public'
-        }
+        // Execute SET search_path immediately after connecting to force public schema
+        onnotice: () => {}, // Suppress notices
+        async transform(query) {
+          await query.unsafe('SET search_path TO public');
+          return query;
+        },
       });
-      _db = drizzle(_client, { schema: { users } });
+      
+      // Force search_path to public schema for all queries
+      await _client.unsafe('SET search_path TO public');
+      
+      _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
