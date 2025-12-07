@@ -391,7 +391,7 @@ export const appRouter = router({
         .from(reportRequests)
         .where(whereClause ? and(whereClause, eq(reportRequests.lienRightsStatus, "expired")) : eq(reportRequests.lienRightsStatus, "expired"));
       
-      const [totalRevenue] = await db.select({ sum: sql<number>`COALESCE(SUM(amountPaid), 0)` })
+      const [totalRevenue] = await db.select({ sum: sql<number>`COALESCE(SUM(amount_paid), 0)` })
         .from(reportRequests)
         .where(whereClause);
 
