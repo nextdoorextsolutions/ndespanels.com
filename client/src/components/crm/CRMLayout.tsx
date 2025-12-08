@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
 
 interface CRMLayoutProps {
   children: React.ReactNode;
@@ -228,13 +229,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
             </div>
 
             {/* Notifications */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white/90 hover:text-white hover:bg-white/10"
-            >
-              <Bell className="w-5 h-5" />
-            </Button>
+            <NotificationDropdown />
 
             {/* User Menu */}
             <DropdownMenu>

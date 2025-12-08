@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { useRealtimeJob } from "@/hooks/useRealtimeJob";
 import { JobPipelineTracker } from "@/components/JobPipelineTracker";
+import { MentionInput } from "@/components/MentionInput";
 
 // Pipeline stage order for navigation
 const PIPELINE_ORDER = [
@@ -1697,11 +1698,12 @@ export default function JobDetail() {
                 <Card className="bg-slate-800 border-slate-700 mb-6">
                   <CardContent className="pt-4">
                     <div className="flex gap-3">
-                      <Textarea
-                        placeholder="Add a note or message..."
+                      <MentionInput
+                        placeholder="Add a note or message... (Type @ to mention someone)"
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 min-h-[80px] flex-1"
+                        onChange={setNewMessage}
+                        className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 flex-1"
+                        minHeight="80px"
                       />
                       <Button 
                         onClick={handleSendMessage}
