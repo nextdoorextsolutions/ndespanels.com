@@ -132,7 +132,6 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
         await logoutMutation.mutateAsync();
       } catch (e) {
         // Ignore server errors, we're logging out anyway
-        console.log('Server logout:', e);
       }
       
       // 3. Clear React Query cache

@@ -82,7 +82,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         // Store the session token returned from the backend
         if ((result as any).sessionToken) {
           setSessionToken((result as any).sessionToken);
-          console.log("[Auth] Session token stored in localStorage");
         }
         
         setState(prev => ({
@@ -133,7 +132,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         if (_event === "SIGNED_OUT") {
           // Clear session token on sign out
           clearSessionToken();
-          console.log("[Auth] Session token cleared from localStorage");
         }
         
         setState(prev => ({

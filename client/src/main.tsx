@@ -92,12 +92,6 @@ if (import.meta.env.VITE_API_URL && !apiUrl.endsWith("/trpc")) {
   apiUrl = apiUrl.replace(/\/$/, "") + "/api/trpc";
 }
 
-console.log("[TRPC Client] Raw VITE_API_URL:", import.meta.env.VITE_API_URL);
-console.log("[TRPC Client] Final API URL:", apiUrl);
-console.log("[TRPC Client] Environment:", {
-  mode: import.meta.env.MODE,
-  dev: import.meta.env.DEV,
-});
 
 const trpcClient = trpc.createClient({
   links: [
@@ -115,7 +109,6 @@ const trpcClient = trpc.createClient({
         return {};
       },
       fetch(input, init) {
-        console.log("[TRPC Fetch]", input, init);
         return globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
