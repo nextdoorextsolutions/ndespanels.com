@@ -55,14 +55,31 @@ const app = express();
 // ============================================
 // CORS Configuration
 // ============================================
+const frontendUrl = process.env.FRONTEND_URL || "https://ndespanels.com";
+console.log("[Server] FRONTEND_URL:", frontendUrl);
+
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
+    
     // Allow any Vercel preview deployment, local dev, or production
-    if (origin.endsWith(".vercel.app") || origin.includes("localhost") || origin === "https://ndespanels.com") {
+    const allowedOrigins = [
+      frontendUrl,
+      "https://ndespanels.com",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ];
+    
+    if (
+      origin.endsWith(".vercel.app") || 
+      origin.includes("localhost") || 
+      allowedOrigins.includes(origin)
+    ) {
+      console.log(`[CORS] Allowed origin: ${origin}`);
       return callback(null, true);
     }
+    
     console.warn(`[CORS] Blocked request from origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -71,7 +88,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
 }));
 
-console.log("[Server] CORS configured: Vercel previews, localhost, and ndespanels.com allowed");
+console.log("[Server] CORS configured for:", { frontendUrl, allowedPatterns: ["*.vercel.app", "localhost", "ndespanels.com"] });
 
 // ============================================
 // DEBUG: Request Logging Middleware (FIRST)

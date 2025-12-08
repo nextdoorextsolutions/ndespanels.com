@@ -82,10 +82,19 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+// Log the API URL being used for debugging
+const apiUrl = import.meta.env.VITE_API_URL || "/api/trpc";
+console.log("[TRPC Client] API URL:", apiUrl);
+console.log("[TRPC Client] Environment:", {
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  mode: import.meta.env.MODE,
+  dev: import.meta.env.DEV,
+});
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: import.meta.env.VITE_API_URL || "/api/trpc",
+      url: apiUrl,
       transformer: superjson,
       headers() {
         // Send session token as Authorization header for cross-origin requests
@@ -98,9 +107,18 @@ const trpcClient = trpc.createClient({
         return {};
       },
       fetch(input, init) {
+        console.log("[TRPC Fetch]", input, init);
         return globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
+        }).catch(error => {
+          console.error("[TRPC Fetch Error]", {
+            url: input,
+            error: error,
+            message: error.message,
+            stack: error.stack,
+          });
+          throw error;
         });
       },
     }),
