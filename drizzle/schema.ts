@@ -104,8 +104,15 @@ export const reportRequests = pgTable("report_requests", {
   
   // Customer info
   fullName: varchar("full_name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
-  phone: varchar("phone", { length: 50 }).notNull(),
+  email: varchar("email", { length: 320 }), // Made optional
+  phone: varchar("phone", { length: 50 }), // Made optional
+  
+  // Secondary contact info
+  secondaryFirstName: varchar("secondary_first_name", { length: 100 }),
+  secondaryLastName: varchar("secondary_last_name", { length: 100 }),
+  secondaryPhone: varchar("secondary_phone", { length: 50 }),
+  secondaryEmail: varchar("secondary_email", { length: 320 }),
+  secondaryRelation: varchar("secondary_relation", { length: 50 }), // e.g., Spouse, Property Manager
   
   // Property info
   address: varchar("address", { length: 500 }).notNull(),
@@ -113,6 +120,14 @@ export const reportRequests = pgTable("report_requests", {
   roofAge: varchar("roof_age", { length: 50 }),
   roofConcerns: text("roof_concerns"),
   handsOnInspection: boolean("hands_on_inspection").default(false).notNull(),
+  
+  // Site access info
+  gateCode: varchar("gate_code", { length: 50 }),
+  accessInstructions: text("access_instructions"),
+  
+  // Insurance info
+  insuranceCarrier: varchar("insurance_carrier", { length: 200 }),
+  claimNumber: varchar("claim_number", { length: 100 }),
   
   // Payment info
   promoCode: varchar("promo_code", { length: 50 }),

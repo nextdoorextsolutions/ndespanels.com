@@ -514,13 +514,25 @@ export const appRouter = router({
     createJob: protectedProcedure
       .input(z.object({
         fullName: z.string().min(2),
-        email: z.string().email(),
-        phone: z.string().min(10),
+        email: z.string().email().optional().or(z.literal("")), // Made optional
+        phone: z.string().optional(), // Made optional
         address: z.string().min(5),
         cityStateZip: z.string().min(5),
         roofAge: z.string().optional(),
         roofConcerns: z.string().optional(),
         dealType: z.enum(["insurance", "cash", "financed"]).optional(),
+        // Secondary contact
+        secondaryFirstName: z.string().optional(),
+        secondaryLastName: z.string().optional(),
+        secondaryPhone: z.string().optional(),
+        secondaryEmail: z.string().email().optional().or(z.literal("")),
+        secondaryRelation: z.string().optional(),
+        // Site access
+        gateCode: z.string().optional(),
+        accessInstructions: z.string().optional(),
+        // Insurance
+        insuranceCarrier: z.string().optional(),
+        claimNumber: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -533,13 +545,25 @@ export const appRouter = router({
 
         const [result] = await db.insert(reportRequests).values({
           fullName: input.fullName,
-          email: input.email,
-          phone: input.phone,
+          email: input.email || null,
+          phone: input.phone || null,
           address: input.address,
           cityStateZip: input.cityStateZip,
           roofAge: input.roofAge || null,
           roofConcerns: input.roofConcerns || null,
           dealType: input.dealType || "cash",
+          // Secondary contact
+          secondaryFirstName: input.secondaryFirstName || null,
+          secondaryLastName: input.secondaryLastName || null,
+          secondaryPhone: input.secondaryPhone || null,
+          secondaryEmail: input.secondaryEmail || null,
+          secondaryRelation: input.secondaryRelation || null,
+          // Site access
+          gateCode: input.gateCode || null,
+          accessInstructions: input.accessInstructions || null,
+          // Insurance
+          insuranceCarrier: input.insuranceCarrier || null,
+          claimNumber: input.claimNumber || null,
           status: "lead",
           priority: "medium" as const,
           handsOnInspection: false,
