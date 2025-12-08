@@ -722,11 +722,20 @@ export default function JobDetail() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-white">Pipeline Status</CardTitle>
                     {canEdit && (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                      <div className="flex items-center gap-3">
+                        <button
+                          className="
+                            group relative px-5 py-2.5 rounded-full
+                            bg-slate-800/80 backdrop-blur-sm
+                            border-2 border-slate-600/50
+                            text-slate-300 font-semibold text-sm
+                            transition-all duration-300 ease-out
+                            hover:scale-105 hover:bg-slate-700/80 hover:border-slate-500 hover:text-white
+                            hover:shadow-[0_0_20px_rgba(100,116,139,0.3)]
+                            disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100
+                            disabled:hover:bg-slate-800/80 disabled:hover:border-slate-600/50
+                            flex items-center gap-2
+                          "
                           disabled={PIPELINE_ORDER.indexOf(job.status) === 0 || !PIPELINE_ORDER.includes(job.status)}
                           onClick={() => {
                             const currentIndex = PIPELINE_ORDER.indexOf(job.status);
@@ -736,13 +745,22 @@ export default function JobDetail() {
                             }
                           }}
                         >
-                          <ChevronLeft className="w-4 h-4 mr-1" />
+                          <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
                           Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa] hover:text-black"
+                        </button>
+                        <button
+                          className="
+                            group relative px-6 py-2.5 rounded-full
+                            bg-gradient-to-r from-[#00d4aa] to-[#00b894]
+                            border-2 border-[#00d4aa]
+                            text-white font-bold text-sm
+                            transition-all duration-300 ease-out
+                            hover:scale-110 hover:shadow-[0_0_30px_rgba(0,212,170,0.6)]
+                            hover:from-[#00e6bc] hover:to-[#00d4aa]
+                            disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100
+                            disabled:hover:shadow-none
+                            flex items-center gap-2
+                          "
                           disabled={PIPELINE_ORDER.indexOf(job.status) === PIPELINE_ORDER.length - 1 || !PIPELINE_ORDER.includes(job.status)}
                           onClick={() => {
                             const currentIndex = PIPELINE_ORDER.indexOf(job.status);
@@ -753,8 +771,8 @@ export default function JobDetail() {
                           }}
                         >
                           Next
-                          <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
+                          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                        </button>
                       </div>
                     )}
                   </div>
