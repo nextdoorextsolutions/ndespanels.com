@@ -263,3 +263,22 @@ export const jobMessageReads = pgTable("job_message_reads", {
 
 export type JobMessageRead = typeof jobMessageReads.$inferSelect;
 export type InsertJobMessageRead = typeof jobMessageReads.$inferInsert;
+
+/**
+ * Notifications - tracks user mentions and other notifications
+ */
+export const notificationTypeEnum = pgEnum("notification_type", ["mention", "assignment", "status_change"]);
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Who was tagged/notified
+  createdBy: integer("created_by"), // Who created the notification
+  resourceId: integer("resource_id").notNull(), // Job ID
+  type: notificationTypeEnum("type").default("mention").notNull(),
+  content: text("content"), // The message/note content
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
