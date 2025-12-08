@@ -55,32 +55,47 @@ const app = express();
 // ============================================
 // CORS Configuration
 // ============================================
-const frontendUrl = process.env.FRONTEND_URL || "https://ndespanels.com";
-console.log("[Server] FRONTEND_URL:", frontendUrl);
+const frontendUrl = process.env.FRONTEND_URL;
+const clientUrl = process.env.CLIENT_URL;
+
+// Build allowed origins list from environment variables and hardcoded values
+const allowedOrigins = [
+  "https://ndespanels.com",
+  "https://www.ndespanels.com",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+// Add dynamic URLs from environment if they exist
+if (frontendUrl) {
+  allowedOrigins.push(frontendUrl);
+  console.log("[Server] FRONTEND_URL:", frontendUrl);
+}
+if (clientUrl) {
+  allowedOrigins.push(clientUrl);
+  console.log("[Server] CLIENT_URL:", clientUrl);
+}
+
+console.log("[Server] Allowed CORS origins:", allowedOrigins);
 
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Allow any Vercel preview deployment, local dev, or production
-    const allowedOrigins = [
-      frontendUrl,
-      "https://ndespanels.com",
-      "http://localhost:5173",
-      "http://localhost:3000",
-    ];
-    
-    if (
-      origin.endsWith(".vercel.app") || 
-      origin.includes("localhost") || 
-      allowedOrigins.includes(origin)
-    ) {
-      console.log(`[CORS] Allowed origin: ${origin}`);
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      console.log(`[CORS] ✓ Allowed origin: ${origin}`);
       return callback(null, true);
     }
     
-    console.warn(`[CORS] Blocked request from origin: ${origin}`);
+    // Allow any Vercel preview deployment or localhost
+    if (origin.endsWith(".vercel.app") || origin.includes("localhost")) {
+      console.log(`[CORS] ✓ Allowed pattern match: ${origin}`);
+      return callback(null, true);
+    }
+    
+    console.warn(`[CORS] ✗ Blocked request from origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -88,7 +103,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-trpc-source'],
 }));
 
-console.log("[Server] CORS configured for:", { frontendUrl, allowedPatterns: ["*.vercel.app", "localhost", "ndespanels.com"] });
+console.log("[Server] CORS configured successfully");
 
 // ============================================
 // DEBUG: Request Logging Middleware (FIRST)
