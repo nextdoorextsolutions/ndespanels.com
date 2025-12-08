@@ -7,7 +7,7 @@
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "npm run build:server && npm run build:client",
     "build:server": "esbuild server/_core/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:@aws-sdk/* --external:@supabase/* --external:drizzle-orm --external:postgres --external:express --external:cors --external:cookie --external:jose --external:nanoid --external:zod --external:superjson --external:@trpc/* --external:axios --external:dotenv --external:exif-parser --external:stripe --external:twilio --external:class-variance-authority --external:clsx --external:date-fns --external:streamdown --external:tailwind-merge --external:vite --external:@vitejs/* --external:@tailwindcss/* --external:lightningcss --external:@babel/* --external:http",
-    "build:client": "vite build",
+    "build:client": "vite build && echo '--- FILE TREE ---' && ls -R dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
