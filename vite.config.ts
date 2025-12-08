@@ -23,7 +23,7 @@ export default defineConfig({
   },
   envDir: path.resolve(__dirname),
   build: {
-    outDir: "dist",
+    outDir: "dist/public", // Client output - separate from server's dist/index.js
     emptyOutDir: true,
   },
   server: {
