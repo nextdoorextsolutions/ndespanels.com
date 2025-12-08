@@ -6,7 +6,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "./db";
-import { reportRequests, users, activities, documents, editHistory } from "../drizzle/schema";
+import { reportRequests, users, activities, documents, editHistory, activityAttachments, messageReads } from "../drizzle/schema";
 import { PRODUCTS, validatePromoCode } from "./products";
 import { notifyOwner } from "./_core/notification";
 import { sendSMSNotification } from "./sms";
@@ -844,6 +844,20 @@ export const appRouter = router({
           description: input.note,
         });
 
+        // Log to edit history for audit trail
+        if (ctx.user?.id) {
+          await logEditHistory(
+            db,
+            input.leadId,
+            ctx.user.id,
+            "note",
+            null,
+            input.note.substring(0, 500), // Truncate long notes
+            "create",
+            ctx
+          );
+        }
+
         return { success: true };
       }),
 
@@ -1245,6 +1259,20 @@ export const appRouter = router({
           activityType: "document_uploaded",
           description: `Uploaded ${input.category.replace("_", " ")}: ${input.fileName}`,
         });
+
+        // Log to edit history for audit trail
+        if (ctx.user?.id) {
+          await logEditHistory(
+            db,
+            input.leadId,
+            ctx.user.id,
+            "document",
+            null,
+            `Uploaded ${input.category}: ${input.fileName} (${(fileSize / 1024).toFixed(1)}KB)`,
+            "create",
+            ctx
+          );
+        }
 
         return { success: true, documentId: result.id, url };
       }),
@@ -1850,6 +1878,20 @@ export const appRouter = router({
           description: `Uploaded photo: ${input.fileName}`,
         });
 
+        // Log to edit history for audit trail
+        if (ctx.user?.id) {
+          await logEditHistory(
+            db,
+            input.jobId,
+            ctx.user.id,
+            "photo",
+            null,
+            `Uploaded photo: ${input.fileName}${exifData.latitude ? ` (GPS: ${exifData.latitude}, ${exifData.longitude})` : ''}`,
+            "create",
+            ctx
+          );
+        }
+
         return { success: true, documentId: result.id, url };
       }),
 
@@ -2116,6 +2158,18 @@ export const appRouter = router({
             sentAt: new Date().toISOString(),
           }),
         });
+
+        // Log to edit history for audit trail (use userId 0 for customer messages)
+        await logEditHistory(
+          db,
+          input.jobId,
+          0, // Customer message, no user ID
+          "customer_message",
+          null,
+          `${input.senderName || job.fullName}: ${input.message.substring(0, 400)}`,
+          "create",
+          null
+        );
 
         // Notify admins/owners about the customer message
         const admins = await db.select({ id: users.id, email: users.email, name: users.name })

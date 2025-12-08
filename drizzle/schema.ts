@@ -229,3 +229,37 @@ export const editHistory = pgTable("edit_history", {
 
 export type EditHistory = typeof editHistory.$inferSelect;
 export type InsertEditHistory = typeof editHistory.$inferInsert;
+
+/**
+ * Activity Attachments - files/images attached to notes and messages
+ */
+export const activityAttachments = pgTable("activity_attachments", {
+  id: serial("id").primaryKey(),
+  activityId: integer("activity_id").notNull(),
+  
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileUrl: varchar("file_url", { length: 1000 }).notNull(),
+  fileType: varchar("file_type", { length: 100 }),
+  fileSize: integer("file_size"),
+  
+  // Thumbnail for images
+  thumbnailUrl: varchar("thumbnail_url", { length: 1000 }),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ActivityAttachment = typeof activityAttachments.$inferSelect;
+export type InsertActivityAttachment = typeof activityAttachments.$inferInsert;
+
+/**
+ * Message Reads - tracks which messages users have seen
+ */
+export const messageReads = pgTable("message_reads", {
+  id: serial("id").primaryKey(),
+  activityId: integer("activity_id").notNull(),
+  userId: integer("user_id").notNull(),
+  readAt: timestamp("read_at").defaultNow().notNull(),
+});
+
+export type MessageRead = typeof messageReads.$inferSelect;
+export type InsertMessageRead = typeof messageReads.$inferInsert;
