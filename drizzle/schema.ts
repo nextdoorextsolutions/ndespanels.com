@@ -250,3 +250,16 @@ export const jobAttachments = pgTable("job_attachments", {
 
 export type JobAttachment = typeof jobAttachments.$inferSelect;
 export type InsertJobAttachment = typeof jobAttachments.$inferInsert;
+
+/**
+ * Job Message Reads - tracks when users last viewed messages for a job
+ */
+export const jobMessageReads = pgTable("job_message_reads", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").notNull(),
+  userId: integer("user_id").notNull(),
+  lastReadAt: timestamp("last_read_at").defaultNow().notNull(),
+});
+
+export type JobMessageRead = typeof jobMessageReads.$inferSelect;
+export type InsertJobMessageRead = typeof jobMessageReads.$inferInsert;

@@ -6,7 +6,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "./db";
-import { reportRequests, users, activities, documents, editHistory, jobAttachments } from "../drizzle/schema";
+import { reportRequests, users, activities, documents, editHistory, jobAttachments, jobMessageReads } from "../drizzle/schema";
 import { PRODUCTS, validatePromoCode } from "./products";
 import { notifyOwner } from "./_core/notification";
 import { sendSMSNotification } from "./sms";
@@ -2306,6 +2306,105 @@ export const appRouter = router({
           success: true, 
           message: "Your callback request has been received. A team member will contact you within 48 business hours." 
         };
+      }),
+
+    // Mark messages as read for a job
+    markMessagesAsRead: protectedProcedure
+      .input(z.object({ jobId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        if (!ctx.user?.id) throw new Error("User not authenticated");
+
+        // Upsert: update if exists, insert if not
+        const existing = await db.select()
+          .from(jobMessageReads)
+          .where(and(
+            eq(jobMessageReads.jobId, input.jobId),
+            eq(jobMessageReads.userId, ctx.user.id)
+          ))
+          .limit(1);
+
+        if (existing.length > 0) {
+          await db.update(jobMessageReads)
+            .set({ lastReadAt: new Date() })
+            .where(and(
+              eq(jobMessageReads.jobId, input.jobId),
+              eq(jobMessageReads.userId, ctx.user.id)
+            ));
+        } else {
+          await db.insert(jobMessageReads).values({
+            jobId: input.jobId,
+            userId: ctx.user.id,
+            lastReadAt: new Date(),
+          });
+        }
+
+        return { success: true };
+      }),
+
+    // Get unread message counts for all jobs
+    getUnreadCounts: protectedProcedure
+      .query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        if (!ctx.user?.id) return [];
+
+        // Get all jobs the user can view
+        let jobs = await db.select({ id: reportRequests.id }).from(reportRequests);
+        
+        // Filter by role
+        const user = ctx.user;
+        const teamMemberIds = user && isTeamLead(user) ? await getTeamMemberIds(db, user.id) : [];
+        jobs = jobs.filter(job => {
+          const fullJob = { ...job, assignedTo: null, teamLeadId: null } as any;
+          return canViewJob(user, fullJob, teamMemberIds);
+        });
+
+        const jobIds = jobs.map(j => j.id);
+        if (jobIds.length === 0) return [];
+
+        // Get last read times for this user
+        const readTimes = await db.select()
+          .from(jobMessageReads)
+          .where(and(
+            eq(jobMessageReads.userId, ctx.user.id),
+            inArray(jobMessageReads.jobId, jobIds)
+          ));
+
+        const readTimeMap = readTimes.reduce((acc, rt) => {
+          acc[rt.jobId] = rt.lastReadAt;
+          return acc;
+        }, {} as Record<number, Date>);
+
+        // Get latest message time for each job
+        const latestMessages = await db.select({
+          jobId: activities.reportRequestId,
+          latestMessageTime: sql<Date>`MAX(${activities.createdAt})`.as('latest_message_time'),
+        })
+        .from(activities)
+        .where(and(
+          inArray(activities.reportRequestId, jobIds),
+          or(
+            eq(activities.activityType, 'note_added'),
+            eq(activities.activityType, 'message'),
+            eq(activities.activityType, 'customer_message')
+          )
+        ))
+        .groupBy(activities.reportRequestId);
+
+        // Determine which jobs have unread messages
+        const unreadJobIds = latestMessages
+          .filter(msg => {
+            const lastRead = readTimeMap[msg.jobId];
+            // If never read, or last read is before latest message, it's unread
+            return !lastRead || new Date(lastRead) < new Date(msg.latestMessageTime);
+          })
+          .map(msg => msg.jobId);
+
+        return unreadJobIds;
       }),
   }),
 });

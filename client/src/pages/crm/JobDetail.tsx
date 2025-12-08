@@ -532,6 +532,8 @@ export default function JobDetail() {
     onError: (error) => toast.error(error.message),
   });
 
+  const markMessagesAsRead = trpc.crm.markMessagesAsRead.useMutation();
+
   const uploadDocument = trpc.crm.uploadDocument.useMutation({
     onSuccess: () => {
       toast.success("Document uploaded");
@@ -795,7 +797,12 @@ export default function JobDetail() {
             {visibleTabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  if (tab.key === "messages") {
+                    markMessagesAsRead.mutate({ jobId });
+                  }
+                }}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab.key
                     ? "border-[#00d4aa] text-[#00d4aa]"
