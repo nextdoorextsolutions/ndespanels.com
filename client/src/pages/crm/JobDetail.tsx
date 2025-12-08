@@ -45,6 +45,18 @@ import CRMLayout from "@/components/crm/CRMLayout";
 import { useRealtimeJob } from "@/hooks/useRealtimeJob";
 import { JobPipelineTracker } from "@/components/JobPipelineTracker";
 
+// Pipeline stage order for navigation
+const PIPELINE_ORDER = [
+  "lead",
+  "appointment_set",
+  "prospect",
+  "approved",
+  "project_scheduled",
+  "completed",
+  "invoiced",
+  "closed_deal",
+];
+
 // Status configuration - Updated for new pipeline
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   lead: { label: "Lead", color: "bg-slate-500", icon: AlertCircle },
@@ -707,7 +719,45 @@ export default function JobDetail() {
               {/* Animated Pipeline Tracker */}
               <Card className="bg-slate-800 border-slate-700">
                 <CardHeader>
-                  <CardTitle className="text-white">Pipeline Status</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-white">Pipeline Status</CardTitle>
+                    {canEdit && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                          disabled={PIPELINE_ORDER.indexOf(job.status) === 0 || !PIPELINE_ORDER.includes(job.status)}
+                          onClick={() => {
+                            const currentIndex = PIPELINE_ORDER.indexOf(job.status);
+                            if (currentIndex > 0) {
+                              const prevStatus = PIPELINE_ORDER[currentIndex - 1];
+                              updateLead.mutate({ id: jobId, status: prevStatus as any });
+                            }
+                          }}
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-1" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa] hover:text-black"
+                          disabled={PIPELINE_ORDER.indexOf(job.status) === PIPELINE_ORDER.length - 1 || !PIPELINE_ORDER.includes(job.status)}
+                          onClick={() => {
+                            const currentIndex = PIPELINE_ORDER.indexOf(job.status);
+                            if (currentIndex < PIPELINE_ORDER.length - 1 && currentIndex !== -1) {
+                              const nextStatus = PIPELINE_ORDER[currentIndex + 1];
+                              updateLead.mutate({ id: jobId, status: nextStatus as any });
+                            }
+                          }}
+                        >
+                          Next
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <JobPipelineTracker currentStatus={job.status} />
