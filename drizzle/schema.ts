@@ -134,7 +134,7 @@ export const reportRequests = pgTable("report_requests", {
   accessInstructions: text("access_instructions"),
   
   // Insurance info
-  insuranceCarrier: varchar("insurance_carrier", { length: 200 }),
+  insuranceCarrier: varchar("insurance_carrier", { length: 255 }),
   policyNumber: varchar("policy_number", { length: 100 }),
   claimNumber: varchar("claim_number", { length: 100 }),
   deductible: numeric("deductible", { precision: 10, scale: 2 }),
