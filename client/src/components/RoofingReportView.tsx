@@ -7,6 +7,7 @@ import { calculateRoofMetrics, calculateMaterialRequirements, formatLinearFeet, 
 import { Download, Ruler, Home, ChevronUp, ChevronDown, Plus, Minus, MapPin } from 'lucide-react';
 import { ManualRoofTakeoff } from './ManualRoofTakeoff';
 import { GoogleStreetView } from './GoogleStreetView';
+import { toast } from 'sonner';
 
 interface RoofingReportViewProps {
   solarApiData: any;
@@ -23,6 +24,11 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
   const [wasteFactorPercent, setWasteFactorPercent] = useState<number>(10);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  
+  // Manual drawing state
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [manualAreaSqFt, setManualAreaSqFt] = useState<number | null>(null);
+  const [drawnPolygon, setDrawnPolygon] = useState<google.maps.Polygon | null>(null);
 
   // Calculate metrics on mount
   useEffect(() => {
@@ -89,10 +95,11 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
       // Draw satellite image
       ctx.drawImage(img, 0, 0);
 
+      // DISABLED: Automated roof segment overlays (causes visual issues)
       // Only draw roof segments if we have coverage (3D data available)
-      if (solarApiData.coverage !== false && metrics.segments.length > 0) {
-        drawRoofSegments(ctx, metrics.segments, canvas.width, canvas.height);
-      }
+      // if (solarApiData.coverage !== false && metrics.segments.length > 0) {
+      //   drawRoofSegments(ctx, metrics.segments, canvas.width, canvas.height);
+      // }
 
       setImageLoaded(true);
     };
@@ -250,6 +257,30 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
                   </div>
                 )}
               </div>
+
+              {/* Manual Drawing Tool - Show when no 3D coverage */}
+              {solarApiData?.coverage === false && solarApiData?.lat && solarApiData?.lng && (
+                <div className="mt-6">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <Ruler className="w-5 h-5 text-[#00d4aa]" />
+                    Manual Roof Measurement Tool
+                  </h3>
+                  <ManualRoofTakeoff
+                    latitude={solarApiData.lat}
+                    longitude={solarApiData.lng}
+                    onSave={(measurements) => {
+                      // Update the manual area when user saves drawing
+                      setManualAreaSqFt(measurements.totalArea);
+                      // Update metrics with manual measurements
+                      setMetrics(prev => prev ? {
+                        ...prev,
+                        totalArea: measurements.totalArea,
+                      } : null);
+                      toast.success('Manual measurements saved!');
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Legend - only show if we have 3D coverage */}
               {solarApiData?.coverage !== false && (
