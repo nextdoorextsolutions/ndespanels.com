@@ -22,6 +22,7 @@ import { fetchSolarApiData, hasValidCoordinates } from "./lib/solarApi";
 import { fetchEstimatorLeads, parseEstimatorAddress, formatEstimateData } from "./lib/estimatorApi";
 import { calculateMaterialOrder, generateBeaconCSV, generateOrderNumber } from "./lib/materialCalculator";
 import { MATERIAL_DEFAULTS } from "./lib/materialConstants";
+import { generateMaterialOrderPDF } from "./lib/materialOrderPDF";
 import { 
   normalizeRole, 
   isOwner, 
@@ -1084,6 +1085,75 @@ export const appRouter = router({
           id: key,
           ...value,
         }));
+      }),
+
+    // Generate Material Order PDF
+    generateMaterialOrderPDF: protectedProcedure
+      .input(z.object({
+        jobId: z.number(),
+        jobAddress: z.string(),
+        shingleSystem: z.string(),
+        shingleColor: z.string(),
+        wastePercent: z.number(),
+        calculatedItems: z.object({
+          shingleBundles: z.number(),
+          starterBundles: z.number(),
+          hipRidgeBundles: z.number(),
+          underlaymentRolls: z.number(),
+          iceWaterRolls: z.number(),
+          nailBoxes: z.number(),
+        }),
+        accessories: z.object({
+          dripEdge: z.number(),
+          pipeBoots: z.number(),
+          gooseNecks: z.number(),
+          sprayPaint: z.number(),
+        }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Get job to check permissions
+        const [job] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
+        if (!job) throw new Error("Job not found");
+
+        if (!canViewJob(ctx.user, job)) {
+          throw new Error("You don't have permission to access this job");
+        }
+
+        console.log(`[GenerateMaterialOrderPDF] Generating PDF for job ${input.jobId}`);
+
+        // Generate PDF
+        const pdfBuffer = await generateMaterialOrderPDF({
+          jobAddress: input.jobAddress,
+          orderDate: new Date().toLocaleDateString(),
+          orderedBy: ctx.user?.name || ctx.user?.email || 'Unknown',
+          shingleSystem: input.shingleSystem,
+          shingleColor: input.shingleColor,
+          wastePercent: input.wastePercent,
+          calculatedItems: input.calculatedItems,
+          accessories: input.accessories,
+        });
+
+        // Upload PDF to storage
+        const timestamp = Date.now();
+        const pdfPath = `material-orders/${input.jobId}/order-${timestamp}.pdf`;
+        
+        try {
+          await storagePut(pdfPath, pdfBuffer, "application/pdf");
+          const pdfUrl = await storageGet(pdfPath);
+
+          console.log(`[GenerateMaterialOrderPDF] PDF uploaded: ${pdfPath}`);
+
+          return {
+            success: true,
+            pdfUrl,
+          };
+        } catch (error) {
+          console.error("[GenerateMaterialOrderPDF] Error uploading PDF:", error);
+          throw new Error("Failed to upload PDF");
+        }
       }),
 
     // Delete lead (Owner only)
