@@ -36,6 +36,7 @@ import {
   Maximize2,
   Paperclip,
   FileDown,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +51,7 @@ import { JobPipelineTracker } from "@/components/JobPipelineTracker";
 import { MentionInput } from "@/components/MentionInput";
 import { RoofingReportView } from "@/components/RoofingReportView";
 import { MaterialEmailDialog } from "@/components/crm/MaterialEmailDialog";
+import { ProposalCalculator } from "@/components/crm/ProposalCalculator";
 
 // Helper function to format mentions in messages
 const formatMentions = (text: string) => {
@@ -149,6 +151,7 @@ const FIELD_TYPE_CONFIG: Record<string, { icon: typeof CheckCircle; color: strin
 // Tab configuration
 const TABS = [
   { key: "overview", label: "Overview", icon: User },
+  { key: "proposal", label: "Proposal", icon: Calculator, requiresStage: ["prospect", "approved", "project_scheduled", "completed", "invoiced", "closed_deal"] },
   { key: "production_report", label: "Production Report", icon: Grid3X3 },
   { key: "documents", label: "Documents", icon: FileText },
   { key: "photos", label: "Photos", icon: Image },
@@ -772,10 +775,13 @@ export default function JobDetail() {
   const canDelete = jobPermissions?.canDelete ?? false;
   const canViewHistory = jobPermissions?.canViewHistory ?? false;
 
-  // Filter tabs based on permissions
+  // Filter tabs based on permissions and job stage
   const visibleTabs = TABS.filter(tab => {
     if (tab.requiresPermission === "canViewHistory") {
       return canViewHistory;
+    }
+    if ((tab as any).requiresStage) {
+      return (tab as any).requiresStage.includes(job.status);
     }
     return true;
   });
@@ -2031,6 +2037,25 @@ export default function JobDetail() {
                   </CardContent>
                 </Card>
               )}
+            </div>
+          )}
+
+          {/* Proposal Tab */}
+          {activeTab === "proposal" && (
+            <div>
+              <ProposalCalculator
+                jobId={jobId}
+                roofArea={(job as any).solarApiData?.roofArea}
+                manualAreaSqFt={(job as any).manualAreaSqFt}
+                currentPricePerSq={(job as any).pricePerSq}
+                currentTotalPrice={(job as any).totalPrice}
+                currentCounterPrice={(job as any).counterPrice}
+                currentPriceStatus={(job as any).priceStatus}
+                userRole={permissions?.role || "user"}
+                onUpdate={() => {
+                  refetch();
+                }}
+              />
             </div>
           )}
 
