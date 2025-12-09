@@ -53,16 +53,34 @@ export function serveStatic(app: Express) {
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
       : path.resolve(import.meta.dirname, "public");
+  
+  console.log(`[Static] Serving static files from: ${distPath}`);
+  
   if (!fs.existsSync(distPath)) {
     console.error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
+      `[Static] Could not find the build directory: ${distPath}, make sure to build the client first`
     );
+  } else {
+    console.log(`[Static] ✓ Static directory exists`);
   }
 
+  // Serve static files (images, css, js, etc.)
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // Serve index.html for frontend routes (SPA fallback)
+  // This should be registered BEFORE the 404 handler
+  app.get("*", (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith("/api/") || req.path.startsWith("/oauth/")) {
+      return next();
+    }
+    
+    const indexPath = path.resolve(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error(`[Static] index.html not found at: ${indexPath}`);
+      next();
+    }
   });
 }

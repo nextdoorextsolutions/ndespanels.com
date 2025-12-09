@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { serveStatic } from "./vite";
 
 // ============================================
 // Environment Variable Validation
@@ -246,9 +247,16 @@ if (process.env.NODE_ENV === "development") {
   })();
 } else {
   // Production mode (Render)
-  // Register handlers immediately since there's no Vite middleware
+  // IMPORTANT: Middleware order matters!
+  // 1. Serve static files (images, css, js) and SPA fallback
+  console.log('[Server] Setting up static file serving for production');
+  serveStatic(app);
+  
+  // 2. Register 404 handler (only for API routes that don't match)
   console.log('[Server] Registering 404 and error handlers for production');
   register404Handler();
+  
+  // 3. Register error handler (MUST be last)
   registerErrorHandler();
   
   app.listen(port, () => {
