@@ -41,13 +41,16 @@ export default function CRMLeads() {
     const params = new URLSearchParams(window.location.search);
     const statusParam = params.get("status");
     const dealTypeParam = params.get("dealType");
+    const paymentTypeParam = params.get("paymentType"); // Support paymentType as alias
     
     if (statusParam && STATUS_OPTIONS.some(opt => opt.value === statusParam)) {
       setStatusFilter(statusParam);
     }
     
-    if (dealTypeParam && ["insurance", "cash", "financed"].includes(dealTypeParam)) {
-      setDealTypeFilter(dealTypeParam);
+    // Support both dealType and paymentType parameters
+    const dealType = dealTypeParam || paymentTypeParam;
+    if (dealType && ["insurance", "cash", "financed"].includes(dealType)) {
+      setDealTypeFilter(dealType);
     }
   }, []);
   const [newJobForm, setNewJobForm] = useState({
