@@ -3120,8 +3120,8 @@ export const appRouter = router({
           validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         };
 
-        // Generate PDF preview (without signature)
-        const { generateProposalPDF } = await import('./lib/pdfGenerator');
+        // Generate PDF preview (without signature) using template
+        const { generateProposalPDF } = await import('./lib/pdfTemplateGenerator');
         const pdfBuffer = await generateProposalPDF(proposalData);
 
         // Return PDF as base64 for preview
@@ -3187,8 +3187,8 @@ export const appRouter = router({
           signatureDate: signatureDate,
         };
 
-        // Generate PDF with signature
-        const { generateProposalPDF } = await import('./lib/pdfGenerator');
+        // Generate PDF with signature using template
+        const { generateProposalPDF } = await import('./lib/pdfTemplateGenerator');
         const pdfBuffer = await generateProposalPDF(proposalData);
 
         // Save to Supabase storage
