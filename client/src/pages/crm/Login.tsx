@@ -37,10 +37,12 @@ export default function CRMLogin() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-slate-800/50 border-slate-700 backdrop-blur-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20">
-              <Shield className="h-10 w-10 text-white" />
-            </div>
+          <div className="mx-auto mb-6 flex justify-center">
+            <img 
+              src="/images/logo.jpg" 
+              alt="Next Door Exterior Solutions" 
+              className="h-24 w-auto object-contain"
+            />
           </div>
           <CardTitle className="text-2xl text-white">NextDoor CRM</CardTitle>
           <CardDescription className="text-slate-400">
@@ -59,7 +61,7 @@ export default function CRMLogin() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-teal-500 focus:ring-teal-500"
+                  className="pl-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-[#00d4aa] focus:ring-[#00d4aa]"
                   disabled={loginMutation.isPending}
                 />
               </div>
@@ -75,7 +77,7 @@ export default function CRMLogin() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-teal-500 focus:ring-teal-500"
+                  className="pl-10 pr-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-[#00d4aa] focus:ring-[#00d4aa]"
                   disabled={loginMutation.isPending}
                 />
                 <button
@@ -91,7 +93,7 @@ export default function CRMLogin() {
             <Button 
               type="submit"
               disabled={loginMutation.isPending}
-              className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-semibold py-6 shadow-lg shadow-teal-500/20"
+              className="w-full bg-gradient-to-r from-[#00d4aa] to-[#00b894] hover:from-[#00e6bc] hover:to-[#00d4aa] text-black font-semibold py-6 shadow-lg shadow-[#00d4aa]/20"
             >
               {loginMutation.isPending ? (
                 <>
