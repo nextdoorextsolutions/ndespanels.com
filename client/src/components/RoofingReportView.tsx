@@ -29,6 +29,48 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [manualAreaSqFt, setManualAreaSqFt] = useState<number | null>(null);
   const [drawnPolygon, setDrawnPolygon] = useState<google.maps.Polygon | null>(null);
+  const [showPitchDialog, setShowPitchDialog] = useState(false);
+  const [measuredArea, setMeasuredArea] = useState<number>(0);
+  const [pitchInput, setPitchInput] = useState<string>('4/12');
+
+  // Handle saving manual measurement with pitch
+  const handleSaveManualMeasurement = () => {
+    // Parse pitch (e.g., "4/12" -> 4)
+    const pitchMatch = pitchInput.match(/(\d+)/);
+    const pitch = pitchMatch ? parseInt(pitchMatch[1]) : 4;
+    
+    // Calculate pitch multiplier (approximate)
+    // Flat = 1.0, 4/12 = 1.054, 6/12 = 1.118, 8/12 = 1.202, 12/12 = 1.414
+    const pitchMultipliers: { [key: number]: number } = {
+      0: 1.0,
+      1: 1.003,
+      2: 1.014,
+      3: 1.031,
+      4: 1.054,
+      5: 1.083,
+      6: 1.118,
+      7: 1.158,
+      8: 1.202,
+      9: 1.250,
+      10: 1.302,
+      11: 1.357,
+      12: 1.414,
+    };
+    
+    const multiplier = pitchMultipliers[pitch] || 1.054;
+    const adjustedArea = measuredArea * multiplier;
+    
+    // Update metrics
+    setManualAreaSqFt(adjustedArea);
+    setMetrics(prev => prev ? {
+      ...prev,
+      totalArea: adjustedArea,
+      predominantPitch: pitch,
+    } : null);
+    
+    setShowPitchDialog(false);
+    toast.success(`Manual measurement saved: ${Math.round(adjustedArea)} sq ft (${pitchInput} pitch)`);
+  };
 
   // Calculate metrics on mount
   useEffect(() => {
@@ -256,6 +298,47 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
                     <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
                   </div>
                 )}
+                
+                {/* Start Manual Measurement Button Overlay */}
+                {imageLoaded && !isDrawingMode && (
+                  <div className="absolute top-4 left-4">
+                    <Button
+                      onClick={() => setIsDrawingMode(true)}
+                      className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold shadow-lg"
+                    >
+                      <Ruler className="w-4 h-4 mr-2" />
+                      Start Manual Measurement
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Drawing Mode Active Indicator */}
+                {isDrawingMode && (
+                  <div className="absolute top-4 left-4 right-4 bg-blue-900/90 border border-blue-500 rounded-lg p-3 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Ruler className="w-5 h-5 text-blue-200 animate-pulse" />
+                        <span className="text-white font-semibold">
+                          Click on the map to draw the roof outline
+                        </span>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          setIsDrawingMode(false);
+                          if (drawnPolygon) {
+                            drawnPolygon.setMap(null);
+                            setDrawnPolygon(null);
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700 text-white border-red-500"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Manual Drawing Tool - Show when no 3D coverage */}
@@ -279,6 +362,53 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
                       toast.success('Manual measurements saved!');
                     }}
                   />
+                </div>
+              )}
+
+              {/* Pitch Dialog - Shows after drawing */}
+              {showPitchDialog && (
+                <div className="mt-4 bg-slate-800 border border-slate-700 rounded-lg p-4">
+                  <h3 className="text-white font-semibold mb-3">Roof Measurement Complete</h3>
+                  <p className="text-slate-300 text-sm mb-4">
+                    Measured area: <span className="text-[#00d4aa] font-semibold">{Math.round(measuredArea)} sq ft</span> (flat)
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-slate-300 text-sm font-medium mb-2 block">
+                        What is the roof pitch?
+                      </label>
+                      <Input
+                        value={pitchInput}
+                        onChange={(e) => setPitchInput(e.target.value)}
+                        placeholder="e.g., 4/12, 6/12, 8/12"
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                      <p className="text-slate-400 text-xs mt-1">
+                        Common pitches: 4/12 (standard), 6/12 (steep), 8/12 (very steep), 12/12 (45°)
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleSaveManualMeasurement}
+                        className="flex-1 bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold"
+                      >
+                        Save Measurement
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowPitchDialog(false);
+                          if (drawnPolygon) {
+                            drawnPolygon.setMap(null);
+                            setDrawnPolygon(null);
+                          }
+                        }}
+                        variant="outline"
+                        className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 
