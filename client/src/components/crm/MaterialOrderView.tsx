@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Download } from 'lucide-react';
-import { trpc } from '@/lib/trpc';
+import { FileText, Mail, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import { MaterialEmailDialog } from './MaterialEmailDialog';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 interface MaterialOrderViewProps {
   jobId: number;
@@ -52,6 +53,12 @@ export function MaterialOrderView({
   const [gooseNecks, setGooseNecks] = useState(0);
   const [sprayPaint, setSprayPaint] = useState(0);
 
+  // Email dialog state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+
+  // Auth for role check
+  const { user } = useAuth();
+
   // Calculated quantities
   const [calculatedItems, setCalculatedItems] = useState({
     shingleBundles: 0,
@@ -89,37 +96,21 @@ export function MaterialOrderView({
     });
   }, [roofArea, perimeter, ridgeLength, hipLength, valleyLength, wastePercent]);
 
-  const generatePDF = trpc.crm.generateMaterialOrderPDF.useMutation({
-    onSuccess: (data) => {
-      // Open PDF in new tab
-      window.open(data.pdfUrl, '_blank');
-      toast.success('Material order PDF generated!');
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  // Check if user has permission (Owner or Office only)
+  const canOrderMaterials = user?.role === 'owner' || user?.role === 'office' || user?.role === 'admin';
 
-  const handleGeneratePDF = () => {
+  const handleOpenEmailDialog = () => {
     if (!shingleColor.trim()) {
       toast.error('Please enter a shingle color');
       return;
     }
 
-    generatePDF.mutate({
-      jobId,
-      jobAddress,
-      shingleSystem,
-      shingleColor,
-      wastePercent,
-      calculatedItems,
-      accessories: {
-        dripEdge,
-        pipeBoots,
-        gooseNecks,
-        sprayPaint,
-      },
-    });
+    if (!canOrderMaterials) {
+      toast.error('Only Owner and Office staff can draft material orders');
+      return;
+    }
+
+    setEmailDialogOpen(true);
   };
 
   return (
@@ -291,17 +282,41 @@ export function MaterialOrderView({
         </CardContent>
       </Card>
 
-      {/* Action Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleGeneratePDF}
-          disabled={generatePDF.isPending}
-          className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          {generatePDF.isPending ? 'Generating...' : 'Preview & Send PDF'}
-        </Button>
-      </div>
+      {/* Action Button - Only for Owner and Office */}
+      {canOrderMaterials ? (
+        <div className="flex justify-end">
+          <Button
+            onClick={handleOpenEmailDialog}
+            className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold"
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            Draft Supplier Order
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center gap-2 p-4 bg-orange-900/20 border border-orange-500/50 rounded-lg">
+          <ShieldAlert className="w-5 h-5 text-orange-400" />
+          <p className="text-orange-200">
+            Only Owner and Office staff can draft material orders
+          </p>
+        </div>
+      )}
+
+      {/* Email Dialog */}
+      <MaterialEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        jobAddress={jobAddress}
+        shingleSystem={shingleSystem}
+        shingleColor={shingleColor}
+        calculatedItems={calculatedItems}
+        accessories={{
+          dripEdge,
+          pipeBoots,
+          gooseNecks,
+          sprayPaint,
+        }}
+      />
     </div>
   );
 }
