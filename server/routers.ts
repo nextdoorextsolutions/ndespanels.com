@@ -806,6 +806,12 @@ export const appRouter = router({
         // Fetch Solar API data
         const solarData = await fetchSolarApiData(job.latitude!, job.longitude!);
         
+        // Debug: Verify imageryUrl is present
+        console.log(`[GenerateRoofReport] Solar API response includes imageryUrl: ${!!solarData.imageryUrl}`);
+        if (!solarData.imageryUrl) {
+          console.error(`[GenerateRoofReport] WARNING: No imageryUrl in response!`, solarData);
+        }
+        
         // Update job with Solar API data
         await db.update(reportRequests)
           .set({ 
@@ -814,23 +820,23 @@ export const appRouter = router({
           })
           .where(eq(reportRequests.id, input.jobId));
         
-        console.log(`[GenerateRoofReport] Solar API data saved. Coverage: ${solarData.solarCoverage}`);
+        console.log(`[GenerateRoofReport] Roof API data saved. Coverage: ${solarData.coverage}`);
         
         // Log activity
         await db.insert(activities).values({
           reportRequestId: input.jobId,
           userId: ctx.user?.id,
           activityType: "note_added",
-          description: solarData.solarCoverage 
+          description: solarData.coverage 
             ? "Production measurement report generated" 
-            : "Roof report generation attempted - no solar coverage available for this location",
+            : "Roof report generation attempted - 3D roof data not available for this location",
         });
 
         // Return updated job data
         const [updatedJob] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
         return {
           success: true,
-          solarCoverage: solarData.solarCoverage,
+          coverage: solarData.coverage,
           solarApiData: updatedJob.solarApiData,
         };
       }),

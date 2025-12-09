@@ -24,8 +24,24 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
   // Calculate metrics on mount
   useEffect(() => {
     if (solarApiData) {
-      const calculated = calculateRoofMetrics(solarApiData);
-      setMetrics(calculated);
+      // Check if we have coverage (3D roof data available)
+      if (solarApiData.coverage === false) {
+        // No coverage - set empty metrics for manual entry
+        setMetrics({
+          totalArea: 0,
+          predominantPitch: 0,
+          perimeter: 0,
+          segments: [],
+          eaves: 0,
+          rakes: 0,
+          valleys: 0,
+          ridges: 0,
+          hips: 0
+        });
+      } else {
+        const calculated = calculateRoofMetrics(solarApiData);
+        setMetrics(calculated);
+      }
     }
   }, [solarApiData]);
 
@@ -37,10 +53,26 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Get imagery URL from Solar API
+    // Get imagery URL from API response with fallback
     const imageryUrl = solarApiData.imageryUrl;
     if (!imageryUrl) {
-      console.error('[RoofingReport] No imagery URL found');
+      console.error('[RoofingReport] No imagery URL found in solarApiData:', solarApiData);
+      console.error('[RoofingReport] This should not happen - check server/lib/solarApi.ts');
+      // Construct fallback imagery URL if we have coordinates
+      if (solarApiData.lat && solarApiData.lng) {
+        console.warn('[RoofingReport] Using fallback satellite image from coordinates');
+        const fallbackUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${solarApiData.lat},${solarApiData.lng}&zoom=19&size=600x600&maptype=satellite`;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          setImageLoaded(true);
+        };
+        img.onerror = () => console.error('[RoofingReport] Fallback imagery also failed to load');
+        img.src = fallbackUrl;
+      }
       return;
     }
 
@@ -54,8 +86,10 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
       // Draw satellite image
       ctx.drawImage(img, 0, 0);
 
-      // Draw roof segments with color coding
-      drawRoofSegments(ctx, metrics.segments, canvas.width, canvas.height);
+      // Only draw roof segments if we have coverage (3D data available)
+      if (solarApiData.coverage !== false && metrics.segments.length > 0) {
+        drawRoofSegments(ctx, metrics.segments, canvas.width, canvas.height);
+      }
 
       setImageLoaded(true);
     };
@@ -180,6 +214,17 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Show warning message if no 3D coverage */}
+          {solarApiData?.coverage === false && (
+            <div className="mb-4 p-4 bg-orange-900/30 border border-orange-500/50 rounded-lg">
+              <p className="text-orange-200 font-semibold">
+                ⚠️ 3D Roof Data Not Available
+              </p>
+              <p className="text-orange-300 text-sm mt-1">
+                Automated measurements unavailable for this location. Please perform manual takeoff using the satellite image below.
+              </p>
+            </div>
+          )}
           <div className="relative bg-slate-900 rounded-lg overflow-hidden">
             <canvas
               ref={canvasRef}
@@ -193,29 +238,31 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
             )}
           </div>
 
-          {/* Legend */}
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-1 bg-red-500"></div>
-              <span className="text-sm text-slate-300">Eaves (Gutters)</span>
+          {/* Legend - only show if we have 3D coverage */}
+          {solarApiData?.coverage !== false && (
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-1 bg-red-500"></div>
+                <span className="text-sm text-slate-300">Eaves (Gutters)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-1 bg-blue-500"></div>
+                <span className="text-sm text-slate-300">Rakes (Gables)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-1 bg-green-500"></div>
+                <span className="text-sm text-slate-300">Valleys</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-1 bg-yellow-500"></div>
+                <span className="text-sm text-slate-300">Ridges</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-1 bg-orange-500"></div>
+                <span className="text-sm text-slate-300">Hips</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-1 bg-blue-500"></div>
-              <span className="text-sm text-slate-300">Rakes (Gables)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-1 bg-green-500"></div>
-              <span className="text-sm text-slate-300">Valleys</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-1 bg-yellow-500"></div>
-              <span className="text-sm text-slate-300">Ridges</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-1 bg-orange-500"></div>
-              <span className="text-sm text-slate-300">Hips</span>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -225,8 +272,19 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-slate-400 mb-1">Total Area</p>
-              <p className="text-2xl font-bold text-white">{Math.round(metrics.totalArea)} sq ft</p>
-              <p className="text-xs text-[#00d4aa] mt-1">{(metrics.totalArea / 100).toFixed(1)} squares</p>
+              {solarApiData?.coverage === false ? (
+                <Input
+                  type="number"
+                  placeholder="Enter sq ft"
+                  className="text-center text-2xl font-bold bg-slate-700 border-slate-600 text-white w-32 mx-auto"
+                  min="0"
+                />
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-white">{Math.round(metrics.totalArea)} sq ft</p>
+                  <p className="text-xs text-[#00d4aa] mt-1">{(metrics.totalArea / 100).toFixed(1)} squares</p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -234,8 +292,18 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-slate-400 mb-1">Predominant Pitch</p>
-              <p className="text-2xl font-bold text-white">{metrics.predominantPitch}:12</p>
-              <p className="text-xs text-slate-500 mt-1">Rise : Run</p>
+              {solarApiData?.coverage === false ? (
+                <Input
+                  type="text"
+                  placeholder="e.g., 4"
+                  className="text-center text-2xl font-bold bg-slate-700 border-slate-600 text-white w-20 mx-auto"
+                />
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-white">{metrics.predominantPitch}:12</p>
+                  <p className="text-xs text-slate-500 mt-1">Rise : Run</p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -243,8 +311,19 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-slate-400 mb-1">Total Perimeter</p>
-              <p className="text-2xl font-bold text-white">{formatLinearFeet(metrics.perimeter)}</p>
-              <p className="text-xs text-slate-500 mt-1">Linear feet</p>
+              {solarApiData?.coverage === false ? (
+                <Input
+                  type="number"
+                  placeholder="Enter ft"
+                  className="text-center text-2xl font-bold bg-slate-700 border-slate-600 text-white w-32 mx-auto"
+                  min="0"
+                />
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-white">{formatLinearFeet(metrics.perimeter)}</p>
+                  <p className="text-xs text-slate-500 mt-1">Linear feet</p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -358,7 +437,9 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
           {/* Summary Note */}
           <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
             <p className="text-sm text-blue-200">
-              <strong>Note:</strong> All measurements include a {wasteFactorPercent}% waste factor. 
+              <strong>Note:</strong> {solarApiData?.coverage === false 
+                ? 'Manual measurements required. Enter all values in the fields above and in the table. '
+                : `All measurements include a ${wasteFactorPercent}% waste factor. `}
               Wall flashing must be measured manually as it cannot be detected from aerial imagery.
             </p>
           </div>

@@ -558,10 +558,10 @@ export default function JobDetail() {
 
   const generateReport = trpc.crm.generateRoofReport.useMutation({
     onSuccess: (data) => {
-      if (data.solarCoverage) {
+      if (data.coverage) {
         toast.success("Production report generated successfully!");
       } else {
-        toast.warning("No solar coverage available for this location");
+        toast.warning("3D Roof Data Not Available - Manual measurements required");
       }
       refetch();
     },

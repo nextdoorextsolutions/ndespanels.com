@@ -45,58 +45,78 @@ export async function fetchSolarApiData(
   latitude: number,
   longitude: number
 ): Promise<{
-  solarCoverage: boolean;
+  coverage: boolean;
+  lat: number;
+  lng: number;
+  imageryUrl: string;
+  solarPotential?: any;
   roofArea?: number;
-  solarPotential?: number;
   [key: string]: any;
 }> {
   if (!process.env.GOOGLE_MAPS_API_KEY) {
-    console.warn("[SolarAPI] Missing GOOGLE_MAPS_API_KEY - returning no coverage");
+    console.warn("[RoofAPI] Missing GOOGLE_MAPS_API_KEY - returning no coverage");
+    const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite`;
     return {
-      solarCoverage: false,
+      coverage: false,
+      lat: latitude,
+      lng: longitude,
+      imageryUrl,
+      solarPotential: undefined,
       message: "Google Maps API key not configured",
     };
   }
 
-  console.log(`[SolarAPI] Fetching data for coordinates: ${latitude}, ${longitude}`);
+  console.log(`[RoofAPI] Fetching data for coordinates: ${latitude}, ${longitude}`);
+  console.log(`[RoofAPI] DEBUG - Latitude: ${latitude}, Longitude: ${longitude}`);
+  console.log(`[RoofAPI] Using findClosest endpoint (no quality filter - accepting any quality level)`);
 
   try {
-    const solarUrl = `https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude=${latitude}&location.longitude=${longitude}&requiredQuality=HIGH&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+    const solarUrl = `https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude=${latitude}&location.longitude=${longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
 
     const solarRes = await fetch(solarUrl);
     
     if (!solarRes.ok) {
       // Handle 404 (No coverage) specifically
       if (solarRes.status === 404) {
-        console.log("[SolarAPI] No solar coverage available for this location");
+        console.log("[RoofAPI] No 3D roof coverage available for this location - returning fallback with satellite imagery");
+        console.log(`[RoofAPI] DEBUG - 404 received for coordinates: ${latitude}, ${longitude}`);
+        console.log(`[RoofAPI] DEBUG - Check if pin is on roof: https://www.google.com/maps?q=${latitude},${longitude}`);
+        const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`;
         return { 
-          solarCoverage: false, 
-          latitude, 
-          longitude,
-          message: "No solar data available for this location"
+          coverage: false, 
+          lat: latitude, 
+          lng: longitude,
+          imageryUrl,
+          solarPotential: undefined,
+          message: "3D Roof Data Not Available"
         };
       }
-      throw new Error(`Solar API Error: ${solarRes.statusText}`);
+      throw new Error(`Roof API Error: ${solarRes.statusText}`);
     }
 
     const solarData = await solarRes.json();
     
-    console.log("[SolarAPI] Successfully fetched solar data");
+    console.log("[RoofAPI] Successfully fetched 3D roof data");
     
     // Return combined data
     return {
-      solarCoverage: true,
-      latitude,
-      longitude,
+      coverage: true,
+      lat: latitude,
+      lng: longitude,
+      imageryUrl: solarData.imageryUrl || `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`,
       ...solarData
     };
   } catch (error) {
-    console.error("[SolarAPI] Error fetching solar data:", error);
+    console.error("[RoofAPI] Error fetching roof data:", error);
+    const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`;
     return {
-      solarCoverage: false,
-      latitude,
-      longitude,
+      coverage: false,
+      lat: latitude,
+      lng: longitude,
+      imageryUrl,
+      solarPotential: undefined,
       error: error instanceof Error ? error.message : "Unknown error",
+      message: "3D Roof Data Not Available"
     };
   }
 }
@@ -120,6 +140,10 @@ export async function getSolarData(address: string) {
   }
 
   const { lat, lng } = geoJson.results[0].geometry.location;
+  
+  console.log(`[RoofAPI] Geocoded address "${address}" to coordinates:`);
+  console.log(`[RoofAPI] DEBUG - Geocoded Latitude: ${lat}, Longitude: ${lng}`);
+  console.log(`[RoofAPI] DEBUG - Verify location: https://www.google.com/maps?q=${lat},${lng}`);
 
   // B. Call Solar API using the fetched coordinates
   return await fetchSolarApiData(lat, lng);
