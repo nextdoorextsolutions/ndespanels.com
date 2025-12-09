@@ -31,6 +31,8 @@ export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "r
 
 export const priorityEnum = pgEnum("priority", ["low", "medium", "high", "urgent"]);
 
+export const orderStatusEnum = pgEnum("order_status", ["draft", "pending", "sent", "confirmed", "delivered", "cancelled"]);
+
 export const activityTypeEnum = pgEnum("activity_type", [
   "status_change",
   "note_added",
@@ -301,3 +303,53 @@ export const notifications = pgTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+/**
+ * Material Kits - Product coverage rules for material calculations
+ */
+export const materialKits = pgTable("material_kits", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // e.g., "Standard Laminate Shingle"
+  manufacturer: varchar("manufacturer", { length: 100 }), // e.g., "GAF", "Owens Corning"
+  productType: varchar("product_type", { length: 100 }).notNull(), // e.g., "shingle", "underlayment", "accessory"
+  bundlesPerSquare: doublePrecision("bundles_per_square").default(3).notNull(),
+  wasteFactor: doublePrecision("waste_factor").default(1.10).notNull(), // 1.10 = 10% waste
+  starterCoverage: doublePrecision("starter_coverage"), // Linear ft per bundle
+  hipRidgeCoverage: doublePrecision("hip_ridge_coverage"), // Linear ft per bundle
+  beaconSku: varchar("beacon_sku", { length: 100 }), // Beacon product code
+  unitOfMeasure: varchar("unit_of_measure", { length: 50 }).default("bundle").notNull(), // bundle, roll, piece, box
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type MaterialKit = typeof materialKits.$inferSelect;
+export type InsertMaterialKit = typeof materialKits.$inferInsert;
+
+/**
+ * Material Orders - Generated purchase orders for suppliers
+ */
+export const materialOrders = pgTable("material_orders", {
+  id: serial("id").primaryKey(),
+  reportRequestId: integer("report_request_id").notNull(), // Link to job
+  orderNumber: varchar("order_number", { length: 50 }), // Generated order number
+  status: orderStatusEnum("status").default("draft").notNull(),
+  supplierName: varchar("supplier_name", { length: 255 }).default("Beacon Building Products").notNull(),
+  supplierEmail: varchar("supplier_email", { length: 320 }),
+  shingleColor: varchar("shingle_color", { length: 100 }),
+  materialSystem: varchar("material_system", { length: 100 }), // GAF, OC, etc.
+  deliveryDate: timestamp("delivery_date"),
+  lineItems: jsonb("line_items").notNull(), // Array of {productName, quantity, unit, beaconSku}
+  accessories: jsonb("accessories"), // Manual items like pipe boots, vents
+  totalSquares: doublePrecision("total_squares"),
+  notes: text("notes"),
+  pdfUrl: varchar("pdf_url", { length: 500 }), // Link to generated PDF
+  csvUrl: varchar("csv_url", { length: 500 }), // Link to generated CSV
+  createdBy: integer("created_by"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type MaterialOrder = typeof materialOrders.$inferSelect;
+export type InsertMaterialOrder = typeof materialOrders.$inferInsert;
