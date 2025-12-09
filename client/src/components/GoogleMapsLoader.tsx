@@ -6,9 +6,18 @@ interface GoogleMapsLoaderProps {
 
 export function GoogleMapsLoader({ children }: GoogleMapsLoaderProps) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY || "AIzaSyA7QSM-fqUn4grHM6OYddNgKzK7uMlBY1I";
+  const [error, setError] = useState<string | null>(null);
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
   useEffect(() => {
+    // Safety check: Ensure API key is present
+    if (!apiKey) {
+      const errorMsg = '❌ Missing VITE_GOOGLE_MAPS_KEY environment variable. Please add it to your .env file.';
+      console.error(errorMsg);
+      setError(errorMsg);
+      return;
+    }
+
     // Check if already loaded with all required libraries
     if (window.google?.maps?.places && window.google?.maps?.drawing && window.google?.maps?.geometry) {
       setIsLoaded(true);
@@ -32,11 +41,13 @@ export function GoogleMapsLoader({ children }: GoogleMapsLoaderProps) {
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      console.log('[GoogleMapsLoader] Google Maps API loaded');
+      console.log('[GoogleMapsLoader] ✅ Google Maps API loaded successfully');
       setIsLoaded(true);
     };
     script.onerror = () => {
-      console.error('[GoogleMapsLoader] Failed to load Google Maps API');
+      const errorMsg = '❌ Failed to load Google Maps API. Check your API key and network connection.';
+      console.error('[GoogleMapsLoader]', errorMsg);
+      setError(errorMsg);
     };
 
     document.head.appendChild(script);
@@ -45,6 +56,21 @@ export function GoogleMapsLoader({ children }: GoogleMapsLoaderProps) {
       // Cleanup if needed
     };
   }, [apiKey]);
+
+  // Show error state if API key is missing or loading failed
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-900">
+        <div className="max-w-md p-6 bg-red-900/20 border border-red-500 rounded-lg">
+          <h3 className="text-red-400 font-semibold mb-2">Google Maps Configuration Error</h3>
+          <p className="text-slate-300 text-sm">{error}</p>
+          <p className="text-slate-400 text-xs mt-3">
+            Add <code className="bg-slate-800 px-2 py-1 rounded">VITE_GOOGLE_MAPS_KEY</code> to your .env file
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isLoaded) {
     return (
