@@ -554,6 +554,9 @@ export const appRouter = router({
           // Insurance
           insuranceCarrier: input.insuranceCarrier || null,
           claimNumber: input.claimNumber || null,
+          // Assignment - automatically assign to creator
+          assignedTo: ctx.user.id,
+          teamLeadId: ctx.user.teamLeadId || null,
           status: "prospect",
           priority: "medium" as const,
           handsOnInspection: false,
