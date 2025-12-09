@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { type Express } from "express";
 import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
@@ -7,7 +6,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
-export async function setupVite(app: Express, server: Server) {
+export async function setupVite(app: any, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -22,7 +21,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use("*", async (req: any, res: any, next: any) => {
     const url = req.originalUrl;
 
     try {
@@ -48,7 +47,10 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-export function serveStatic(app: Express, expressModule: any) {
+export async function serveStatic(app: any) {
+  // Import express at runtime (it's available in production as a dependency)
+  const express = await import("express");
+  
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
@@ -65,11 +67,11 @@ export function serveStatic(app: Express, expressModule: any) {
   }
 
   // Serve static files (images, css, js, etc.)
-  app.use(expressModule.static(distPath));
+  app.use(express.default.static(distPath));
 
   // Serve index.html for frontend routes (SPA fallback)
   // This should be registered BEFORE the 404 handler
-  app.get("*", (req, res, next) => {
+  app.get("*", (req: any, res: any, next: any) => {
     // Skip API routes
     if (req.path.startsWith("/api/") || req.path.startsWith("/oauth/")) {
       return next();
