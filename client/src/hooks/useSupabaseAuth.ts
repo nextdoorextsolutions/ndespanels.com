@@ -105,21 +105,47 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
-      if (session?.user) {
-        // Sync to CRM on initial load if authenticated
-        await syncToCRM(session.user);
-      }
-      
+    // Get initial session with timeout fallback
+    const sessionTimeout = setTimeout(() => {
+      // If getSession takes too long, assume no session and show login form
       setState(prev => ({
         ...prev,
-        user: session?.user ?? null,
-        session,
+        user: null,
+        session: null,
         loading: false,
-        error: error ?? null,
+        error: null,
       }));
-    });
+    }, 2000); // 2 second timeout
+
+    supabase.auth.getSession()
+      .then(async ({ data: { session }, error }) => {
+        clearTimeout(sessionTimeout);
+        
+        if (session?.user) {
+          // Sync to CRM on initial load if authenticated
+          await syncToCRM(session.user);
+        }
+        
+        setState(prev => ({
+          ...prev,
+          user: session?.user ?? null,
+          session,
+          loading: false,
+          error: error ?? null,
+        }));
+      })
+      .catch((err) => {
+        clearTimeout(sessionTimeout);
+        console.error("[Auth] Failed to get session:", err);
+        // On error, assume no session and show login form
+        setState(prev => ({
+          ...prev,
+          user: null,
+          session: null,
+          loading: false,
+          error: null,
+        }));
+      });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -145,6 +171,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     );
 
     return () => {
+      clearTimeout(sessionTimeout);
       subscription.unsubscribe();
     };
   }, []);
