@@ -79,6 +79,36 @@ const formatMentions = (text: string) => {
   return parts.length > 0 ? parts : text;
 };
 
+// Helper function to format mentions in messages
+const formatMentions = (text: string) => {
+  // Replace @[userId:userName] with styled mention
+  const mentionRegex = /@\[(\d+):([^\]]+)\]/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = mentionRegex.exec(text)) !== null) {
+    // Add text before mention
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    // Add styled mention
+    parts.push(
+      <span key={match.index} className="text-[#00d4aa] font-semibold">
+        @{match[2]}
+      </span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+};
+
 // Pipeline stage order for navigation
 const PIPELINE_ORDER = [
   "lead",

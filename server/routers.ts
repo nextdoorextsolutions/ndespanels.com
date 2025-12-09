@@ -713,7 +713,7 @@ export const appRouter = router({
       .input(z.object({
         id: z.number(),
         fullName: z.string().optional(),
-        email: z.string().email().optional(),
+        email: z.union([z.string().email(), z.literal('')]).optional(),
         phone: z.string().optional(),
         address: z.string().optional(),
         cityStateZip: z.string().optional(),
@@ -1580,7 +1580,7 @@ export const appRouter = router({
         targetUserId: z.number(),
         data: z.object({
           name: z.string().min(1).optional(),
-          email: z.string().email().optional(),
+          email: z.union([z.string().email(), z.literal('')]).optional(),
           phone: z.string().optional(),
           role: z.enum(["user", "admin", "owner", "office", "sales_rep", "project_manager", "team_lead", "field_crew"]).optional(),
           repCode: z.string().optional(),
@@ -2603,7 +2603,7 @@ export const appRouter = router({
           role: users.role,
         })
         .from(users)
-        .where(eq(users.isActive, true)) // Only show active users
+.where(and(isNotNull(users.name), eq(users.isActive, true))) // Only show active users with names
         .orderBy(users.name);
 
         return allUsers;

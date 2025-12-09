@@ -282,3 +282,9 @@
 - [x] Fix Sign Out 404 - redirect to / instead of /login
 - [x] Add Team Member button to TeamManagement page (empty state)
 - [x] Create dialog/modal for adding new team members by email and role (already existed)
+- [x] Fix customer info update 400 error (email validation now allows empty strings)
+
+## Bug Fixes (Dec 2024)
+- [x] Fix login page logo not displaying in production (added publicDir to vite.config.ts)
+- [x] Fix 403 errors on roof report generator (GOOGLE_MAPS_API_KEY env var - user corrected in Render)
+- [ ] Fix "3D model not available" popup (depends on Google Solar API data availability per address)
