@@ -522,7 +522,9 @@ export const appRouter = router({
         accessInstructions: z.string().optional(),
         // Insurance
         insuranceCarrier: z.string().optional(),
+        policyNumber: z.string().optional(),
         claimNumber: z.string().optional(),
+        deductible: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -553,7 +555,9 @@ export const appRouter = router({
           accessInstructions: input.accessInstructions || null,
           // Insurance
           insuranceCarrier: input.insuranceCarrier || null,
+          policyNumber: input.policyNumber || null,
           claimNumber: input.claimNumber || null,
+          deductible: input.deductible ? input.deductible.toString() : null,
           // Assignment - automatically assign to creator
           assignedTo: ctx.user.id,
           teamLeadId: ctx.user.teamLeadId || null,
@@ -791,6 +795,74 @@ export const appRouter = router({
             userId: ctx.user?.id,
             activityType: "note_added",
             description: `Customer info updated: ${Object.keys(updateData).join(", ")}`,
+          });
+        }
+
+        return { success: true };
+      }),
+
+    // Update insurance info
+    updateInsuranceInfo: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        insuranceCarrier: z.string().nullable().optional(),
+        policyNumber: z.string().nullable().optional(),
+        claimNumber: z.string().nullable().optional(),
+        deductible: z.number().nullable().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Get current job data
+        const [currentJob] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.id));
+        if (!currentJob) throw new Error("Job not found");
+
+        // Check permission
+        const user = ctx.user;
+        const teamMemberIds = user && isTeamLead(user) ? await getTeamMemberIds(db, user.id) : [];
+        if (!canEditJob(user, currentJob, teamMemberIds)) {
+          throw new Error("You don't have permission to edit this job");
+        }
+
+        const updateData: Record<string, unknown> = {};
+        const fieldsToCheck = [
+          { key: "insuranceCarrier", current: currentJob.insuranceCarrier, new: input.insuranceCarrier },
+          { key: "policyNumber", current: currentJob.policyNumber, new: input.policyNumber },
+          { key: "claimNumber", current: currentJob.claimNumber, new: input.claimNumber },
+        ];
+
+        for (const field of fieldsToCheck) {
+          if (field.new !== undefined && field.new !== field.current) {
+            updateData[field.key] = field.new;
+            await logEditHistory(db, input.id, user!.id, field.key, String(field.current || ""), String(field.new || ""), "update", ctx);
+          }
+        }
+
+        // Handle deductible (numeric field)
+        if (input.deductible !== undefined && input.deductible !== (currentJob.deductible ? parseFloat(currentJob.deductible) : null)) {
+          updateData.deductible = input.deductible !== null ? input.deductible.toString() : null;
+          await logEditHistory(
+            db, 
+            input.id, 
+            user!.id, 
+            "deductible", 
+            currentJob.deductible ? String(currentJob.deductible) : "", 
+            input.deductible !== null ? String(input.deductible) : "", 
+            "update", 
+            ctx
+          );
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await db.update(reportRequests).set(updateData).where(eq(reportRequests.id, input.id));
+          
+          // Log activity
+          await db.insert(activities).values({
+            reportRequestId: input.id,
+            userId: ctx.user?.id,
+            activityType: "note_added",
+            description: `Insurance info updated: ${Object.keys(updateData).join(", ")}`,
           });
         }
 

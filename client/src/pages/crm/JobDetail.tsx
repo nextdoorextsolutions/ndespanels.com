@@ -48,6 +48,7 @@ import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { useRealtimeJob } from "@/hooks/useRealtimeJob";
 import { JobPipelineTracker } from "@/components/JobPipelineTracker";
+import { InsuranceInfoCard } from "@/components/crm/InsuranceInfoCard";
 import { MentionInput } from "@/components/MentionInput";
 import { RoofingReportView } from "@/components/RoofingReportView";
 import { MaterialEmailDialog } from "@/components/crm/MaterialEmailDialog";
@@ -1323,6 +1324,18 @@ export default function JobDetail() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Insurance Information Card */}
+              {job.dealType === 'insurance' && (
+                <InsuranceInfoCard
+                  jobId={jobId}
+                  insuranceCarrier={job.insuranceCarrier}
+                  policyNumber={job.policyNumber}
+                  claimNumber={job.claimNumber}
+                  deductible={job.deductible}
+                  onUpdate={refetch}
+                />
+              )}
 
               {/* Customer Portal Status Message */}
               <CustomerStatusEditor 
