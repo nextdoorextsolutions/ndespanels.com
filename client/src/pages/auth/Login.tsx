@@ -52,21 +52,11 @@ export default function Login() {
         <CardHeader className="text-center space-y-4">
           {/* Logo */}
           <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-full border-2 border-cyan-500/50 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-[0_0_20px_rgba(0,255,240,0.2)]">
+            <div className="w-24 h-24 rounded-full border-2 border-cyan-500/50 flex items-center justify-center bg-black shadow-[0_0_20px_rgba(0,255,240,0.3)]">
               <img 
                 src="/images/logo.jpg" 
-                alt="NextDoor Logo" 
-                className="w-full h-full object-cover rounded-full"
-                onError={(e) => {
-                  // Show fallback icon if image fails to load
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    e.currentTarget.style.display = 'none';
-                    const icon = document.createElement('div');
-                    icon.innerHTML = '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>';
-                    parent.appendChild(icon.firstChild!);
-                  }
-                }}
+                alt="NextDoor Exterior Solutions Logo" 
+                className="w-full h-full object-contain rounded-full p-1"
               />
             </div>
           </div>
