@@ -147,7 +147,7 @@ export default function CRMLeads() {
     const matchesSearch = search === "" || 
       lead.fullName.toLowerCase().includes(search.toLowerCase()) ||
       lead.address.toLowerCase().includes(search.toLowerCase()) ||
-      lead.email.toLowerCase().includes(search.toLowerCase());
+      (lead.email || '').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
   });

@@ -38,7 +38,7 @@ export function MentionInput({
   const { data: allUsers = [] } = trpc.crm.getAllUsers.useQuery();
 
   // Filter users based on search
-  const filteredUsers = allUsers.filter((user) => {
+  const filteredUsers = allUsers.filter((user: User) => {
     const searchLower = mentionSearch.toLowerCase();
     return (
       user.name?.toLowerCase().includes(searchLower) ||
@@ -165,7 +165,7 @@ export function MentionInput({
             <div className="text-xs text-slate-400 px-2 py-1 mb-1">
               Mention a team member
             </div>
-            {filteredUsers.map((user, index) => (
+            {filteredUsers.map((user: User, index: number) => (
               <button
                 key={user.id}
                 onClick={(e) => {

@@ -33,7 +33,7 @@ export function NotificationDropdown() {
     },
   });
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   const handleNotificationClick = (notification: any) => {
     // Mark as read
@@ -98,7 +98,7 @@ export function NotificationDropdown() {
           </div>
         ) : (
           <div className="divide-y">
-            {notifications.map((notification) => (
+            {notifications.map((notification: any) => (
               <DropdownMenuItem
                 key={notification.id}
                 className={`px-3 py-3 cursor-pointer ${

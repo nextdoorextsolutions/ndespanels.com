@@ -453,6 +453,8 @@ export const appRouter = router({
           dealType: reportRequests.dealType,
           amountPaid: reportRequests.amountPaid,
           assignedTo: reportRequests.assignedTo,
+          promoCode: reportRequests.promoCode,
+          salesRepCode: reportRequests.salesRepCode,
           createdAt: reportRequests.createdAt,
           updatedAt: reportRequests.updatedAt,
         }).from(reportRequests).orderBy(desc(reportRequests.createdAt));
@@ -602,6 +604,11 @@ export const appRouter = router({
         internalNotes: z.string().optional(),
         scheduledDate: z.string().optional(),
         customerStatusMessage: z.string().optional(),
+        attachments: z.array(z.object({
+          fileName: z.string(),
+          fileData: z.string(), // Base64 encoded file data
+          fileType: z.string().optional(),
+        })).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -1918,6 +1925,11 @@ export const appRouter = router({
         jobId: z.number(),
         message: z.string().min(1),
         isInternal: z.boolean().default(true),
+        attachments: z.array(z.object({
+          fileName: z.string(),
+          fileData: z.string(), // Base64 encoded file data
+          fileType: z.string().optional(),
+        })).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -2193,6 +2205,134 @@ export const appRouter = router({
         
         return result;
       }),
+
+    // Get all users for @mention dropdown
+    getAllUsers: protectedProcedure
+      .query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const allUsers = await db.select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+        })
+        .from(users)
+        .where(isNotNull(users.name))
+        .orderBy(users.name);
+
+        return allUsers;
+      }),
+
+    // Get notifications for current user
+    getNotifications: protectedProcedure
+      .query(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        if (!ctx.user?.id) return [];
+
+        const userNotifications = await db.select({
+          id: notifications.id,
+          userId: notifications.userId,
+          createdBy: notifications.createdBy,
+          resourceId: notifications.resourceId,
+          type: notifications.type,
+          content: notifications.content,
+          isRead: notifications.isRead,
+          createdAt: notifications.createdAt,
+        })
+        .from(notifications)
+        .where(eq(notifications.userId, ctx.user.id))
+        .orderBy(desc(notifications.createdAt))
+        .limit(50);
+
+        // Enrich with creator info
+        const creatorIds = Array.from(new Set(userNotifications.map(n => n.createdBy).filter(id => id !== null)));
+        const creators = creatorIds.length > 0
+          ? await db.select({ id: users.id, name: users.name, email: users.email })
+              .from(users)
+              .where(inArray(users.id, creatorIds))
+          : [];
+        
+        const creatorMap = creators.reduce((acc, u) => { acc[u.id] = u; return acc; }, {} as Record<number, any>);
+
+        return userNotifications.map(n => ({
+          ...n,
+          creator: n.createdBy ? creatorMap[n.createdBy] : null,
+        }));
+      }),
+
+    // Mark notification as read
+    markNotificationRead: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        if (!ctx.user?.id) throw new Error("User not authenticated");
+
+        await db.update(notifications)
+          .set({ isRead: true })
+          .where(and(
+            eq(notifications.id, input.id),
+            eq(notifications.userId, ctx.user.id)
+          ));
+
+        return { success: true };
+      }),
+
+    // Mark all notifications as read
+    markAllNotificationsRead: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        if (!ctx.user?.id) throw new Error("User not authenticated");
+
+        await db.update(notifications)
+          .set({ isRead: true })
+          .where(eq(notifications.userId, ctx.user.id));
+
+        return { success: true };
+      }),
+
+    // Mark messages as read for a job
+    markMessagesAsRead: protectedProcedure
+      .input(z.object({ jobId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        if (!ctx.user?.id) throw new Error("User not authenticated");
+
+        // Upsert: update if exists, insert if not
+        const existing = await db.select()
+          .from(jobMessageReads)
+          .where(and(
+            eq(jobMessageReads.jobId, input.jobId),
+            eq(jobMessageReads.userId, ctx.user.id)
+          ))
+          .limit(1);
+
+        if (existing.length > 0) {
+          await db.update(jobMessageReads)
+            .set({ lastReadAt: new Date() })
+            .where(and(
+              eq(jobMessageReads.jobId, input.jobId),
+              eq(jobMessageReads.userId, ctx.user.id)
+            ));
+        } else {
+          await db.insert(jobMessageReads).values({
+            jobId: input.jobId,
+            userId: ctx.user.id,
+            lastReadAt: new Date(),
+          });
+        }
+
+        return { success: true };
+      }),
   }),
 
   // ============ CUSTOMER PORTAL (PUBLIC) ============
@@ -2401,42 +2541,6 @@ export const appRouter = router({
         };
       }),
 
-    // Mark messages as read for a job
-    markMessagesAsRead: protectedProcedure
-      .input(z.object({ jobId: z.number() }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-
-        if (!ctx.user?.id) throw new Error("User not authenticated");
-
-        // Upsert: update if exists, insert if not
-        const existing = await db.select()
-          .from(jobMessageReads)
-          .where(and(
-            eq(jobMessageReads.jobId, input.jobId),
-            eq(jobMessageReads.userId, ctx.user.id)
-          ))
-          .limit(1);
-
-        if (existing.length > 0) {
-          await db.update(jobMessageReads)
-            .set({ lastReadAt: new Date() })
-            .where(and(
-              eq(jobMessageReads.jobId, input.jobId),
-              eq(jobMessageReads.userId, ctx.user.id)
-            ));
-        } else {
-          await db.insert(jobMessageReads).values({
-            jobId: input.jobId,
-            userId: ctx.user.id,
-            lastReadAt: new Date(),
-          });
-        }
-
-        return { success: true };
-      }),
-
     // Get unread message counts for all jobs
     getUnreadCounts: protectedProcedure
       .query(async ({ ctx }) => {
@@ -2498,98 +2602,6 @@ export const appRouter = router({
           .map(msg => msg.jobId);
 
         return unreadJobIds;
-      }),
-
-    // Get all users for @mention dropdown
-    getAllUsers: protectedProcedure
-      .query(async ({ ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-
-        const allUsers = await db.select({
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-        })
-        .from(users)
-        .where(isNotNull(users.name))
-        .orderBy(users.name);
-
-        return allUsers;
-      }),
-
-    // Get notifications for current user
-    getNotifications: protectedProcedure
-      .query(async ({ ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-
-        if (!ctx.user?.id) return [];
-
-        const userNotifications = await db.select({
-          id: notifications.id,
-          userId: notifications.userId,
-          createdBy: notifications.createdBy,
-          resourceId: notifications.resourceId,
-          type: notifications.type,
-          content: notifications.content,
-          isRead: notifications.isRead,
-          createdAt: notifications.createdAt,
-        })
-        .from(notifications)
-        .where(eq(notifications.userId, ctx.user.id))
-        .orderBy(desc(notifications.createdAt))
-        .limit(50);
-
-        // Enrich with creator info
-        const creatorIds = Array.from(new Set(userNotifications.map(n => n.createdBy).filter(id => id !== null)));
-        const creators = creatorIds.length > 0
-          ? await db.select({ id: users.id, name: users.name, email: users.email })
-              .from(users)
-              .where(inArray(users.id, creatorIds))
-          : [];
-        
-        const creatorMap = creators.reduce((acc, u) => { acc[u.id] = u; return acc; }, {} as Record<number, any>);
-
-        return userNotifications.map(n => ({
-          ...n,
-          creator: n.createdBy ? creatorMap[n.createdBy] : null,
-        }));
-      }),
-
-    // Mark notification as read
-    markNotificationRead: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-
-        if (!ctx.user?.id) throw new Error("User not authenticated");
-
-        await db.update(notifications)
-          .set({ isRead: true })
-          .where(and(
-            eq(notifications.id, input.id),
-            eq(notifications.userId, ctx.user.id)
-          ));
-
-        return { success: true };
-      }),
-
-    // Mark all notifications as read
-    markAllNotificationsRead: protectedProcedure
-      .mutation(async ({ ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-
-        if (!ctx.user?.id) throw new Error("User not authenticated");
-
-        await db.update(notifications)
-          .set({ isRead: true })
-          .where(eq(notifications.userId, ctx.user.id));
-
-        return { success: true };
       }),
   }),
 });
