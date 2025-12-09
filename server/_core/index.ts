@@ -250,7 +250,7 @@ if (process.env.NODE_ENV === "development") {
   // IMPORTANT: Middleware order matters!
   // 1. Serve static files (images, css, js) and SPA fallback
   console.log('[Server] Setting up static file serving for production');
-  serveStatic(app);
+  serveStatic(app, express);
   
   // 2. Register 404 handler (only for API routes that don't match)
   console.log('[Server] Registering 404 and error handlers for production');
