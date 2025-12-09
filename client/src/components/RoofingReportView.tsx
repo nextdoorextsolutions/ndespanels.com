@@ -528,11 +528,12 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
         </TabsContent>
       </Tabs>
 
-      {/* Manual Roof Takeoff - Show when manual measurements are required */}
-      {solarApiData?.manualMeasure && solarApiData?.lat && solarApiData?.lng && (
+      {/* Manual Roof Takeoff - Always show button, component handles its own visibility */}
+      {solarApiData?.lat && solarApiData?.lng && (
         <ManualRoofTakeoff
           latitude={solarApiData.lat}
           longitude={solarApiData.lng}
+          forceShow={true}
           onSave={(measurements) => {
             // Update metrics with manual measurements
             setMetrics({

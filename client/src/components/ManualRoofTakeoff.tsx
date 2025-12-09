@@ -9,6 +9,7 @@ interface ManualRoofTakeoffProps {
   latitude: number;
   longitude: number;
   onSave: (measurements: RoofMeasurements) => void;
+  forceShow?: boolean; // Always show the component even if API data is available
 }
 
 interface RoofMeasurements {
@@ -39,7 +40,7 @@ const PITCH_MULTIPLIERS: Record<string, number> = {
 const METERS_TO_SQFT = 10.764;
 const METERS_TO_FEET = 3.28084;
 
-export function ManualRoofTakeoff({ latitude, longitude, onSave }: ManualRoofTakeoffProps) {
+export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = false }: ManualRoofTakeoffProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedPitch, setSelectedPitch] = useState('4/12');
   const [measurements, setMeasurements] = useState<RoofMeasurements | null>(null);

@@ -528,8 +528,8 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        // All authenticated users (including Sales Reps) can create jobs
-        // Sales Reps will be assigned as the owner of jobs they create
+        // All authenticated users can create jobs (Sales Reps, Team Leads, Admins, Owners)
+        // Note: Job will be assigned to the creator by default
 
         const [result] = await db.insert(reportRequests).values({
           fullName: input.fullName,

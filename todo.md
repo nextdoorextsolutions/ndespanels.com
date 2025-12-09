@@ -288,3 +288,9 @@
 - [x] Fix login page logo not displaying in production (added publicDir to vite.config.ts)
 - [x] Fix 403 errors on roof report generator (GOOGLE_MAPS_API_KEY env var - user corrected in Render)
 - [ ] Fix "3D model not available" popup (depends on Google Solar API data availability per address)
+- [x] Fix roof measurement showing data for multiple houses instead of just target property (fixed coordinate mapping to use satellite image bounds based on zoom level)
+
+## Domino Effect Bug Fixes (Dec 9, 2024)
+- [x] Fix 500 crash - solarApi import verified correct (named exports, no void 0 issue)
+- [x] Restore Manual Measure button - now always visible with forceShow prop, not dependent on manualMeasure flag
+- [x] Fix Sales Rep permissions - removed owner/admin restriction from createJob, all authenticated users can now create jobs
