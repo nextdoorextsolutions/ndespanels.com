@@ -1155,6 +1155,15 @@ export default function JobDetail() {
                           <div>
                             <p>{job.address}</p>
                             <p>{job.cityStateZip}</p>
+                            {job.latitude && job.longitude ? (
+                              <p className="text-xs text-[#00d4aa] mt-1">
+                                📍 GPS: {job.latitude.toFixed(6)}, {job.longitude.toFixed(6)}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-slate-500 mt-1">
+                                ⚠️ Location coordinates not set
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>

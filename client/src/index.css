@@ -221,7 +221,8 @@
 
 /* Google Places Autocomplete - Fix z-index for Modal/Dialog */
 .pac-container {
-  z-index: 9999 !important;
+  z-index: 100005 !important; /* Higher than any Modal */
+  pointer-events: auto !important;
   background-color: #1e293b !important; /* slate-800 */
   border: 1px solid #475569 !important; /* slate-600 */
   border-radius: 0.375rem !important;
