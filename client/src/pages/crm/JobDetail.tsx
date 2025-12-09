@@ -629,8 +629,8 @@ export default function JobDetail() {
     
     addMessage.mutate(
       { 
-        leadId: jobId, 
-        note: newMessage || "(File attachment)",
+        jobId: jobId, 
+        message: newMessage || "(File attachment)",
         attachments: attachments.length > 0 ? attachments : undefined,
       },
       {
