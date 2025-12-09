@@ -183,27 +183,33 @@ if (app._router && app._router.stack) {
 }
 
 // ============================================
-// 404 Handler (MUST be after all routes)
+// 404 Handler - Registered later after Vite in dev mode
 // ============================================
-app.use((req: any, res: any) => {
-  console.log('[404] No route matched for:', req.method, req.path);
-  console.log('[404] Original URL:', req.originalUrl);
-  res.status(404).json({ 
-    error: 'Route not found',
-    path: req.path,
-    originalUrl: req.originalUrl,
-    method: req.method 
+// NOTE: In development, this is registered AFTER Vite middleware
+// In production, this is registered immediately since there's no Vite
+const register404Handler = () => {
+  app.use((req: any, res: any) => {
+    console.log('[404] No route matched for:', req.method, req.path);
+    console.log('[404] Original URL:', req.originalUrl);
+    res.status(404).json({ 
+      error: 'Route not found',
+      path: req.path,
+      originalUrl: req.originalUrl,
+      method: req.method 
+    });
   });
-});
+};
 
 // ============================================
 // Error Handler (MUST be last)
 // ============================================
-app.use((err: any, req: any, res: any, _next: any) => {
-  console.error('[ERROR] Unhandled error:', err);
-  console.error('[ERROR] Request was:', req.method, req.path);
-  res.status(500).json({ error: 'Internal server error', message: err.message });
-});
+const registerErrorHandler = () => {
+  app.use((err: any, req: any, res: any, _next: any) => {
+    console.error('[ERROR] Unhandled error:', err);
+    console.error('[ERROR] Request was:', req.method, req.path);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+  });
+};
 
 // ============================================
 // Export for module imports
@@ -225,6 +231,12 @@ if (process.env.NODE_ENV === "development") {
       const server = createServer(app);
       await setupVite(app, server);
       
+      // Register 404 and error handlers AFTER Vite middleware
+      // This ensures Vite can handle frontend routes before 404 kicks in
+      console.log('[Server] Registering 404 and error handlers after Vite setup');
+      register404Handler();
+      registerErrorHandler();
+      
       server.listen(port, () => {
         console.log(`[Server] Dev server running on http://localhost:${port}/`);
       });
@@ -234,6 +246,11 @@ if (process.env.NODE_ENV === "development") {
   })();
 } else {
   // Production mode (Render)
+  // Register handlers immediately since there's no Vite middleware
+  console.log('[Server] Registering 404 and error handlers for production');
+  register404Handler();
+  registerErrorHandler();
+  
   app.listen(port, () => {
     console.log(`[Server] Production server running on port ${port}`);
   });
