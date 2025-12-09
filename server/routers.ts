@@ -18,6 +18,7 @@ import { eq, desc, and, or, like, sql, gte, lte, inArray, isNotNull } from "driz
 import { storagePut, storageGet, STORAGE_BUCKET } from "./storage";
 import { supabaseAdmin } from "./lib/supabase";
 import { extractExifMetadata } from "./lib/exif";
+import { fetchSolarApiData, hasValidCoordinates } from "./lib/solarApi";
 import { 
   normalizeRole, 
   isOwner, 
@@ -577,6 +578,24 @@ export const appRouter = router({
           // Don't fail the job creation if folder creation fails
         }
 
+        // Fetch Solar API data if coordinates are valid
+        if (hasValidCoordinates(input.latitude, input.longitude)) {
+          console.log(`[CreateJob] Fetching Solar API data for job ${newJobId}`);
+          const solarData = await fetchSolarApiData(input.latitude!, input.longitude!);
+          
+          // Update job with Solar API data
+          await db.update(reportRequests)
+            .set({ 
+              solarApiData: solarData as any,
+              updatedAt: new Date()
+            })
+            .where(eq(reportRequests.id, newJobId));
+          
+          console.log(`[CreateJob] Solar API data saved. Coverage: ${solarData.solarCoverage}`);
+        } else {
+          console.log(`[CreateJob] No valid coordinates, skipping Solar API fetch`);
+        }
+
         // Log the creation in edit history
         await logEditHistory(
           db,
@@ -589,7 +608,9 @@ export const appRouter = router({
           ctx
         );
 
-        return newJob;
+        // Fetch updated job with Solar API data
+        const [updatedJob] = await db.select().from(reportRequests).where(eq(reportRequests.id, newJobId));
+        return updatedJob;
       }),
 
     // Update lead (with permission check and edit history)
@@ -761,6 +782,25 @@ export const appRouter = router({
 
         if (Object.keys(updateData).length > 0) {
           await db.update(reportRequests).set(updateData).where(eq(reportRequests.id, input.id));
+          
+          // Check if address changed - if so, fetch new Solar API data
+          const addressChanged = (input.address !== undefined && input.address !== currentLead.address) ||
+                                (input.cityStateZip !== undefined && input.cityStateZip !== currentLead.cityStateZip);
+          
+          if (addressChanged && hasValidCoordinates(currentLead.latitude, currentLead.longitude)) {
+            console.log(`[UpdateCustomerInfo] Address changed for job ${input.id}, fetching new Solar API data`);
+            const solarData = await fetchSolarApiData(currentLead.latitude!, currentLead.longitude!);
+            
+            // Update job with new Solar API data
+            await db.update(reportRequests)
+              .set({ 
+                solarApiData: solarData as any,
+                updatedAt: new Date()
+              })
+              .where(eq(reportRequests.id, input.id));
+            
+            console.log(`[UpdateCustomerInfo] Solar API data updated. Coverage: ${solarData.solarCoverage}`);
+          }
           
           // Log activity
           await db.insert(activities).values({
