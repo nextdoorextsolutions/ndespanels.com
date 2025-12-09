@@ -1,28 +1,53 @@
 // server/lib/solarApi.ts
 
-// 1. Define the Solar API Response Types (Simplified for what we need)
+// 1. Define the Solar API Response Types
 interface SolarData {
-  solarPotential: {
+  name?: string;
+  center?: {
+    latitude: number;
+    longitude: number;
+  };
+  imageryDate?: {
+    year: number;
+    month: number;
+    day: number;
+  };
+  imageryQuality?: string;
+  solarPotential?: {
     maxArrayPanelsCount: number;
     maxArrayAreaMeters2: number;
     wholeRoofStats: {
       areaMeters2: number;
-      steepnessSummary: {
-        cabinetSteepness: string;
-        quantity: number;
-      }[];
+      sunshineQuantiles: number[];
+      groundAreaMeters2: number;
+    };
+    buildingStats: {
+      areaMeters2: number;
+      sunshineQuantiles: number[];
+      groundAreaMeters2: number;
     };
     roofSegmentStats: {
       pitchDegrees: number;
       azimuthDegrees: number;
       stats: {
         areaMeters2: number;
+        sunshineQuantiles: number[];
+        groundAreaMeters2: number;
+      };
+      center: {
+        latitude: number;
+        longitude: number;
       };
       boundingBox: {
         sw: { latitude: number; longitude: number };
         ne: { latitude: number; longitude: number };
       };
+      planeHeightAtCenterMeters: number;
     }[];
+  };
+  boundingBox?: {
+    sw: { latitude: number; longitude: number };
+    ne: { latitude: number; longitude: number };
   };
 }
 
@@ -45,87 +70,83 @@ export async function fetchSolarApiData(
   latitude: number,
   longitude: number
 ): Promise<{
-  coverage: boolean;
-  manualMeasure?: boolean;
-  lat: number;
-  lng: number;
+  solarCoverage: boolean;
+  buildingInsights?: SolarData;
   imageryUrl: string;
-  solarPotential?: any;
   roofArea?: number;
+  latitude: number;
+  longitude: number;
   [key: string]: any;
 }> {
-  if (!process.env.GOOGLE_MAPS_API_KEY) {
-    console.warn("[RoofAPI] Missing GOOGLE_MAPS_API_KEY - returning no coverage");
-    const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite`;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  
+  if (!apiKey) {
+    console.warn("[SolarAPI] Missing GOOGLE_MAPS_API_KEY - returning fallback");
     return {
-      coverage: false,
-      lat: latitude,
-      lng: longitude,
-      imageryUrl,
-      solarPotential: undefined,
+      solarCoverage: false,
+      latitude,
+      longitude,
+      imageryUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite`,
       message: "Google Maps API key not configured",
     };
   }
 
-  console.log(`[RoofAPI] Fetching data for coordinates: ${latitude}, ${longitude}`);
-  console.log(`[RoofAPI] DEBUG - Latitude: ${latitude}, Longitude: ${longitude}`);
-  console.log(`[RoofAPI] Using findClosest endpoint (no quality filter - accepting any quality level)`);
+  console.log(`[SolarAPI] Fetching data for coordinates: ${latitude}, ${longitude}`);
 
   try {
-    const solarUrl = `https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude=${latitude}&location.longitude=${longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+    // Call Google Solar API
+    const solarUrl = `https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude=${latitude}&location.longitude=${longitude}&key=${apiKey}`;
     
-    // Log the URL with masked API key for debugging
-    const maskedUrl = solarUrl.replace(/key=[^&]+/, 'key=***MASKED***');
-    console.log(`[RoofAPI] Request URL: ${maskedUrl}`);
-    console.log(`[RoofAPI] No restrictive parameters - using findClosest with default behavior`);
-
     const solarRes = await fetch(solarUrl);
     
     if (!solarRes.ok) {
-      // Handle 404 (No coverage) specifically
       if (solarRes.status === 404) {
-        console.log("[RoofAPI] No 3D roof coverage available for this location - returning fallback with satellite imagery");
-        console.log(`[RoofAPI] DEBUG - 404 received for coordinates: ${latitude}, ${longitude}`);
-        console.log(`[RoofAPI] DEBUG - Check if pin is on roof: https://www.google.com/maps?q=${latitude},${longitude}`);
-        console.log(`[RoofAPI] This may indicate: (1) No Solar API coverage in this region, (2) Geocode pin on street instead of roof`);
-        const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+        console.log("[SolarAPI] No solar coverage available (404) - providing fallback imagery");
         return { 
-          coverage: false, 
-          manualMeasure: true,
-          lat: latitude, 
-          lng: longitude,
-          imageryUrl,
-          solarPotential: undefined,
-          message: "3D Roof Data Not Available - Manual Measurements Required"
+          solarCoverage: false, 
+          latitude,
+          longitude,
+          imageryUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${apiKey}`,
+          message: "No solar data available for this location - use manual measurements"
         };
       }
-      throw new Error(`Roof API Error: ${solarRes.statusText}`);
+      
+      const errorText = await solarRes.text();
+      console.error(`[SolarAPI] API Error (${solarRes.status}):`, errorText);
+      throw new Error(`Solar API Error: ${solarRes.status} ${solarRes.statusText}`);
     }
 
-    const solarData = await solarRes.json();
+    const buildingInsights: SolarData = await solarRes.json();
     
-    console.log("[RoofAPI] Successfully fetched 3D roof data");
+    console.log("[SolarAPI] Successfully fetched solar data");
+    console.log("[SolarAPI] Building insights available:", !!buildingInsights.solarPotential);
     
-    // Return combined data
+    // Construct imagery URL from building center or use provided coordinates
+    const imgLat = buildingInsights.center?.latitude || latitude;
+    const imgLng = buildingInsights.center?.longitude || longitude;
+    
+    // Use Static Maps API for satellite imagery
+    const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${imgLat},${imgLng}&zoom=20&size=800x800&maptype=satellite&key=${apiKey}`;
+    
+    // Calculate roof area if available
+    const roofArea = buildingInsights.solarPotential?.wholeRoofStats?.areaMeters2;
+    
     return {
-      coverage: true,
-      lat: latitude,
-      lng: longitude,
-      imageryUrl: solarData.imageryUrl || `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`,
-      ...solarData
+      solarCoverage: true,
+      buildingInsights,
+      imageryUrl,
+      roofArea,
+      latitude: imgLat,
+      longitude: imgLng,
     };
   } catch (error) {
-    console.error("[RoofAPI] Error fetching roof data:", error);
-    const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+    console.error("[SolarAPI] Error fetching solar data:", error);
     return {
-      coverage: false,
-      manualMeasure: true,
-      lat: latitude,
-      lng: longitude,
-      imageryUrl,
-      solarPotential: undefined,
+      solarCoverage: false,
+      latitude,
+      longitude,
+      imageryUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${apiKey}`,
       error: error instanceof Error ? error.message : "Unknown error",
-      message: "3D Roof Data Not Available - Manual Measurements Required"
     };
   }
 }
@@ -149,18 +170,17 @@ export async function getSolarData(address: string) {
   }
 
   const { lat, lng } = geoJson.results[0].geometry.location;
-  
-  console.log(`[RoofAPI] Geocoded address "${address}" to coordinates:`);
-  console.log(`[RoofAPI] DEBUG - Geocoded Latitude: ${lat}, Longitude: ${lng}`);
-  console.log(`[RoofAPI] DEBUG - Verify location: https://www.google.com/maps?q=${lat},${lng}`);
+
+  console.log(`[SolarAPI] Geocoded "${address}" to: ${lat}, ${lng}`);
 
   // B. Call Solar API using the fetched coordinates
   return await fetchSolarApiData(lat, lng);
 }
 
-// 5. Helper for Geometry Math (The one that was missing!)
-export function calculateRoofMetrics(solarApiData: any) {
-  if (!solarApiData || !solarApiData.solarPotential) {
+// 5. Helper for Geometry Math
+export function calculateRoofMetrics(buildingInsights: SolarData | undefined) {
+  if (!buildingInsights?.solarPotential) {
+    console.warn("[SolarAPI] No building insights available for roof metrics calculation");
     return {
       totalAreaSqFt: 0,
       predominantPitch: "N/A",
@@ -171,26 +191,39 @@ export function calculateRoofMetrics(solarApiData: any) {
     };
   }
 
-  // Basic conversion (Meters2 to SqFt)
+  // Basic conversion (Meters² to Sq Ft)
   const METERS_TO_SQFT = 10.764;
   const totalArea = Math.round(
-    solarApiData.solarPotential.wholeRoofStats.areaMeters2 * METERS_TO_SQFT
+    buildingInsights.solarPotential.wholeRoofStats.areaMeters2 * METERS_TO_SQFT
   );
 
-  // *Placeholder* logic for linear measurements 
-  // (You can ask Windsurf to improve this specific math later, 
-  // but this stops the crash now).
-  const segments = solarApiData.solarPotential.roofSegmentStats || [];
+  // Get roof segments for pitch calculation
+  const segments = buildingInsights.solarPotential.roofSegmentStats || [];
   
-  // Rough estimation to prevent UI errors while you build the real math
+  // Calculate predominant pitch (most common pitch in segments)
+  let predominantPitch = "N/A";
+  if (segments.length > 0) {
+    // Find the segment with the largest area
+    const largestSegment = segments.reduce((prev, current) => 
+      current.stats.areaMeters2 > prev.stats.areaMeters2 ? current : prev
+    );
+    
+    // Convert pitch degrees to rise/run format (e.g., "4/12")
+    const pitchDegrees = largestSegment.pitchDegrees;
+    const rise = Math.round(Math.tan(pitchDegrees * Math.PI / 180) * 12);
+    predominantPitch = `${rise}/12`;
+  }
+  
+  // Rough estimation for linear measurements
+  // TODO: Improve with actual segment boundary calculations
   const estimatedPerimeter = Math.sqrt(totalArea) * 4; 
   
   return {
     totalAreaSqFt: totalArea,
-    predominantPitch: "4/12", // Placeholder
+    predominantPitch,
     eavesFt: Math.round(estimatedPerimeter * 0.5),
     rakesFt: Math.round(estimatedPerimeter * 0.3),
     ridgesFt: Math.round(estimatedPerimeter * 0.2),
-    valleysFt: 0
+    valleysFt: 0 // TODO: Calculate from segment intersections
   };
 }
