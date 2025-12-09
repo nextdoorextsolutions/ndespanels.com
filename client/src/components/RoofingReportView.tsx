@@ -2,8 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { calculateRoofMetrics, calculateMaterialRequirements, formatLinearFeet, RoofMetrics, RoofSegment } from '@/utils/roofMath';
-import { Download, Ruler, Home } from 'lucide-react';
+import { Download, Ruler, Home, ChevronUp, ChevronDown, Plus, Minus, MapPin } from 'lucide-react';
+import { ManualRoofTakeoff } from './ManualRoofTakeoff';
+import { GoogleStreetView } from './GoogleStreetView';
 
 interface RoofingReportViewProps {
   solarApiData: any;
@@ -205,66 +208,121 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
         </div>
       </div>
 
-      {/* Section A: Visual Map with SVG Overlay */}
-      <Card className="bg-slate-800 border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Home className="w-5 h-5 text-blue-400" />
+      {/* Section A: Tabbed View - Roof Visualization & Site Access */}
+      <Tabs defaultValue="roof" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 bg-slate-800 border border-slate-700">
+          <TabsTrigger value="roof" className="data-[state=active]:bg-slate-700 text-white">
+            <Home className="w-4 h-4 mr-2" />
             Roof Visualization
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Show warning message if no 3D coverage */}
-          {solarApiData?.coverage === false && (
-            <div className="mb-4 p-4 bg-orange-900/30 border border-orange-500/50 rounded-lg">
-              <p className="text-orange-200 font-semibold">
-                ⚠️ 3D Roof Data Not Available
-              </p>
-              <p className="text-orange-300 text-sm mt-1">
-                Automated measurements unavailable for this location. Please perform manual takeoff using the satellite image below.
-              </p>
-            </div>
-          )}
-          <div className="relative bg-slate-900 rounded-lg overflow-hidden">
-            <canvas
-              ref={canvasRef}
-              className="w-full h-auto"
-              style={{ maxHeight: '600px', objectFit: 'contain' }}
-            />
-            {!imageLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
-              </div>
-            )}
-          </div>
+          </TabsTrigger>
+          <TabsTrigger value="site-access" className="data-[state=active]:bg-slate-700 text-white">
+            <MapPin className="w-4 h-4 mr-2" />
+            Site Access
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Legend - only show if we have 3D coverage */}
-          {solarApiData?.coverage !== false && (
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-red-500"></div>
-                <span className="text-sm text-slate-300">Eaves (Gutters)</span>
+        {/* Roof Visualization Tab */}
+        <TabsContent value="roof" className="mt-4">
+          <Card className="bg-slate-800 border-slate-700">
+            <CardContent className="pt-6">
+              {/* Show warning message if no 3D coverage */}
+              {solarApiData?.coverage === false && (
+                <div className="mb-4 p-4 bg-orange-900/30 border border-orange-500/50 rounded-lg">
+                  <p className="text-orange-200 font-semibold">
+                    ⚠️ {solarApiData?.manualMeasure ? 'Manual Measurements Required' : '3D Roof Data Not Available'}
+                  </p>
+                  <p className="text-orange-300 text-sm mt-1">
+                    {solarApiData?.manualMeasure 
+                      ? 'The Solar API does not have 3D coverage for this location. Use the satellite image below to perform manual roof measurements and enter values in the fields provided.'
+                      : 'Automated measurements unavailable for this location. Please perform manual takeoff using the satellite image below.'}
+                  </p>
+                </div>
+              )}
+              <div className="relative bg-slate-900 rounded-lg overflow-hidden">
+                <canvas
+                  ref={canvasRef}
+                  className="w-full h-auto"
+                  style={{ maxHeight: '600px', objectFit: 'contain' }}
+                />
+                {!imageLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-blue-500"></div>
-                <span className="text-sm text-slate-300">Rakes (Gables)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-green-500"></div>
-                <span className="text-sm text-slate-300">Valleys</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-yellow-500"></div>
-                <span className="text-sm text-slate-300">Ridges</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-orange-500"></div>
-                <span className="text-sm text-slate-300">Hips</span>
-              </div>
-            </div>
+
+              {/* Legend - only show if we have 3D coverage */}
+              {solarApiData?.coverage !== false && (
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-1 bg-red-500"></div>
+                    <span className="text-sm text-slate-300">Eaves (Gutters)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-1 bg-blue-500"></div>
+                    <span className="text-sm text-slate-300">Rakes (Gables)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-1 bg-green-500"></div>
+                    <span className="text-sm text-slate-300">Valleys</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-1 bg-yellow-500"></div>
+                    <span className="text-sm text-slate-300">Ridges</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-1 bg-orange-500"></div>
+                    <span className="text-sm text-slate-300">Hips</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Site Access Tab with Google Street View */}
+        <TabsContent value="site-access" className="mt-4">
+          {solarApiData?.lat && solarApiData?.lng ? (
+            <GoogleStreetView
+              latitude={solarApiData.lat}
+              longitude={solarApiData.lng}
+              heading={0}
+              pitch={0}
+              zoom={1}
+            />
+          ) : (
+            <Card className="bg-slate-800 border-slate-700">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center h-[500px] bg-slate-900 rounded-lg">
+                  <p className="text-slate-400">No coordinates available for this location</p>
+                </div>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Manual Roof Takeoff - Show when manual measurements are required */}
+      {solarApiData?.manualMeasure && solarApiData?.lat && solarApiData?.lng && (
+        <ManualRoofTakeoff
+          latitude={solarApiData.lat}
+          longitude={solarApiData.lng}
+          onSave={(measurements) => {
+            // Update metrics with manual measurements
+            setMetrics({
+              totalArea: measurements.totalArea,
+              predominantPitch: parseInt(measurements.pitch.split('/')[0]) || 4,
+              perimeter: measurements.perimeter,
+              segments: [],
+              eaves: Math.round(measurements.perimeter * 0.5),
+              rakes: Math.round(measurements.perimeter * 0.3),
+              valleys: 0,
+              ridges: Math.round(measurements.perimeter * 0.2),
+              hips: 0,
+            });
+          }}
+        />
+      )}
 
       {/* Roof Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -331,15 +389,28 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-slate-400 mb-1">Waste Factor</p>
-              <Input
-                type="number"
-                value={wasteFactorPercent}
-                onChange={(e) => setWasteFactorPercent(Number(e.target.value))}
-                className="text-center text-2xl font-bold bg-slate-700 border-slate-600 text-white w-20 mx-auto"
-                min="0"
-                max="50"
-              />
-              <p className="text-xs text-slate-500 mt-1">Percent</p>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  onClick={() => setWasteFactorPercent(Math.max(0, wasteFactorPercent - 1))}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <div className="flex flex-col items-center">
+                  <p className="text-2xl font-bold text-white">{wasteFactorPercent}</p>
+                  <p className="text-xs text-slate-500">Percent</p>
+                </div>
+                <Button
+                  onClick={() => setWasteFactorPercent(Math.min(50, wasteFactorPercent + 1))}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -415,14 +486,32 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
                     <span className="text-xs text-orange-400 ml-2">(Manual)</span>
                   </td>
                   <td className="py-3 px-4 text-slate-300">
-                    <Input
-                      type="number"
-                      value={wallFlashingAdder}
-                      onChange={(e) => setWallFlashingAdder(Number(e.target.value))}
-                      placeholder="Enter footage"
-                      className="bg-slate-700 border-slate-600 text-white w-32"
-                      min="0"
-                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => setWallFlashingAdder(Math.max(0, wallFlashingAdder - 5))}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <Input
+                        type="number"
+                        value={wallFlashingAdder}
+                        onChange={(e) => setWallFlashingAdder(Math.max(0, Number(e.target.value)))}
+                        placeholder="0"
+                        className="bg-slate-700 border-slate-600 text-white w-20 text-center"
+                        min="0"
+                      />
+                      <Button
+                        onClick={() => setWallFlashingAdder(wallFlashingAdder + 5)}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-right text-white">{formatLinearFeet(wallFlashingAdder)}</td>
                   <td className="py-3 px-4 text-right text-orange-400 font-semibold">

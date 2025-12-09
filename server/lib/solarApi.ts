@@ -46,6 +46,7 @@ export async function fetchSolarApiData(
   longitude: number
 ): Promise<{
   coverage: boolean;
+  manualMeasure?: boolean;
   lat: number;
   lng: number;
   imageryUrl: string;
@@ -72,6 +73,11 @@ export async function fetchSolarApiData(
 
   try {
     const solarUrl = `https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude=${latitude}&location.longitude=${longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+    
+    // Log the URL with masked API key for debugging
+    const maskedUrl = solarUrl.replace(/key=[^&]+/, 'key=***MASKED***');
+    console.log(`[RoofAPI] Request URL: ${maskedUrl}`);
+    console.log(`[RoofAPI] No restrictive parameters - using findClosest with default behavior`);
 
     const solarRes = await fetch(solarUrl);
     
@@ -81,14 +87,16 @@ export async function fetchSolarApiData(
         console.log("[RoofAPI] No 3D roof coverage available for this location - returning fallback with satellite imagery");
         console.log(`[RoofAPI] DEBUG - 404 received for coordinates: ${latitude}, ${longitude}`);
         console.log(`[RoofAPI] DEBUG - Check if pin is on roof: https://www.google.com/maps?q=${latitude},${longitude}`);
+        console.log(`[RoofAPI] This may indicate: (1) No Solar API coverage in this region, (2) Geocode pin on street instead of roof`);
         const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`;
         return { 
           coverage: false, 
+          manualMeasure: true,
           lat: latitude, 
           lng: longitude,
           imageryUrl,
           solarPotential: undefined,
-          message: "3D Roof Data Not Available"
+          message: "3D Roof Data Not Available - Manual Measurements Required"
         };
       }
       throw new Error(`Roof API Error: ${solarRes.statusText}`);
@@ -111,12 +119,13 @@ export async function fetchSolarApiData(
     const imageryUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=19&size=600x600&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`;
     return {
       coverage: false,
+      manualMeasure: true,
       lat: latitude,
       lng: longitude,
       imageryUrl,
       solarPotential: undefined,
       error: error instanceof Error ? error.message : "Unknown error",
-      message: "3D Roof Data Not Available"
+      message: "3D Roof Data Not Available - Manual Measurements Required"
     };
   }
 }

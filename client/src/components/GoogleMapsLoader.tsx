@@ -9,8 +9,8 @@ export function GoogleMapsLoader({ children }: GoogleMapsLoaderProps) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY || "AIzaSyA7QSM-fqUn4grHM6OYddNgKzK7uMlBY1I";
 
   useEffect(() => {
-    // Check if already loaded
-    if (window.google?.maps?.places) {
+    // Check if already loaded with all required libraries
+    if (window.google?.maps?.places && window.google?.maps?.drawing && window.google?.maps?.geometry) {
       setIsLoaded(true);
       return;
     }
@@ -26,9 +26,9 @@ export function GoogleMapsLoader({ children }: GoogleMapsLoaderProps) {
       return;
     }
 
-    // Create and load script
+    // Create and load script with required libraries
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,drawing,geometry`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
