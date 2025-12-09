@@ -1204,7 +1204,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Get edit history for a job
+    // Get edit history for a job (OWNER/ADMIN only)
     getEditHistory: protectedProcedure
       .input(z.object({ 
         jobId: z.number(),
@@ -1214,16 +1214,12 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        // Check if user can view this job
-        const [job] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
-        if (!job) throw new Error("Job not found");
-
-        const user = ctx.user;
-        const teamMemberIds = user && isTeamLead(user) ? await getTeamMemberIds(db, user.id) : [];
-        
-        // Allow viewing history if user can view the job
-        if (!canViewJob(user, job, teamMemberIds)) {
-          throw new Error("You don't have permission to view this job's history");
+        // Strict permission check - Only OWNER and ADMIN can view edit history
+        if (ctx.user?.role !== 'owner' && ctx.user?.role !== 'admin' && ctx.user?.role !== 'office') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only owners and admins can view edit history',
+          });
         }
 
         const history = await db.select({
