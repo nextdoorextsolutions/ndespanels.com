@@ -48,6 +48,7 @@ import { useRealtimeJob } from "@/hooks/useRealtimeJob";
 import { JobPipelineTracker } from "@/components/JobPipelineTracker";
 import { MentionInput } from "@/components/MentionInput";
 import { generateRoofReportPDF } from "@/utils/roofReportService";
+import { RoofingReportView } from "@/components/RoofingReportView";
 
 // Helper function to format mentions in messages
 const formatMentions = (text: string) => {
@@ -147,6 +148,7 @@ const FIELD_TYPE_CONFIG: Record<string, { icon: typeof CheckCircle; color: strin
 // Tab configuration
 const TABS = [
   { key: "overview", label: "Overview", icon: User },
+  { key: "production_report", label: "Production Report", icon: Grid3X3 },
   { key: "documents", label: "Documents", icon: FileText },
   { key: "photos", label: "Photos", icon: Image },
   { key: "messages", label: "Notes & Messages", icon: MessageSquare },
@@ -1407,6 +1409,39 @@ export default function JobDetail() {
                 </CardContent>
               </Card>
               </div>
+            </div>
+          )}
+
+          {/* Production Report Tab */}
+          {activeTab === "production_report" && (
+            <div>
+              {(job as any).solarApiData ? (
+                <RoofingReportView
+                  solarApiData={(job as any).solarApiData}
+                  jobData={{
+                    fullName: job.fullName,
+                    address: job.address,
+                    cityStateZip: job.cityStateZip,
+                  }}
+                />
+              ) : (
+                <Card className="bg-slate-800 border-slate-700">
+                  <CardContent className="py-12">
+                    <div className="text-center">
+                      <Grid3X3 className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-white mb-2">No Solar API Data Available</h3>
+                      <p className="text-slate-400 mb-4">
+                        Solar API data is required to generate the production measurement report.
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        This data is automatically fetched when a job has valid coordinates.
+                        <br />
+                        Coordinates: {job.latitude && job.longitude ? `${job.latitude}, ${job.longitude}` : 'Not set'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
