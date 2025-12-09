@@ -4,10 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { calculateRoofMetrics, calculateMaterialRequirements, formatLinearFeet, RoofMetrics, RoofSegment } from '@/utils/roofMath';
-import { Download, Ruler, Home, ChevronUp, ChevronDown, Plus, Minus, MapPin } from 'lucide-react';
+import { Download, Ruler, Home, ChevronUp, ChevronDown, Plus, Minus, MapPin, X } from 'lucide-react';
 import { ManualRoofTakeoff } from './ManualRoofTakeoff';
 import { GoogleStreetView } from './GoogleStreetView';
 import { toast } from 'sonner';
+import { GoogleMap, DrawingManager, useLoadScript } from '@react-google-maps/api';
+
+// Google Maps libraries needed for drawing
+const libraries: ("drawing" | "geometry")[] = ["drawing", "geometry"];
 
 interface RoofingReportViewProps {
   solarApiData: any;
@@ -70,6 +74,34 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
     
     setShowPitchDialog(false);
     toast.success(`Manual measurement saved: ${Math.round(adjustedArea)} sq ft (${pitchInput} pitch)`);
+  };
+
+  // Handle polygon drawing complete
+  const handlePolygonComplete = (polygon: google.maps.Polygon) => {
+    // Remove previous polygon if exists
+    if (drawnPolygon) {
+      drawnPolygon.setMap(null);
+    }
+    
+    // Save the new polygon
+    setDrawnPolygon(polygon);
+    
+    // Calculate area in square meters
+    const areaInSquareMeters = google.maps.geometry.spherical.computeArea(polygon.getPath());
+    
+    // Convert to square feet (1 sq meter = 10.764 sq feet)
+    const areaInSquareFeet = areaInSquareMeters * 10.764;
+    
+    // Save measured area
+    setMeasuredArea(areaInSquareFeet);
+    
+    // Exit drawing mode
+    setIsDrawingMode(false);
+    
+    // Show pitch dialog
+    setShowPitchDialog(true);
+    
+    toast.success(`Area measured: ${Math.round(areaInSquareFeet)} sq ft (flat)`);
   };
 
   // Calculate metrics on mount
@@ -287,34 +319,40 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
                   </p>
                 </div>
               )}
-              <div className="relative bg-slate-900 rounded-lg overflow-hidden">
-                <canvas
-                  ref={canvasRef}
-                  className="w-full h-auto"
-                  style={{ maxHeight: '600px', objectFit: 'contain' }}
-                />
-                {!imageLoaded && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
-                  </div>
-                )}
-                
-                {/* Start Manual Measurement Button Overlay */}
-                {imageLoaded && !isDrawingMode && (
-                  <div className="absolute top-4 left-4">
-                    <Button
-                      onClick={() => setIsDrawingMode(true)}
-                      className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold shadow-lg"
-                    >
-                      <Ruler className="w-4 h-4 mr-2" />
-                      Start Manual Measurement
-                    </Button>
-                  </div>
-                )}
-                
-                {/* Drawing Mode Active Indicator */}
-                {isDrawingMode && (
-                  <div className="absolute top-4 left-4 right-4 bg-blue-900/90 border border-blue-500 rounded-lg p-3 shadow-lg">
+              {/* Show Google Map when drawing mode is active, otherwise show canvas */}
+              {isDrawingMode && solarApiData?.lat && solarApiData?.lng ? (
+                <div className="relative bg-slate-900 rounded-lg overflow-hidden" style={{ height: '600px' }}>
+                  <GoogleMap
+                    mapContainerStyle={{ width: '100%', height: '100%' }}
+                    center={{ lat: solarApiData.lat, lng: solarApiData.lng }}
+                    zoom={20}
+                    mapTypeId="satellite"
+                    options={{
+                      tilt: 0,
+                      mapTypeControl: false,
+                      streetViewControl: false,
+                      fullscreenControl: false,
+                    }}
+                  >
+                    <DrawingManager
+                      drawingMode={google.maps.drawing.OverlayType.POLYGON}
+                      options={{
+                        drawingControl: false,
+                        polygonOptions: {
+                          fillColor: '#FF0000',
+                          fillOpacity: 0.3,
+                          strokeColor: '#FF0000',
+                          strokeWeight: 2,
+                          editable: true,
+                          draggable: true,
+                        },
+                      }}
+                      onPolygonComplete={handlePolygonComplete}
+                    />
+                  </GoogleMap>
+                  
+                  {/* Drawing Mode Active Indicator */}
+                  <div className="absolute top-4 left-4 right-4 bg-blue-900/90 border border-blue-500 rounded-lg p-3 shadow-lg z-10">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Ruler className="w-5 h-5 text-blue-200 animate-pulse" />
@@ -334,12 +372,39 @@ export function RoofingReportView({ solarApiData, jobData }: RoofingReportViewPr
                         size="sm"
                         className="bg-red-600 hover:bg-red-700 text-white border-red-500"
                       >
+                        <X className="w-4 h-4 mr-1" />
                         Cancel
                       </Button>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="relative bg-slate-900 rounded-lg overflow-hidden">
+                  <canvas
+                    ref={canvasRef}
+                    className="w-full h-auto"
+                    style={{ maxHeight: '600px', objectFit: 'contain' }}
+                  />
+                  {!imageLoaded && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
+                    </div>
+                  )}
+                  
+                  {/* Start Manual Measurement Button Overlay */}
+                  {imageLoaded && !isDrawingMode && solarApiData?.lat && solarApiData?.lng && (
+                    <div className="absolute top-4 left-4">
+                      <Button
+                        onClick={() => setIsDrawingMode(true)}
+                        className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold shadow-lg"
+                      >
+                        <Ruler className="w-4 h-4 mr-2" />
+                        Start Manual Measurement
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Manual Drawing Tool - Show when no 3D coverage */}
               {solarApiData?.coverage === false && solarApiData?.lat && solarApiData?.lng && (
