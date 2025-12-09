@@ -542,6 +542,38 @@ export default function JobDetail() {
     onError: (error) => toast.error(error.message),
   });
 
+  // Validate job data before allowing status change
+  const validateStatusChange = (newStatus: string, job: any): boolean => {
+    // Statuses that don't require validation (early pipeline stages)
+    const allowedWithoutData = ['lead', 'appointment_set'];
+    
+    if (allowedWithoutData.includes(newStatus)) {
+      return true;
+    }
+
+    // All other statuses require phone AND email
+    const hasPhone = job.phone && job.phone.trim() !== '';
+    const hasEmail = job.email && job.email.trim() !== '';
+
+    if (!hasPhone || !hasEmail) {
+      toast.error('Cannot advance pipeline: Customer Phone and Email are required.', {
+        duration: 5000,
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  // Handler for status change with validation
+  const handleStatusChange = (newStatus: string) => {
+    if (!jobData?.job) return;
+
+    if (validateStatusChange(newStatus, jobData.job)) {
+      updateLead.mutate({ id: jobId, status: newStatus as any });
+    }
+  };
+
   const updateCustomerInfo = trpc.crm.updateCustomerInfo.useMutation({
     onSuccess: () => {
       toast.success("Customer info updated successfully");
@@ -735,7 +767,7 @@ export default function JobDetail() {
   }
 
   const { job, assignedUser, documents, photos, messages, timeline, permissions: jobPermissions } = jobData;
-  const statusConfig = STATUS_CONFIG[job.status] || STATUS_CONFIG.new_lead;
+  const statusConfig = STATUS_CONFIG[job.status] || STATUS_CONFIG.lead || { label: "Unknown", color: "bg-gray-500", icon: AlertCircle };
   const canEdit = jobPermissions?.canEdit ?? false;
   const canDelete = jobPermissions?.canDelete ?? false;
   const canViewHistory = jobPermissions?.canViewHistory ?? false;
@@ -808,7 +840,7 @@ export default function JobDetail() {
                 <>
                   <Select
                     value={job.status}
-                    onValueChange={(value) => updateLead.mutate({ id: jobId, status: value as any })}
+                    onValueChange={handleStatusChange}
                   >
                     <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600 text-white">
                       <SelectValue placeholder="Change Status" />

@@ -635,6 +635,23 @@ export const appRouter = router({
           throw new Error("You don't have permission to edit this job");
         }
 
+        // Validate data quality for status changes (Safety Net)
+        if (input.status && input.status !== currentLead.status) {
+          const allowedWithoutData = ['lead', 'appointment_set'];
+          
+          if (!allowedWithoutData.includes(input.status)) {
+            const hasPhone = currentLead.phone && currentLead.phone.trim() !== '';
+            const hasEmail = currentLead.email && currentLead.email.trim() !== '';
+            
+            if (!hasPhone || !hasEmail) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Cannot advance pipeline: Customer Phone and Email are required.",
+              });
+            }
+          }
+        }
+
         const updateData: Record<string, unknown> = {};
         
         // Log each field change to edit history
@@ -1187,7 +1204,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    // Get edit history for a job (Owner/Admin only)
+    // Get edit history for a job
     getEditHistory: protectedProcedure
       .input(z.object({ 
         jobId: z.number(),
@@ -1197,9 +1214,16 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        // Only owners and admins can view edit history
-        if (!canViewEditHistory(ctx.user)) {
-          throw new Error("You don't have permission to view edit history");
+        // Check if user can view this job
+        const [job] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
+        if (!job) throw new Error("Job not found");
+
+        const user = ctx.user;
+        const teamMemberIds = user && isTeamLead(user) ? await getTeamMemberIds(db, user.id) : [];
+        
+        // Allow viewing history if user can view the job
+        if (!canViewJob(user, job, teamMemberIds)) {
+          throw new Error("You don't have permission to view this job's history");
         }
 
         const history = await db.select({
@@ -2989,6 +3013,66 @@ export const appRouter = router({
           .map(msg => msg.jobId);
 
         return unreadJobIds;
+      }),
+
+    // Update proposal pricing
+    updateProposal: protectedProcedure
+      .input(z.object({
+        jobId: z.number(),
+        pricePerSq: z.string().nullable().optional(),
+        totalPrice: z.string().nullable().optional(),
+        counterPrice: z.string().nullable().optional(),
+        priceStatus: z.enum(["draft", "pending_approval", "negotiation", "approved"]).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Get current job
+        const [currentJob] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
+        if (!currentJob) throw new Error("Job not found");
+
+        // Check permission
+        const user = ctx.user;
+        const teamMemberIds = user && isTeamLead(user) ? await getTeamMemberIds(db, user.id) : [];
+        if (!canEditJob(user, currentJob, teamMemberIds)) {
+          throw new Error("You don't have permission to edit this job");
+        }
+
+        const updateData: Record<string, unknown> = {};
+
+        if (input.pricePerSq !== undefined) {
+          updateData.pricePerSq = input.pricePerSq;
+        }
+        if (input.totalPrice !== undefined) {
+          updateData.totalPrice = input.totalPrice;
+        }
+        if (input.counterPrice !== undefined) {
+          updateData.counterPrice = input.counterPrice;
+        }
+        if (input.priceStatus) {
+          updateData.priceStatus = input.priceStatus;
+        }
+
+        updateData.updatedAt = new Date();
+
+        await db.update(reportRequests)
+          .set(updateData)
+          .where(eq(reportRequests.id, input.jobId));
+
+        // Log the proposal update
+        await logEditHistory(
+          db,
+          input.jobId,
+          user!.id,
+          "proposal",
+          null,
+          `Updated proposal: ${input.priceStatus || 'pricing changed'}`,
+          "update",
+          ctx
+        );
+
+        return { success: true };
       }),
   }),
 });

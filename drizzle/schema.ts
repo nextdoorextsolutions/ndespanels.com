@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, boolean, timestamp, integer, pgEnum, doublePrecision, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, boolean, timestamp, integer, pgEnum, doublePrecision, jsonb, numeric } from "drizzle-orm/pg-core";
 
 // PostgreSQL enums
 export const roleEnum = pgEnum("role", ["user", "admin", "owner", "office", "sales_rep", "project_manager", "team_lead", "field_crew"]);
@@ -30,6 +30,8 @@ export const lienRightsStatusEnum = pgEnum("lien_rights_status", [
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "refunded"]);
 
 export const priorityEnum = pgEnum("priority", ["low", "medium", "high", "urgent"]);
+
+export const priceStatusEnum = pgEnum("price_status", ["draft", "pending_approval", "negotiation", "approved"]);
 
 export const orderStatusEnum = pgEnum("order_status", ["draft", "pending", "sent", "confirmed", "delivered", "cancelled"]);
 
@@ -173,6 +175,12 @@ export const reportRequests = pgTable("report_requests", {
   // Scheduling
   scheduledDate: timestamp("scheduled_date"),
   completedDate: timestamp("completed_date"),
+  
+  // Pricing & Proposal
+  pricePerSq: numeric("price_per_sq", { precision: 10, scale: 2 }),
+  totalPrice: numeric("total_price", { precision: 10, scale: 2 }),
+  counterPrice: numeric("counter_price", { precision: 10, scale: 2 }),
+  priceStatus: priceStatusEnum("price_status").default("draft"),
   
   // Timestamps
   createdAt: timestamp("created_at").defaultNow().notNull(),
