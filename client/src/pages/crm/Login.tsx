@@ -38,11 +38,17 @@ export default function CRMLogin() {
       <Card className="w-full max-w-md bg-slate-800/50 border-slate-700 backdrop-blur-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-6 flex justify-center">
-            <img 
-              src="/images/logo.jpg" 
-              alt="Next Door Exterior Solutions" 
-              className="h-24 w-auto object-contain"
-            />
+            <div className="bg-white rounded-lg p-4 shadow-lg">
+              <img 
+                src="/images/logo.jpg" 
+                alt="Next Door Exterior Solutions" 
+                className="h-20 w-auto max-w-[250px] object-contain"
+                onError={(e) => {
+                  console.error('Logo failed to load');
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
           </div>
           <CardTitle className="text-2xl text-white">NextDoor CRM</CardTitle>
           <CardDescription className="text-slate-400">
