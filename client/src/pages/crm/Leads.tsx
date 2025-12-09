@@ -42,13 +42,14 @@ export default function CRMLeads() {
     const statusParam = params.get("status");
     const dealTypeParam = params.get("dealType");
     const paymentTypeParam = params.get("paymentType"); // Support paymentType as alias
+    const filterParam = params.get("filter"); // Support filter as alias
     
     if (statusParam && STATUS_OPTIONS.some(opt => opt.value === statusParam)) {
       setStatusFilter(statusParam);
     }
     
-    // Support both dealType and paymentType parameters
-    const dealType = dealTypeParam || paymentTypeParam;
+    // Support dealType, paymentType, and filter parameters
+    const dealType = dealTypeParam || paymentTypeParam || filterParam;
     if (dealType && ["insurance", "cash", "financed"].includes(dealType)) {
       setDealTypeFilter(dealType);
     }

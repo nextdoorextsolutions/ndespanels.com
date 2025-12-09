@@ -391,7 +391,7 @@ export default function CRMDashboard() {
 
         {/* Deal Type Summary - Clickable */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <Link href="/crm/leads?paymentType=insurance">
+          <Link href="/crm/leads?filter=insurance">
             <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-blue-500 cursor-pointer hover:bg-slate-750 transition-all">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
@@ -405,7 +405,7 @@ export default function CRMDashboard() {
             </Card>
           </Link>
           
-          <Link href="/crm/leads?paymentType=cash">
+          <Link href="/crm/leads?filter=cash">
             <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-green-500 cursor-pointer hover:bg-slate-750 transition-all">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
@@ -419,7 +419,7 @@ export default function CRMDashboard() {
             </Card>
           </Link>
           
-          <Link href="/crm/leads?paymentType=financed">
+          <Link href="/crm/leads?filter=financed">
             <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-purple-500 cursor-pointer hover:bg-slate-750 transition-all">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
