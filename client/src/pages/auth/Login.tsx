@@ -52,11 +52,11 @@ export default function Login() {
         <CardHeader className="text-center space-y-4">
           {/* Logo */}
           <div className="flex justify-center">
-            <div className="w-24 h-24 rounded-full border-2 border-cyan-500/50 flex items-center justify-center bg-black shadow-[0_0_20px_rgba(0,255,240,0.3)]">
+            <div className="w-32 h-32 rounded-lg border-2 border-cyan-500/50 flex items-center justify-center bg-black shadow-[0_0_20px_rgba(0,255,240,0.3)] overflow-hidden">
               <img 
                 src="/images/logo.jpg" 
                 alt="NextDoor Exterior Solutions Logo" 
-                className="w-full h-full object-contain rounded-full p-1"
+                className="w-full h-full object-cover"
               />
             </div>
           </div>
