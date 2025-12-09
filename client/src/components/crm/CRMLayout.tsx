@@ -255,19 +255,19 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
                   <p className="text-sm text-muted-foreground">{userProfile?.email}</p>
                 </div>
                 <DropdownMenuItem asChild>
-                  <Link href="/crm/team" className="cursor-pointer">
+                  <Link href="/settings/profile" className="cursor-pointer">
                     <User className="w-4 h-4 mr-2" />
                     My Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/crm/team" className="cursor-pointer">
+                  <Link href="/settings/company" className="cursor-pointer">
                     <Building2 className="w-4 h-4 mr-2" />
                     Company Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/crm/team" className="cursor-pointer">
+                  <Link href="/settings" className="cursor-pointer">
                     <Settings className="w-4 h-4 mr-2" />
                     Settings
                   </Link>

@@ -294,3 +294,12 @@
 - [x] Fix 500 crash - solarApi import verified correct (named exports, no void 0 issue)
 - [x] Restore Manual Measure button - now always visible with forceShow prop, not dependent on manualMeasure flag
 - [x] Fix Sales Rep permissions - removed owner/admin restriction from createJob, all authenticated users can now create jobs
+
+## Settings Page Split (Dec 9, 2024)
+- [x] Create client/src/pages/settings/ folder
+- [x] Create ProfileSettings.tsx (User Details, Name, Email, Password)
+- [x] Create CompanySettings.tsx (Business Info, Logo, Beacon Defaults) - Owner only
+- [x] Create GeneralSettings.tsx (Theme, Notifications)
+- [x] Update App.tsx with new routes (/settings/profile, /settings/company, /settings)
+- [x] Update UserNav with links to new settings pages
+- [x] Add settings layout with sidebar/tabs for navigation between settings pages

@@ -20,6 +20,11 @@ import CRMCalendar from "./pages/crm/Calendar";
 import CRMReports from "./pages/crm/Reports";
 import JobDetail from "./pages/crm/JobDetail";
 
+// Settings pages
+import ProfileSettings from "./pages/settings/ProfileSettings";
+import CompanySettings from "./pages/settings/CompanySettings";
+import GeneralSettings from "./pages/settings/GeneralSettings";
+
 // Public pages
 import CustomerPortal from "./pages/CustomerPortal";
 import FieldUpload from "./pages/FieldUpload";
@@ -73,6 +78,23 @@ function Router() {
       <Route path={"/crm/job/:id"}>
         <ProtectedRoute>
           <JobDetail />
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Settings routes - protected */}
+      <Route path={"/settings/profile"}>
+        <ProtectedRoute>
+          <ProfileSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path={"/settings/company"}>
+        <ProtectedRoute>
+          <CompanySettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path={"/settings"}>
+        <ProtectedRoute>
+          <GeneralSettings />
         </ProtectedRoute>
       </Route>
       
