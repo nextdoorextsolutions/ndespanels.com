@@ -243,10 +243,11 @@
 - [x] Push changes to GitHub main branch
 
 ## Supabase Auth User Sync Fix
-- [ ] Sync Supabase Auth users to CRM users table on login
-- [ ] Auto-create CRM user record when Supabase user logs in
-- [ ] Assign owner role to first user or specified email
-- [ ] Show Create Account button for owners on Team page
+- [x] Sync Supabase Auth users to CRM users table on login
+- [x] Auto-create CRM user record when Supabase user logs in
+- [x] Assign owner role to first user or specified email
+- [x] Show Create Account button for owners on Team page
+- [x] Fix Team page router calls (use users router instead of crm)
 
 ## Login Error Improvements
 - [x] Fix Supabase availability check showing false errors
@@ -254,8 +255,8 @@
 - [x] Verify forgot password resets Supabase user password (uses Supabase auth.resetPasswordForEmail)
 
 ## First User Owner Logic
-- [ ] Make first user to log in automatically become owner
-- [ ] Subsequent users get sales_rep role by default
+- [x] Make first user to log in automatically become owner
+- [x] Subsequent users get sales_rep role by default (implemented in syncSupabaseUser)
 
 ## Performance Optimizations
 - [x] Add database indexes for email, openId, status, assignedTo fields (SQL file created)
