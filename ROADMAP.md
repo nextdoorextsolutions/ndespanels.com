@@ -326,10 +326,10 @@
 
 ## 🚧 Next Priorities (Post-Refactor)
 
-### 1. Feature: Persist Manual Roof Override
-- [ ] Create DB migration: Add `manual_area_sqft` (int) to `report_requests`.
-- [ ] Update Backend: `jobs.updateJob` should accept manual area.
-- [ ] Update Frontend: `ProposalCalculator` should save on blur/change.
+### 1. Feature: Persist Manual Roof Override ✅ COMPLETE
+- [x] Create DB migration: Add `manual_area_sqft` (int) to `report_requests`.
+- [x] Update Backend: `updateLead` mutation accepts manual area with edit history logging.
+- [x] Update Frontend: `ProposalCalculator` saves manual area on change with toast feedback.
 
 ### 2. Tech Debt: Type Safety
 - [ ] Audit: Search for remaining `as any` casts in `/client`.
