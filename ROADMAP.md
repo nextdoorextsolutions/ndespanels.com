@@ -314,6 +314,16 @@
 - [x] Fix JobDetail.tsx - solarApiData type assertions
 - [x] Verify all TypeScript errors resolved - BUILD PASSES
 
+## JobDetail.tsx Refactor (Dec 10, 2024)
+- [x] Extract 8 tabs into separate components (Proposal, Production, Documents, Photos, Messages, Timeline, EditHistory, Overview)
+- [x] Create granular sub-components for Overview tab (CustomerCard, JobPipeline, PropertyCard, QuickActions)
+- [x] Nuclear rewrite of JobDetail.tsx - reduced from 2317 to 350 lines (85% reduction)
+- [x] Implement "Traffic Cop" architecture - data fetching and routing only
+- [x] Achieve state isolation in extracted components
+- [x] Fix API procedure names and type assertions
+- [x] Organize documentation into /docs folder
+- [x] Clean up temporary refactor files
+
 ## 🚧 Next Priorities (Post-Refactor)
 
 ### 1. Feature: Persist Manual Roof Override
