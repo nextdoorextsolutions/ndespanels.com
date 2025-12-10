@@ -31,7 +31,7 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
 
     const map = new google.maps.Map(mapContainerRef.current, {
       center: { lat: latitude, lng: longitude },
-      zoom: 20,
+      zoom: 21,
       mapTypeId: 'satellite',
       tilt: 0,
       mapTypeControl: false,
