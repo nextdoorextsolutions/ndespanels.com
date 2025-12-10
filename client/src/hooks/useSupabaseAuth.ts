@@ -172,6 +172,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     checkSession();
 
     // Listen for auth changes
+    if (!supabase) return;
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user && _event === "SIGNED_IN") {

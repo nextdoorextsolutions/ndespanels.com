@@ -3291,7 +3291,7 @@ export const appRouter = router({
 
         // Save to Supabase storage
         const fileName = `proposal-signed-${input.jobId}-${Date.now()}.pdf`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
           .from('documents')
           .upload(fileName, pdfBuffer, {
             contentType: 'application/pdf',
@@ -3301,7 +3301,7 @@ export const appRouter = router({
         if (uploadError) throw uploadError;
 
         // Get public URL
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = supabaseAdmin.storage
           .from('documents')
           .getPublicUrl(fileName);
 
@@ -3316,7 +3316,7 @@ export const appRouter = router({
         });
 
         // Log activity
-        await logActivity(
+        await logEditHistory(
           db,
           input.jobId,
           user!.id,

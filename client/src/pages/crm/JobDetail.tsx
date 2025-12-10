@@ -1333,7 +1333,7 @@ export default function JobDetail() {
               </Card>
 
               {/* Insurance Information Card */}
-              {(job.dealType === 'insurance' || job.paymentType === 'insurance') && (
+              {job.dealType === 'insurance' && (
                 <InsuranceInfoCard
                   jobId={jobId}
                   insuranceCarrier={job.insuranceCarrier}
