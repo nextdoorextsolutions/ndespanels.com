@@ -151,7 +151,7 @@ export function JobProposalTab({ jobId, job, userRole, onUpdate }: JobProposalTa
           )}
         </div>
         <p className="text-sm text-slate-400 mt-3">
-          Generate a professional PDF proposal with AI-powered content and product details.
+          Generate a professional PDF proposal with detailed content and product information.
         </p>
       </div>
 

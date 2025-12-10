@@ -7,6 +7,7 @@ import { useLocation } from "wouter";
 import { Phone, Mail, FileText, MessageSquare, Calendar, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ChatMessage, JobLookupData, JobSummaryData } from "@/types/chat";
+import logoN from "@/assets/logo-n.png";
 
 interface RichMessageProps {
   data: ChatMessage["data"];

@@ -8,6 +8,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { trpc } from "@/lib/trpc";
+import logoN from "@/assets/logo-n.png";
 
 interface ProductSelectorProps {
   selectedProductId: number | null;
@@ -42,6 +43,10 @@ export function ProductSelector({ selectedProductId, onChange }: ProductSelector
                     src={selectedProduct.imageUrl} 
                     alt={selectedProduct.color || ''} 
                     className="h-10 w-10 rounded object-cover border border-slate-600"
+                    onError={(e) => {
+                      e.currentTarget.src = logoN;
+                      e.currentTarget.onerror = null;
+                    }}
                   />
                 )}
                 <div className="text-left">
@@ -81,6 +86,10 @@ export function ProductSelector({ selectedProductId, onChange }: ProductSelector
                         src={shingle.imageUrl} 
                         alt={shingle.color || ''} 
                         className="h-10 w-10 rounded object-cover border border-slate-600 flex-shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.src = logoN;
+                          e.currentTarget.onerror = null;
+                        }}
                       />
                     )}
                     

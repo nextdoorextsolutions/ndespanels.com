@@ -50,7 +50,7 @@ export function JobProductionTab({ job, jobId, onGenerateReport, isGenerating }:
                 <AlertDialogDescription className="text-slate-300">
                   <div className="space-y-3">
                     <p>
-                      Regenerating this report will make a new request to the Google Solar API, which may incur additional charges to your account.
+                      Regenerating this report will make a new request to our measurement service, which may incur additional charges to your account.
                     </p>
                     <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-3">
                       <p className="text-sm text-yellow-400 font-semibold">
@@ -103,7 +103,7 @@ export function JobProductionTab({ job, jobId, onGenerateReport, isGenerating }:
           <Grid3X3 className="w-16 h-16 text-slate-600 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-white mb-2">Production Report Not Generated</h3>
           <p className="text-slate-400 mb-4">
-            Generate a professional roof measurement report using Google Solar API.
+            Generate a professional roof measurement report with automated measurements.
           </p>
           
           {job.latitude && job.longitude ? (
@@ -129,7 +129,7 @@ export function JobProductionTab({ job, jobId, onGenerateReport, isGenerating }:
                 )}
               </Button>
               <p className="text-xs text-slate-500 mt-3">
-                Note: This will make a Google Solar API request
+                Note: This will generate automated roof measurements
               </p>
             </>
           ) : (

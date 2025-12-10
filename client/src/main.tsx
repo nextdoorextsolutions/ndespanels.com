@@ -1,5 +1,7 @@
 // Polyfill Buffer for browser environment (needed for PDF generation and other Node.js libraries)
 import { Buffer } from 'buffer';
+globalThis.Buffer = Buffer;
+globalThis.global = globalThis;
 window.Buffer = Buffer;
 window.global = window as any;
 

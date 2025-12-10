@@ -182,7 +182,7 @@ export function JobPhotosTab({
         <div className="mb-4 p-4 bg-slate-800 rounded-lg border border-purple-500/30">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-white font-medium">
-              🔮 AI Magic in Progress...
+              🔮 Analysis in Progress...
             </span>
             <span className="text-sm text-purple-400">
               {analysisProgress.current} / {analysisProgress.total}

@@ -68,7 +68,7 @@ export function ProposalCalculator({
   const utils = trpc.useUtils();
 
   // Calculate roof squares using centralized utility
-  // Priority: Manual input override > Solar API data > Manual roof takeoff (fallback when Solar API unavailable)
+  // Priority: Manual input override > Automated measurement > Manual roof takeoff
   const manualOverride = parseFloat(manualSqFt) || 0;
   const finalSqFt = manualOverride > 0 ? manualOverride : (roofArea || manualAreaSqFt || 0);
   const roofSquares = finalSqFt / SQUARE_FEET_PER_SQUARE;
@@ -278,7 +278,7 @@ export function ProposalCalculator({
     if (solarCoverage && roofArea) {
       return {
         icon: "⚡",
-        label: "Solar Measured",
+        label: "Auto Measured",
         color: "bg-green-500",
         textColor: "text-green-100"
       };
@@ -337,7 +337,7 @@ export function ProposalCalculator({
           <Alert className="bg-slate-700 border-slate-600">
             <AlertTriangle className="w-4 h-4 text-yellow-400" />
             <AlertDescription className="text-slate-300">
-              Roof area data is required to calculate pricing. Please add solar API data or manual roof measurements.
+              Roof area data is required to calculate pricing. Please add automated measurements or manual roof measurements.
             </AlertDescription>
           </Alert>
         </CardContent>

@@ -1,0 +1,8 @@
+This is a placeholder file.
+Please replace this with the actual teal "N" logo image (logo-n.png).
+
+The image should be:
+- A teal/cyan colored "N" logo
+- PNG format with transparency
+- Approximately 40x40px or larger (will be scaled to h-10 w-10)
+- Used as fallback when product images fail to load
