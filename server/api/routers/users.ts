@@ -358,4 +358,60 @@ export const usersRouter = router({
         changes: changes.map(c => c.field),
       };
     }),
+
+  // Delete user (Owner only) - cannot delete yourself
+  deleteUser: protectedProcedure
+    .input(z.object({
+      targetUserId: z.number(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Only owners can delete users
+      if (!isOwner(ctx.user)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only owners can delete users" });
+      }
+
+      const { targetUserId } = input;
+
+      // Cannot delete yourself
+      if (targetUserId === ctx.user!.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot delete your own account" });
+      }
+
+      // Fetch user data for logging
+      const [userToDelete] = await db.select().from(users).where(eq(users.id, targetUserId));
+      if (!userToDelete) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      // Delete from database
+      await db.delete(users).where(eq(users.id, targetUserId));
+
+      // Extract client IP from x-forwarded-for
+      const xForwardedFor = (ctx.req?.headers?.["x-forwarded-for"] as string);
+      const clientIp = xForwardedFor 
+        ? xForwardedFor.split(',')[0].trim().substring(0, 45)
+        : (ctx.req?.ip || '').substring(0, 45) || null;
+
+      // Log deletion to edit history
+      await db.insert(editHistory).values({
+        reportRequestId: 0,
+        userId: ctx.user!.id,
+        fieldName: `user.deleted`,
+        oldValue: `${userToDelete.name} (${userToDelete.email})`,
+        newValue: null,
+        editType: "delete",
+        ipAddress: clientIp,
+        userAgent: (ctx.req?.headers?.["user-agent"] as string)?.substring(0, 500) || null,
+      });
+
+      console.log(`[DeleteUser] Owner ${ctx.user?.name} deleted user ${targetUserId}: ${userToDelete.name}`);
+
+      return { 
+        success: true, 
+        message: `User ${userToDelete.name} deleted successfully`,
+      };
+    }),
 });

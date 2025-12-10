@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, X, Send, Loader2, Sparkles, User } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, Sparkles, User, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -104,7 +104,7 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
             className
           )}
         >
-          <MessageSquare className="w-6 h-6" />
+          <Bot className="w-6 h-6" />
         </Button>
       )}
 
@@ -122,10 +122,10 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
           <div className="flex items-center justify-between p-4 border-b border-slate-700">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-slate-900" />
+                <Bot className="w-4 h-4 text-slate-900" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white">AI Assistant</h3>
+                <h3 className="text-sm font-semibold text-white">Assistant</h3>
                 <p className="text-xs text-slate-400">Ask me anything</p>
               </div>
             </div>

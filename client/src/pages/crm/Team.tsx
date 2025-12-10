@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
-import { User, Mail, Shield, Edit2, UserCheck, Users, Plus, Copy, Check } from "lucide-react";
+import { User, Mail, Shield, Edit2, UserCheck, Users, Plus, Copy, Check, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 
@@ -36,6 +36,18 @@ export default function CRMTeam() {
 
   // Owner-only user update mutation with audit trail
   const updateUser = trpc.users.updateUser.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      refetch();
+      setEditingMember(null);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Owner-only delete user mutation
+  const deleteUser = trpc.users.deleteUser.useMutation({
     onSuccess: (data) => {
       toast.success(data.message);
       refetch();
@@ -124,7 +136,7 @@ export default function CRMTeam() {
         name: editName !== editingMember.name ? editName : undefined,
         email: editEmail !== editingMember.email ? editEmail : undefined,
         phone: editPhone !== editingMember.phone ? editPhone : undefined,
-        role: selectedRole !== editingMember.role ? selectedRole as "user" | "admin" | "owner" | "office" | "sales_rep" | "project_manager" | "team_lead" | "field_crew" : undefined,
+        role: selectedRole !== editingMember.role ? (selectedRole as any) : undefined,
         repCode: editRepCode !== editingMember.repCode ? editRepCode : undefined,
         teamLeadId: selectedTeamLead === "none" 
           ? (editingMember.teamLeadId ? null : undefined) 
@@ -132,6 +144,21 @@ export default function CRMTeam() {
         isActive: editIsActive !== editingMember.isActive ? editIsActive : undefined,
       },
     });
+  };
+
+  const handleDeleteUser = () => {
+    if (!editingMember) return;
+    
+    if (editingMember.id === currentUser?.id) {
+      toast.error("You cannot delete your own account");
+      return;
+    }
+    
+    if (confirm(`Are you sure you want to permanently delete ${editingMember.name || editingMember.email}? This action cannot be undone.`)) {
+      deleteUser.mutate({
+        targetUserId: editingMember.id,
+      });
+    }
   };
 
   const handleCreateAccount = async () => {
@@ -649,21 +676,36 @@ export default function CRMTeam() {
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-700">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setEditingMember(null)}
-                    className="text-slate-400 hover:text-white hover:bg-slate-700"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={isOwnerUser ? handleOwnerSave : handleSaveChanges}
-                    disabled={isOwnerUser ? updateUser.isPending : updateMember.isPending}
-                    className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
-                  >
-                    {(isOwnerUser ? updateUser.isPending : updateMember.isPending) ? "Saving..." : "Save Changes"}
-                  </Button>
+                <div className="flex justify-between items-center pt-4 border-t border-slate-700">
+                  {/* Delete Button - Only for owners and not for self */}
+                  {isOwnerUser && editingMember?.id !== currentUser?.id && (
+                    <Button 
+                      variant="ghost"
+                      onClick={handleDeleteUser}
+                      disabled={deleteUser.isPending}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {deleteUser.isPending ? "Deleting..." : "Delete User"}
+                    </Button>
+                  )}
+                  
+                  <div className="flex gap-2 ml-auto">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setEditingMember(null)}
+                      className="text-slate-400 hover:text-white hover:bg-slate-700"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={isOwnerUser ? handleOwnerSave : handleSaveChanges}
+                      disabled={isOwnerUser ? updateUser.isPending : updateMember.isPending}
+                      className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
+                    >
+                      {(isOwnerUser ? updateUser.isPending : updateMember.isPending) ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
