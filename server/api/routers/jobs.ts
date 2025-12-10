@@ -28,6 +28,11 @@ import {
   canViewEditHistory,
 } from "../../lib/rbac"; 
 
+// Email validation helper - allows empty string or valid email
+const emailOrEmpty = z.string().refine(
+  (val) => !val || val.length === 0 || z.string().email().safeParse(val).success,
+  { message: "Must be a valid email address or empty" }
+);
 
 // Helper functions (will be moved to lib/ later)
 async function filterLeadsByRole(db: any, user: any, leads: any[]): Promise<any[]> {
@@ -247,7 +252,7 @@ export const jobsRouter = router({
     createJob: protectedProcedure
       .input(z.object({
         fullName: z.string().min(2),
-        email: z.string().email().optional().or(z.literal("")), // Made optional
+        email: emailOrEmpty.optional(), // Allows empty string or valid email
         phone: z.string().optional(), // Made optional
         address: z.string().min(5),
         cityStateZip: z.string().min(5),
@@ -260,7 +265,7 @@ export const jobsRouter = router({
         secondaryFirstName: z.string().optional(),
         secondaryLastName: z.string().optional(),
         secondaryPhone: z.string().optional(),
-        secondaryEmail: z.string().email().optional().or(z.literal("")),
+        secondaryEmail: emailOrEmpty.optional(), // Allows empty string or valid email
         secondaryRelation: z.string().optional(),
         // Site access
         gateCode: z.string().optional(),
@@ -487,7 +492,7 @@ export const jobsRouter = router({
       .input(z.object({
         id: z.number(),
         fullName: z.string().optional(),
-        email: z.union([z.string().email(), z.literal('')]).optional(),
+        email: emailOrEmpty.optional(), // Allows empty string or valid email
         phone: z.string().optional(),
         address: z.string().optional(),
         cityStateZip: z.string().optional(),
@@ -1455,7 +1460,7 @@ export const jobsRouter = router({
         // Extract mentions from message and create notifications
         // Format: @[userId:userName]
         const mentionRegex = /@\[(\d+):([^\]]+)\]/g;
-        const mentions = [...input.message.matchAll(mentionRegex)];
+        const mentions = Array.from(input.message.matchAll(mentionRegex));
         
         if (mentions.length > 0 && ctx.user?.id) {
           for (const match of mentions) {
