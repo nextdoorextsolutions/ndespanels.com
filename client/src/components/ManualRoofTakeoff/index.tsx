@@ -187,8 +187,11 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     setPolygon(newPolygon);
     calculateMeasurements(newPolygon);
     
+    // Reset drawing mode and state
     drawingManagerRef.current?.setDrawingMode(null);
     setIsDrawing(false);
+    
+    toast.success('Roof outline completed!');
 
     // Listen for polygon edits
     google.maps.event.addListener(newPolygon.getPath(), 'set_at', () => calculateMeasurements(newPolygon));
@@ -429,14 +432,26 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
 
   // Start drawing (polygon or polyline)
   const handleStartDrawing = (type: MeasurementType = 'area') => {
-    if (!drawingManagerRef.current) return;
+    if (!drawingManagerRef.current || !mapRef.current) return;
     
     setMeasurementType(type);
     
     if (type === 'area') {
-      drawingManagerRef.current.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
-      toast.info('Click on the map to draw the roof outline');
+      // Explicitly set drawing mode to POLYGON
+      const drawingMode = google.maps.drawing.OverlayType.POLYGON;
+      drawingManagerRef.current.setDrawingMode(drawingMode);
+      
+      // Force the map to recognize we're in drawing mode
       setIsDrawing(true);
+      
+      // Set map options to prevent dragging while drawing
+      mapRef.current.setOptions({
+        draggable: false,
+        scrollwheel: true,
+        disableDoubleClickZoom: true,
+      });
+      
+      toast.info('Click on the map to draw the roof outline. Press ESC to cancel.');
     } else {
       // Use click-click-exit for linear measurements
       handleToolSelect(type);
@@ -445,7 +460,18 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
 
   // Cancel drawing
   const handleCancelDrawing = () => {
-    drawingManagerRef.current?.setDrawingMode(null);
+    if (drawingManagerRef.current) {
+      drawingManagerRef.current.setDrawingMode(null);
+    }
+    
+    // Re-enable map dragging
+    if (mapRef.current) {
+      mapRef.current.setOptions({
+        draggable: true,
+        disableDoubleClickZoom: false,
+      });
+    }
+    
     setIsDrawing(false);
     toast.info('Drawing cancelled');
   };
@@ -589,7 +615,8 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
         <CardContent>
           <div 
             ref={mapContainerRef}
-            className="w-full h-[500px] rounded-lg overflow-hidden"
+            className={`w-full h-[500px] rounded-lg overflow-hidden ${isDrawing ? 'cursor-crosshair' : ''}`}
+            style={isDrawing ? { cursor: 'crosshair !important' } as React.CSSProperties : undefined}
           />
           {isDrawing && (
             <div className="mt-4 p-3 bg-blue-900/30 border border-blue-500/50 rounded-lg">
