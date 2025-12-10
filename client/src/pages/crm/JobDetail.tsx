@@ -872,7 +872,7 @@ export default function JobDetail() {
                 </>
               )}
               {/* Draft Supplier Order - Owner/Office Only */}
-              {permissions && (permissions.role === 'owner' || permissions.role === 'office') && (job.solarApiData as any)?.roofArea && (
+              {permissions && (permissions.role === 'owner' || permissions.role === 'office') && job.solarApiData?.totalArea && (
                 <Button
                   onClick={() => setShowMaterialDialog(true)}
                   className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold"
@@ -982,7 +982,7 @@ export default function JobDetail() {
                             const currentIndex = PIPELINE_ORDER.indexOf(job.status);
                             if (currentIndex > 0) {
                               const prevStatus = PIPELINE_ORDER[currentIndex - 1];
-                              updateLead.mutate({ id: jobId, status: prevStatus as any });
+                              updateLead.mutate({ id: jobId, status: prevStatus as JobStatus });
                             }
                           }}
                         >
@@ -1007,7 +1007,7 @@ export default function JobDetail() {
                             const currentIndex = PIPELINE_ORDER.indexOf(job.status);
                             if (currentIndex < PIPELINE_ORDER.length - 1 && currentIndex !== -1) {
                               const nextStatus = PIPELINE_ORDER[currentIndex + 1];
-                              updateLead.mutate({ id: jobId, status: nextStatus as any });
+                              updateLead.mutate({ id: jobId, status: nextStatus as JobStatus });
                             }
                           }}
                         >
@@ -1219,7 +1219,7 @@ export default function JobDetail() {
                       {canEdit ? (
                         <Select
                           value={job.status}
-                          onValueChange={(value) => updateLead.mutate({ id: jobId, status: value as any })}
+                          onValueChange={(value) => updateLead.mutate({ id: jobId, status: value as JobStatus })}
                         >
                           <SelectTrigger className="bg-slate-700 border-slate-600 text-white h-8">
                             <SelectValue />
@@ -1271,7 +1271,7 @@ export default function JobDetail() {
                       {canEdit ? (
                         <Select
                           value={job.dealType || "not_set"}
-                          onValueChange={(value) => updateLead.mutate({ id: jobId, dealType: value === "not_set" ? undefined : value as any })}
+                          onValueChange={(value) => updateLead.mutate({ id: jobId, dealType: value === "not_set" ? undefined : value as DealType })}
                         >
                           <SelectTrigger className="bg-slate-700 border-slate-600 text-white h-8">
                             <SelectValue />
@@ -1456,7 +1456,7 @@ export default function JobDetail() {
           {/* Production Report Tab */}
           {activeTab === "production_report" && (
             <div>
-              {(job as any).solarApiData ? (
+              {job.solarApiData ? (
                 <div className="space-y-4">
                   {/* Regenerate Button */}
                   <div className="flex justify-end">
@@ -1486,7 +1486,7 @@ export default function JobDetail() {
                   
                   <GoogleMapsLoader>
                     <RoofingReportView
-                      solarApiData={(job as any).solarApiData}
+                      solarApiData={job.solarApiData}
                       jobData={{
                         fullName: job.fullName,
                         address: job.address,
@@ -2070,13 +2070,13 @@ export default function JobDetail() {
             <div>
               <ProposalCalculator
                 jobId={jobId}
-                roofArea={(job as any).solarApiData?.totalArea}
-                manualAreaSqFt={(job as any).manualAreaSqFt}
-                solarCoverage={(job as any).solarApiData?.solarCoverage || false}
-                currentPricePerSq={(job as any).pricePerSq}
-                currentTotalPrice={(job as any).totalPrice}
-                currentCounterPrice={(job as any).counterPrice}
-                currentPriceStatus={(job as any).priceStatus}
+                roofArea={job.solarApiData?.totalArea}
+                manualAreaSqFt={job.manualAreaSqFt}
+                solarCoverage={job.solarApiData?.solarCoverage || false}
+                currentPricePerSq={job.pricePerSq}
+                currentTotalPrice={job.totalPrice}
+                currentCounterPrice={job.counterPrice}
+                currentPriceStatus={job.priceStatus}
                 userRole={permissions?.role || "user"}
                 onUpdate={() => {
                   refetch();
@@ -2300,16 +2300,15 @@ export default function JobDetail() {
       )}
 
       {/* Material Email Dialog */}
-      {/* @ts-ignore - solarApiData is jsonb field, types not inferred */}
-      {showMaterialDialog && (job as any).solarApiData && (
+      {showMaterialDialog && job.solarApiData && (
         <MaterialEmailDialog
           open={showMaterialDialog}
           onOpenChange={setShowMaterialDialog}
           jobAddress={`${job.address}, ${job.cityStateZip}`}
-          roofArea={(job as any).solarApiData?.totalArea || 0}
-          perimeter={(job as any).solarApiData?.perimeter}
-          ridgeLength={(job as any).solarApiData?.ridgeLength}
-          shingleColor={(job as any).solarApiData?.shingleColor}
+          roofArea={job.solarApiData.totalArea || 0}
+          perimeter={job.solarApiData.perimeter}
+          ridgeLength={job.solarApiData.ridgeLength}
+          shingleColor={job.solarApiData.shingleColor}
         />
       )}
     </CRMLayout>
