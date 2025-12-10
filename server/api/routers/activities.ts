@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { protectedProcedure, router } from "../../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../../db";
@@ -40,7 +39,7 @@ async function logEditHistory(
 
 function detectMentions(text: string): number[] {
   const mentionRegex = /@\[(\d+):[^\]]+\]/g;
-  const matches = text.matchAll(mentionRegex);
+  const matches = Array.from(text.matchAll(mentionRegex));
   const userIds: number[] = [];
   
   for (const match of matches) {

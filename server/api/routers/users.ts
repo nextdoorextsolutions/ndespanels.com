@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { protectedProcedure, router } from "../../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -340,8 +339,8 @@ export const usersRouter = router({
           oldValue: change.oldValue,
           newValue: change.newValue,
           editType: "update",
-          ipAddress: ctx.req?.headers?.get?.("x-forwarded-for") || null,
-          userAgent: ctx.req?.headers?.get?.("user-agent")?.substring(0, 500) || null,
+          ipAddress: (ctx.req?.headers?.["x-forwarded-for"] as string) || ctx.req?.ip || null,
+          userAgent: (ctx.req?.headers?.["user-agent"] as string)?.substring(0, 500) || null,
         });
       }
 

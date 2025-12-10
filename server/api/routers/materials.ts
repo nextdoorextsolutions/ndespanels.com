@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { protectedProcedure, ownerOfficeProcedure, router } from "../../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../../db";
@@ -109,7 +108,7 @@ export const materialsRouter = router({
         lineItems: materialOrder.lineItems,
         accessories: input.accessories || [],
         totalSquares: materialOrder.totalSquares,
-        csvUrl,
+        csvUrl: csvUrl?.url || null,
         createdBy: ctx.user?.id,
       }).returning();
 

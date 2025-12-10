@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "../../_core/cookies";
 import { publicProcedure, router } from "../../_core/trpc";
@@ -12,7 +11,7 @@ export const authRouter = router({
   me: publicProcedure.query(opts => opts.ctx.user),
   
   logout: publicProcedure.mutation(({ ctx }) => {
-    const cookieOptions = getSessionCookieOptions(ctx.req);
+    const cookieOptions = getSessionCookieOptions(ctx.req as any);
     ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
     return { success: true } as const;
   }),
@@ -90,7 +89,7 @@ export const authRouter = router({
             name: result.name || input.name || "",
             expiresInMs: ONE_YEAR_MS,
           });
-          const cookieOptions = getSessionCookieOptions(ctx.req);
+          const cookieOptions = getSessionCookieOptions(ctx.req as any);
           ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
           
           console.log(`[Sync] ✅ Complete sync in ${Date.now() - startTime}ms`);
@@ -172,7 +171,7 @@ export const authRouter = router({
         name: user.name || "",
         expiresInMs: ONE_YEAR_MS,
       });
-      const cookieOptions = getSessionCookieOptions(ctx.req);
+      const cookieOptions = getSessionCookieOptions(ctx.req as any);
       ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
       
       return { success: true, user: { id: user.id, name: user.name, role: user.role } };

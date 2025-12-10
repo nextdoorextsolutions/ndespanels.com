@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { protectedProcedure, router } from "../../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -252,7 +251,6 @@ export const proposalsRouter = router({
         fileUrl: publicUrl,
         fileType: 'application/pdf',
         uploadedBy: user!.id,
-        uploadedAt: new Date(),
       });
 
       // Log activity
