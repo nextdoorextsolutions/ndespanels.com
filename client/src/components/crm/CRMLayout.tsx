@@ -64,6 +64,11 @@ const navItems = [
     ],
   },
   {
+    label: "Team",
+    href: "/crm/team",
+    icon: Users,
+  },
+  {
     label: "Calendar",
     href: "/crm/calendar",
     icon: Calendar,
