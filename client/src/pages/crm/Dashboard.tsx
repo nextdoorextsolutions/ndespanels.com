@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo, memo } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import {
   Users,
@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { PipelineOverview } from "@/components/PipelineOverview";
+import { LeadTrendsChart } from "@/components/crm/LeadTrendsChart";
 
 // New pipeline stage configuration
 const pipelineStages = [
@@ -65,89 +66,6 @@ const actionItems = [
   { key: "overdue", label: "Overdue Tasks", icon: Clock, color: "text-red-400" },
 ];
 
-// PERFORMANCE OPTIMIZATION: Memoized chart component to prevent unnecessary re-renders
-// This reduces re-renders by 80% when dashboard data updates
-const LeadTrendChart = memo(({ data }: { data: { month: string; leads: number; closed: number }[] }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Memoize data serialization to prevent effect from running on every render
-  const dataKey = useMemo(() => JSON.stringify(data), [data]);
-
-  useEffect(() => {
-    if (!canvasRef.current || !data || data.length === 0) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const padding = 40;
-    const chartWidth = canvas.width - padding * 2;
-    const chartHeight = canvas.height - padding * 2;
-
-    // Find max value for scaling
-    const maxValue = Math.max(...data.map(d => Math.max(d.leads, d.closed)), 1);
-
-    // Draw grid lines
-    ctx.strokeStyle = "#334155";
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = padding + (chartHeight / 4) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding, y);
-      ctx.lineTo(canvas.width - padding, y);
-      ctx.stroke();
-    }
-
-    // Draw bars
-    const barWidth = chartWidth / data.length / 3;
-    const gap = barWidth / 2;
-
-    data.forEach((item, index) => {
-      const x = padding + (chartWidth / data.length) * index + gap;
-      
-      // Leads bar (teal)
-      const leadsHeight = (item.leads / maxValue) * chartHeight;
-      ctx.fillStyle = "#00d4aa";
-      ctx.fillRect(x, padding + chartHeight - leadsHeight, barWidth, leadsHeight);
-
-      // Closed bar (green)
-      const closedHeight = (item.closed / maxValue) * chartHeight;
-      ctx.fillStyle = "#22c55e";
-      ctx.fillRect(x + barWidth + 4, padding + chartHeight - closedHeight, barWidth, closedHeight);
-
-      // Month label
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "10px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(item.month, x + barWidth, canvas.height - 10);
-    });
-
-    // Legend
-    ctx.fillStyle = "#00d4aa";
-    ctx.fillRect(padding, 10, 12, 12);
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "11px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("Leads", padding + 18, 20);
-
-    ctx.fillStyle = "#22c55e";
-    ctx.fillRect(padding + 70, 10, 12, 12);
-    ctx.fillStyle = "#94a3b8";
-    ctx.fillText("Closed", padding + 88, 20);
-  }, [dataKey]); // Only re-run when data actually changes
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={400}
-      height={200}
-      className="w-full h-[200px]"
-    />
-  );
-});
 
 // Conversion funnel component
 function ConversionFunnel({ stats }: { stats: any }) {
@@ -488,13 +406,7 @@ export default function CRMDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {monthlyTrends && monthlyTrends.length > 0 ? (
-                    <LeadTrendChart data={monthlyTrends} />
-                  ) : (
-                    <div className="h-[200px] flex items-center justify-center text-slate-400">
-                      <p>No trend data available yet</p>
-                    </div>
-                  )}
+                  <LeadTrendsChart data={monthlyTrends || []} />
                 </CardContent>
               </Card>
 

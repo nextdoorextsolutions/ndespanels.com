@@ -8,12 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Download, Plus, Filter, Shield, Eye, ExternalLink } from "lucide-react";
+import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Plus, Filter, Shield, Eye, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { GoogleMapsLoader } from "@/components/GoogleMapsLoader";
-import { EstimatorLeadImport } from "@/components/EstimatorLeadImport";
 
 const STATUS_OPTIONS = [
   { value: "lead", label: "Lead", color: "bg-slate-500/20 text-slate-300 border-slate-400/30" },
@@ -34,7 +33,6 @@ export default function CRMLeads() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dealTypeFilter, setDealTypeFilter] = useState<string>("all");
   const [showNewJobDialog, setShowNewJobDialog] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Read filters from URL params on mount
   useEffect(() => {
@@ -271,14 +269,6 @@ export default function CRMLeads() {
                 <SelectItem value="financed" className="text-white hover:bg-slate-700">Financed</SelectItem>
               </SelectContent>
             </Select>
-            <Button 
-              variant="outline"
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-              onClick={() => setShowImportDialog(true)}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Import Leads
-            </Button>
             <Button 
               className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
               onClick={() => setShowNewJobDialog(true)}
@@ -650,23 +640,6 @@ export default function CRMLeads() {
           </DialogContent>
         </Dialog>
 
-        {/* Import Leads Dialog */}
-        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-          <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-white">Import Leads from Estimator</DialogTitle>
-              <p className="text-sm text-slate-400">Import leads from your NextDoor Exterior Solutions roofing estimator</p>
-            </DialogHeader>
-            
-            <EstimatorLeadImport />
-            
-            <div className="flex justify-end pt-4 border-t border-slate-700">
-              <Button variant="outline" onClick={() => setShowImportDialog(false)} className="border-slate-600 text-slate-300 hover:bg-slate-700">
-                Close
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </CRMLayout>
     </GoogleMapsLoader>
