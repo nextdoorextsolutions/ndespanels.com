@@ -18,6 +18,7 @@ import {
   Calculator
 } from "lucide-react";
 import { SignaturePad } from "./SignaturePad";
+import { convertSqFeetToSquares, SQUARE_FEET_PER_SQUARE } from "@/utils/roofingMath";
 
 interface ProposalCalculatorProps {
   jobId: number;
@@ -55,11 +56,11 @@ export function ProposalCalculator({
 
   const utils = trpc.useUtils();
 
-  // Calculate roof squares (1 square = 100 sq ft)
+  // Calculate roof squares using centralized utility
   // Priority: Manual override > Solar data > Manual fallback
   const manualOverride = parseFloat(manualSqFt) || 0;
   const finalSqFt = manualOverride > 0 ? manualOverride : (roofArea || manualAreaSqFt || 0);
-  const roofSquares = finalSqFt / 100;
+  const roofSquares = finalSqFt / SQUARE_FEET_PER_SQUARE;
 
   // Calculate total price
   const pricePerSqNum = parseFloat(pricePerSq) || 0;
