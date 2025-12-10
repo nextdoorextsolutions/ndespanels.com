@@ -26,71 +26,16 @@ import {
   canEditJob,
   canDeleteJob,
   canViewEditHistory,
+  getTeamMemberIds,
+  filterLeadsByRole,
 } from "../../lib/rbac"; 
+import { logEditHistory } from "../../lib/editHistory";
 
 // Email validation helper - allows empty string or valid email
 const emailOrEmpty = z.string().refine(
   (val) => !val || val.length === 0 || z.string().email().safeParse(val).success,
   { message: "Must be a valid email address or empty" }
 );
-
-// Helper functions (will be moved to lib/ later)
-async function filterLeadsByRole(db: any, user: any, leads: any[]): Promise<any[]> {
-  if (!user) return [];
-  
-  const role = normalizeRole(user.role || "user");
-  
-  // Owners and Admins see everything
-  if (role === "owner" || role === "admin" || role === "office") {
-    return leads;
-  }
-  
-  // Team Leads see their own jobs + their team members' jobs
-  if (role === "team_lead") {
-    const teamMemberIds = await getTeamMemberIds(db, user.id);
-    return leads.filter(lead => 
-      lead.assignedTo === user.id || 
-      (teamMemberIds.length > 0 && teamMemberIds.includes(lead.assignedTo))
-    );
-  }
-  
-  // Sales Reps only see their own jobs
-  if (role === "sales_rep") {
-    return leads.filter(lead => lead.assignedTo === user.id);
-  }
-  
-  // Default: no access
-  return [];
-}
-
-async function getTeamMemberIds(db: any, teamLeadId: number): Promise<number[]> {
-  const teamMembers = await db.select({ id: users.id })
-    .from(users)
-    .where(eq(users.teamLeadId, teamLeadId));
-  return teamMembers.map((m: any) => m.id);
-}
-
-async function logEditHistory(
-  db: any,
-  jobId: number,
-  userId: number,
-  fieldName: string,
-  oldValue: string | null,
-  newValue: string | null,
-  editType: string,
-  ctx: any
-): Promise<void> {
-  await db.insert(editHistory).values({
-    reportRequestId: jobId,
-    userId: userId,
-    fieldName: fieldName,
-    oldValue: oldValue,
-    newValue: newValue,
-    editType: editType,
-    ipAddress: ctx.req?.ip || null,
-    userAgent: ctx.req?.headers?.["user-agent"] || null,
-  });
-}
 
 
 // Exported Jobs Router

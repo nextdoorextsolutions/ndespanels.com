@@ -231,3 +231,43 @@ export function getRoleBadgeColor(role: string): string {
       return "bg-gray-500";
   }
 }
+
+// Helper to get team member IDs for a team lead
+export async function getTeamMemberIds(db: any, teamLeadId: number): Promise<number[]> {
+  const { users } = await import("../../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  
+  const teamMembers = await db.select({ id: users.id })
+    .from(users)
+    .where(eq(users.teamLeadId, teamLeadId));
+  return teamMembers.map((m: any) => m.id);
+}
+
+// Helper to filter leads based on user role
+export async function filterLeadsByRole(db: any, user: any, leads: any[]): Promise<any[]> {
+  if (!user) return [];
+  
+  const role = normalizeRole(user.role || "user");
+  
+  // Owners and Admins see everything
+  if (role === "owner" || role === "admin" || role === "office") {
+    return leads;
+  }
+  
+  // Team Leads see their own jobs + their team members' jobs
+  if (role === "team_lead") {
+    const teamMemberIds = await getTeamMemberIds(db, user.id);
+    return leads.filter(lead => 
+      lead.assignedTo === user.id || 
+      (teamMemberIds.length > 0 && teamMemberIds.includes(lead.assignedTo))
+    );
+  }
+  
+  // Sales Reps only see their own jobs
+  if (role === "sales_rep") {
+    return leads.filter(lead => lead.assignedTo === user.id);
+  }
+  
+  // Default: no access
+  return [];
+}

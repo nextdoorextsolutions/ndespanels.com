@@ -11,39 +11,8 @@ import { getDb } from "../../db";
 import { reportRequests, users, activities, jobMessageReads } from "../../../drizzle/schema";
 import { eq, desc, and, or, like, inArray, isNotNull, sql } from "drizzle-orm";
 import { notifyOwner } from "../../_core/notification";
-import { isTeamLead, canViewJob } from "../../lib/rbac";
-
-// Helper to get team member IDs (duplicated from jobs.ts, will be moved to lib/)
-async function getTeamMemberIds(db: any, teamLeadId: number): Promise<number[]> {
-  const teamMembers = await db.select({ id: users.id })
-    .from(users)
-    .where(eq(users.teamLeadId, teamLeadId));
-  return teamMembers.map((m: any) => m.id);
-}
-
-// Helper to log edit history (duplicated from jobs.ts, will be moved to lib/)
-async function logEditHistory(
-  db: any,
-  jobId: number,
-  userId: number,
-  fieldName: string,
-  oldValue: string | null,
-  newValue: string | null,
-  editType: string,
-  ctx: any
-): Promise<void> {
-  const { editHistory } = await import("../../../drizzle/schema");
-  await db.insert(editHistory).values({
-    reportRequestId: jobId,
-    userId: userId,
-    fieldName: fieldName,
-    oldValue: oldValue,
-    newValue: newValue,
-    editType: editType,
-    ipAddress: ctx?.req?.ip || null,
-    userAgent: ctx?.req?.headers?.["user-agent"] || null,
-  });
-}
+import { isTeamLead, canViewJob, getTeamMemberIds } from "../../lib/rbac";
+import { logEditHistory } from "../../lib/editHistory";
 
 export const portalRouter = router({
   // Look up job by phone number (public - no auth required)
