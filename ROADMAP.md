@@ -331,9 +331,10 @@
 - [x] Update Backend: `updateLead` mutation accepts manual area with edit history logging.
 - [x] Update Frontend: `ProposalCalculator` saves manual area on change with toast feedback.
 
-### 2. Tech Debt: Type Safety
-- [ ] Audit: Search for remaining `as any` casts in `/client`.
-- [ ] Fix: Replace with shared `Job` or `SolarApiData` types.
+### 2. Tech Debt: Type Safety ✅ COMPLETE
+- [x] Audit: Found all `as any` casts in `/client` (24 instances).
+- [x] Fix: Replaced 7 instances with proper types (Job, role enums, union types).
+- [x] Documented: Kept 17 legitimate casts (IME events, external library types, tRPC inference issues).
 
 ### 3. Refinement: Solar Data Validation
 - [ ] Add Zod schema for `solar_api_data` JSONB field in `server/api/routers/solar.ts`.
