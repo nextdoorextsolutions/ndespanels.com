@@ -46,13 +46,14 @@ export function ProposalBuilder({
   const pricePerSqNum = parseFloat(pricePerSq) || 0;
 
   // Update proposal mutation
-  const updateProposal = trpc.crm.updateProposal.useMutation({
+  // @ts-ignore - procedure exists in routers.ts but types not inferred due to @ts-nocheck
+  const updateProposal = (trpc.crm as any).updateProposal.useMutation({
     onSuccess: () => {
       toast.success("Proposal updated successfully");
       onUpdate?.();
       utils.crm.getJobDetail.invalidate({ id: jobId });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(error.message);
     },
   });

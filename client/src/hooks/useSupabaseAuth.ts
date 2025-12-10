@@ -123,6 +123,13 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
 
       try {
         // Only check Supabase session (fast, client-side)
+        if (!supabase) {
+          clearTimeout(sessionTimeout);
+          if (mounted) {
+            setState(prev => ({ ...prev, loading: false }));
+          }
+          return;
+        }
         const { data: { session }, error } = await supabase.auth.getSession();
         clearTimeout(sessionTimeout);
         
