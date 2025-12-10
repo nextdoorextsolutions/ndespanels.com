@@ -7,7 +7,7 @@ interface GoogleMapsLoaderProps {
 export function GoogleMapsLoader({ children }: GoogleMapsLoaderProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY || "AIzaSyA7QSM-fqUn4grHM6OYddNgKzK7uMlBY1I";
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY || "AIzaSyD9aUoEaPhMZGbEwU8KPajIu3zxPHI3uQE";
 
   useEffect(() => {
     // Safety check: Ensure API key is present
