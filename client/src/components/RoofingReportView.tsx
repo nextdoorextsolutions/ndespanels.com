@@ -21,7 +21,12 @@ interface RoofingReportViewProps {
 }
 
 export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }: RoofingReportViewProps) {
-  // Check if Google Maps is loaded before rendering
+  // Check if Google Maps AND drawing library are loaded
+  const isDrawingLibraryLoaded = isGoogleMapsLoaded && 
+    typeof google !== 'undefined' && 
+    google.maps?.drawing && 
+    google.maps?.geometry;
+
   if (!isGoogleMapsLoaded) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -29,6 +34,7 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
       </div>
     );
   }
+  
   const [metrics, setMetrics] = useState<RoofMetrics | null>(null);
   const [wallFlashingAdder, setWallFlashingAdder] = useState<number>(0);
   const [wasteFactorPercent, setWasteFactorPercent] = useState<number>(10);
@@ -150,7 +156,7 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
       // Construct fallback imagery URL if we have coordinates
       if (solarApiData.lat && solarApiData.lng) {
         console.warn('[RoofingReport] Using fallback satellite image from coordinates');
-        const fallbackUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${solarApiData.lat},${solarApiData.lng}&zoom=19&size=600x600&maptype=satellite`;
+        const fallbackUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${solarApiData.lat},${solarApiData.lng}&zoom=19&size=600x600&maptype=satellite&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY}`;
         const img = new Image();
         img.onload = () => {
           canvas.width = img.width;
@@ -256,6 +262,21 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
     console.log('[RoofingReport] Download PDF clicked');
   };
 
+  // Handle Start Manual Measurement button click
+  const handleStartManualMeasurement = () => {
+    if (!isDrawingLibraryLoaded) {
+      toast.error('Drawing tools are still loading. Please wait a moment and try again.');
+      console.error('[RoofingReport] Drawing library not loaded:', {
+        googleDefined: typeof google !== 'undefined',
+        mapsDefined: typeof google !== 'undefined' && !!google.maps,
+        drawingDefined: typeof google !== 'undefined' && !!google.maps?.drawing,
+        geometryDefined: typeof google !== 'undefined' && !!google.maps?.geometry,
+      });
+      return;
+    }
+    setIsDrawingMode(true);
+  };
+
   if (!metrics) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -321,7 +342,7 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
                 </div>
               )}
               {/* Show Google Map when drawing mode is active, otherwise show canvas */}
-              {isDrawingMode && solarApiData?.lat && solarApiData?.lng ? (
+              {isDrawingMode && isDrawingLibraryLoaded && solarApiData?.lat && solarApiData?.lng ? (
                 <div className="relative bg-slate-900 rounded-lg overflow-hidden" style={{ height: '600px' }}>
                   <GoogleMap
                     mapContainerStyle={{ width: '100%', height: '100%' }}
@@ -395,11 +416,12 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
                   {/* Start Manual Measurement Button Overlay - ALWAYS VISIBLE */}
                   <div className="absolute top-4 left-4 z-10">
                     <Button
-                      onClick={() => setIsDrawingMode(true)}
-                      className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold shadow-lg"
+                      onClick={handleStartManualMeasurement}
+                      disabled={!isDrawingLibraryLoaded}
+                      className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Ruler className="w-4 h-4 mr-2" />
-                      Start Manual Measurement
+                      {isDrawingLibraryLoaded ? 'Start Manual Measurement' : 'Loading Drawing Tools...'}
                     </Button>
                   </div>
                 </div>
