@@ -870,7 +870,7 @@ export default function JobDetail() {
                 </>
               )}
               {/* Draft Supplier Order - Owner/Office Only */}
-              {permissions && (permissions.role === 'owner' || permissions.role === 'office') && job.solarApiData?.roofArea && (
+              {permissions && (permissions.role === 'owner' || permissions.role === 'office') && (job.solarApiData as any)?.roofArea && (
                 <Button
                   onClick={() => setShowMaterialDialog(true)}
                   className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold"
@@ -2294,15 +2294,15 @@ export default function JobDetail() {
       )}
 
       {/* Material Email Dialog */}
-      {showMaterialDialog && (job as any).solarApiData && (
+      {showMaterialDialog && (job.solarApiData as any) && (
         <MaterialEmailDialog
           open={showMaterialDialog}
           onOpenChange={setShowMaterialDialog}
           jobAddress={`${job.address}, ${job.cityStateZip}`}
-          roofArea={(job as any).solarApiData?.roofArea || 0}
-          perimeter={(job as any).solarApiData?.perimeter}
-          ridgeLength={(job as any).solarApiData?.ridgeLength}
-          shingleColor={(job as any).solarApiData?.shingleColor}
+          roofArea={(job.solarApiData as any)?.roofArea || 0}
+          perimeter={(job.solarApiData as any)?.perimeter}
+          ridgeLength={(job.solarApiData as any)?.ridgeLength}
+          shingleColor={(job.solarApiData as any)?.shingleColor}
         />
       )}
     </CRMLayout>

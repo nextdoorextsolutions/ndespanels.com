@@ -98,6 +98,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   }, [syncUserMutation]);
 
   useEffect(() => {
+    let mounted = true;
+
     // Check if Supabase is configured
     if (!isSupabaseAvailable() || !supabase) {
       console.warn("[Auth] Supabase is not configured. Authentication will not work.");
@@ -105,47 +107,69 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       return;
     }
 
-    // Get initial session with timeout fallback
-    const sessionTimeout = setTimeout(() => {
-      // If getSession takes too long, assume no session and show login form
-      setState(prev => ({
-        ...prev,
-        user: null,
-        session: null,
-        loading: false,
-        error: null,
-      }));
-    }, 2000); // 2 second timeout
+    const checkSession = async () => {
+      // Safety valve: Force show login form after 500ms if no response
+      const sessionTimeout = setTimeout(() => {
+        if (mounted) {
+          setState(prev => ({
+            ...prev,
+            user: null,
+            session: null,
+            loading: false,
+            error: null,
+          }));
+        }
+      }, 500); // 500ms timeout - login form MUST appear quickly
 
-    supabase.auth.getSession()
-      .then(async ({ data: { session }, error }) => {
+      try {
+        // Only check Supabase session (fast, client-side)
+        const { data: { session }, error } = await supabase.auth.getSession();
         clearTimeout(sessionTimeout);
         
+        if (!mounted) return;
+
         if (session?.user) {
-          // Sync to CRM on initial load if authenticated
-          await syncToCRM(session.user);
+          // We have a session - set it immediately
+          setState(prev => ({
+            ...prev,
+            user: session.user,
+            session,
+            loading: false,
+            error: error ?? null,
+          }));
+          
+          // Sync to backend AFTER showing the app (non-blocking)
+          syncToCRM(session.user).catch(err => {
+            console.error("[Auth] Background sync failed:", err);
+          });
+        } else {
+          // No session - show login form immediately
+          setState(prev => ({
+            ...prev,
+            user: null,
+            session: null,
+            loading: false,
+            error: error ?? null,
+          }));
         }
-        
-        setState(prev => ({
-          ...prev,
-          user: session?.user ?? null,
-          session,
-          loading: false,
-          error: error ?? null,
-        }));
-      })
-      .catch((err) => {
+      } catch (err) {
         clearTimeout(sessionTimeout);
         console.error("[Auth] Failed to get session:", err);
-        // On error, assume no session and show login form
-        setState(prev => ({
-          ...prev,
-          user: null,
-          session: null,
-          loading: false,
-          error: null,
-        }));
-      });
+        
+        if (mounted) {
+          // On error, show login form immediately
+          setState(prev => ({
+            ...prev,
+            user: null,
+            session: null,
+            loading: false,
+            error: null,
+          }));
+        }
+      }
+    };
+
+    checkSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -171,7 +195,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     );
 
     return () => {
-      clearTimeout(sessionTimeout);
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);

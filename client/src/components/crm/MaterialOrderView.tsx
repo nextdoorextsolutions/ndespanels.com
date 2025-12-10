@@ -307,15 +307,10 @@ export function MaterialOrderView({
         open={emailDialogOpen}
         onOpenChange={setEmailDialogOpen}
         jobAddress={jobAddress}
-        shingleSystem={shingleSystem}
+        roofArea={roofArea}
+        perimeter={perimeter}
+        ridgeLength={ridgeLength}
         shingleColor={shingleColor}
-        calculatedItems={calculatedItems}
-        accessories={{
-          dripEdge,
-          pipeBoots,
-          gooseNecks,
-          sprayPaint,
-        }}
       />
     </div>
   );
