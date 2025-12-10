@@ -1,5 +1,4 @@
-// @ts-nocheck
-import type { CookieOptions } from "express";
+import type { CookieOptions, Request } from "express";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
@@ -19,7 +18,7 @@ function isSecureRequest(req: Request) {
     ? forwardedProto
     : forwardedProto.split(",");
 
-  return protoList.some(proto => proto.trim().toLowerCase() === "https");
+  return protoList.some((proto: any) => proto.trim().toLowerCase() === "https");
 }
 
 export function getSessionCookieOptions(

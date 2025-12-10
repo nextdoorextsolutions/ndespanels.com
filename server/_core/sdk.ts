@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
@@ -222,9 +221,9 @@ class SDKServer {
       }
 
       return {
-        openId,
-        appId,
-        name,
+        openId: openId as string,
+        appId: appId as string,
+        name: name as string,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));

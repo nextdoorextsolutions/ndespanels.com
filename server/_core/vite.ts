@@ -1,4 +1,3 @@
-// @ts-nocheck
 import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
