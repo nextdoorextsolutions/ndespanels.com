@@ -78,7 +78,7 @@ export async function fetchSolarApiData(
   longitude: number;
   [key: string]: any;
 }> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || "AIzaSyD9aUoEaPhMZGbEwU8KPajIu3zxPHI3uQE";
   
   if (!apiKey) {
     console.warn("[SolarAPI] Missing GOOGLE_MAPS_API_KEY - returning fallback");
@@ -153,14 +153,16 @@ export async function fetchSolarApiData(
 
 // 4. Main Function to Fetch Data by Address (alternative method)
 export async function getSolarData(address: string) {
-  if (!process.env.GOOGLE_MAPS_API_KEY) {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || "AIzaSyD9aUoEaPhMZGbEwU8KPajIu3zxPHI3uQE";
+  
+  if (!apiKey) {
     throw new Error("Missing GOOGLE_MAPS_API_KEY");
   }
 
   // A. Geocode the address to get Lat/Lng
   const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
     address
-  )}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+  )}&key=${apiKey}`;
   
   const geoRes = await fetch(geoUrl);
   const geoJson = await geoRes.json();
