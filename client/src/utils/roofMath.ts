@@ -42,10 +42,28 @@ export function calculateRoofMetrics(solarApiData: any): RoofMetrics {
   };
 
   try {
-    // Extract building insights
-    const buildingInsights = solarApiData.buildingInsights;
-    if (!buildingInsights) {
-      console.error('[RoofMath] No building insights found');
+    // Extract building insights - handle both nested and direct solarPotential
+    const buildingInsights = solarApiData.buildingInsights || solarApiData;
+    if (!buildingInsights || !buildingInsights.solarPotential) {
+      console.error('[RoofMath] No building insights or solar potential found');
+      console.log('[RoofMath] Available keys:', Object.keys(solarApiData));
+      
+      // If we have totalArea directly, use it
+      if (solarApiData.totalArea) {
+        metrics.totalArea = solarApiData.totalArea;
+        console.log('[RoofMath] Using direct totalArea:', metrics.totalArea);
+      }
+      
+      // Estimate linear measurements if we have area
+      if (metrics.totalArea > 0) {
+        const estimatedPerimeter = Math.sqrt(metrics.totalArea) * 4;
+        metrics.perimeter = Math.round(estimatedPerimeter);
+        metrics.eaves = Math.round(estimatedPerimeter * 0.5);
+        metrics.rakes = Math.round(estimatedPerimeter * 0.3);
+        metrics.ridges = Math.round(estimatedPerimeter * 0.2);
+        console.log('[RoofMath] Estimated linear measurements from area');
+      }
+      
       return metrics;
     }
 
