@@ -84,7 +84,7 @@ export default function CRMLeads() {
   const [noteText, setNoteText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: permissions } = trpc.crm.getMyPermissions.useQuery();
+  const { data: permissions } = trpc.users.getMyPermissions.useQuery();
   const { data: leads, isLoading, refetch } = trpc.crm.getLeads.useQuery({});
   const { data: leadDetail, refetch: refetchLead } = trpc.crm.getLead.useQuery(
     { id: selectedLead! },
@@ -97,14 +97,14 @@ export default function CRMLeads() {
       refetchLead();
     },
   });
-  const addNote = trpc.crm.addNote.useMutation({
+  const addNote = trpc.activities.addNote.useMutation({
     onSuccess: () => {
       toast.success("Note added");
       setNoteText("");
       refetchLead();
     },
   });
-  const uploadDocument = trpc.crm.uploadDocument.useMutation({
+  const uploadDocument = trpc.documents.uploadDocument.useMutation({
     onSuccess: () => {
       toast.success("Document uploaded successfully");
       refetchLead();
@@ -115,7 +115,7 @@ export default function CRMLeads() {
       setUploading(false);
     },
   });
-  const deleteDocument = trpc.crm.deleteDocument.useMutation({
+  const deleteDocument = trpc.documents.deleteDocument.useMutation({
     onSuccess: () => {
       toast.success("Document deleted");
       refetchLead();

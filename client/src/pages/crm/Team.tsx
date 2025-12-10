@@ -22,7 +22,7 @@ export default function CRMTeam() {
   const { data: team, isLoading, refetch } = trpc.crm.getTeam.useQuery();
   const { data: teamLeads } = trpc.crm.getTeamLeads.useQuery();
   const { data: currentUser } = trpc.auth.me.useQuery();
-  const { data: permissions } = trpc.crm.getMyPermissions.useQuery();
+  const { data: permissions } = trpc.users.getMyPermissions.useQuery();
   
   const updateMember = trpc.crm.updateTeamMember.useMutation({
     onSuccess: () => {

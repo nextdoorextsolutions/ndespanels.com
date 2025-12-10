@@ -16,20 +16,20 @@ export function NotificationDropdown() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
 
-  const { data: notifications, isLoading, refetch } = trpc.crm.getNotifications.useQuery(undefined, {
+  const { data: notifications, isLoading, refetch } = trpc.activities.getNotifications.useQuery(undefined, {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Safely handle undefined data - treat as empty array, NOT as loading
   const notificationList = notifications ?? [];
 
-  const markAsRead = trpc.crm.markNotificationRead.useMutation({
+  const markAsRead = trpc.activities.markNotificationRead.useMutation({
     onSuccess: () => {
       refetch();
     },
   });
 
-  const markAllAsRead = trpc.crm.markAllNotificationsRead.useMutation({
+  const markAllAsRead = trpc.activities.markAllNotificationsRead.useMutation({
     onSuccess: () => {
       toast.success("All notifications marked as read");
       refetch();
