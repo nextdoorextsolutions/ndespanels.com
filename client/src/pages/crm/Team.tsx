@@ -19,12 +19,12 @@ const ROLE_OPTIONS = [
 ];
 
 export default function CRMTeam() {
-  const { data: team, isLoading, refetch } = trpc.crm.getTeam.useQuery();
-  const { data: teamLeads } = trpc.crm.getTeamLeads.useQuery();
+  const { data: team, isLoading, refetch } = trpc.users.getTeam.useQuery();
+  const { data: teamLeads } = trpc.users.getTeamLeads.useQuery();
   const { data: currentUser } = trpc.auth.me.useQuery();
   const { data: permissions } = trpc.users.getMyPermissions.useQuery();
   
-  const updateMember = trpc.crm.updateTeamMember.useMutation({
+  const updateMember = trpc.users.updateTeamMember.useMutation({
     onSuccess: () => {
       toast.success("Team member updated");
       refetch();
@@ -35,7 +35,7 @@ export default function CRMTeam() {
   });
 
   // Owner-only user update mutation with audit trail
-  const updateUser = trpc.crm.updateUser.useMutation({
+  const updateUser = trpc.users.updateUser.useMutation({
     onSuccess: (data) => {
       toast.success(data.message);
       refetch();
@@ -46,7 +46,7 @@ export default function CRMTeam() {
     },
   });
 
-  const createAccount = trpc.crm.createTeamAccount.useMutation({
+  const createAccount = trpc.users.createTeamAccount.useMutation({
     onSuccess: (data) => {
       toast.success("Account created successfully");
       setCreatedAccount(data);
