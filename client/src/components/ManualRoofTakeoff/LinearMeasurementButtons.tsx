@@ -6,6 +6,7 @@ import { RoofMeasurementGuide } from './RoofMeasurementGuide';
 interface LinearMeasurementButtonsProps {
   onStartDrawing: (type: MeasurementType) => void;
   isDrawing: boolean;
+  activeTool: MeasurementType | null;
 }
 
 const LINEAR_MEASUREMENT_TYPES: MeasurementType[] = [
@@ -17,7 +18,7 @@ const LINEAR_MEASUREMENT_TYPES: MeasurementType[] = [
   'flashing',
 ];
 
-export function LinearMeasurementButtons({ onStartDrawing, isDrawing }: LinearMeasurementButtonsProps) {
+export function LinearMeasurementButtons({ onStartDrawing, isDrawing, activeTool }: LinearMeasurementButtonsProps) {
   if (isDrawing) return null;
 
   return (
@@ -26,14 +27,14 @@ export function LinearMeasurementButtons({ onStartDrawing, isDrawing }: LinearMe
         {/* Measurement Buttons */}
         <div className="lg:col-span-2">
           <p className="text-sm text-slate-300 mb-2 font-semibold">
-            Click to measure roof edges (in Linear Feet):
+            {activeTool ? `${activeTool.charAt(0).toUpperCase() + activeTool.slice(1)} tool active - Click on the map to draw` : 'Click to measure roof edges (in Linear Feet):'}
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {LINEAR_MEASUREMENT_TYPES.map((type) => (
               <Button
                 key={type}
                 onClick={() => onStartDrawing(type)}
-                className={`${MEASUREMENT_BUTTON_STYLES[type]} text-white text-xs`}
+                className={`${MEASUREMENT_BUTTON_STYLES[type]} text-white text-xs ${activeTool === type ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-800' : ''}`}
                 size="sm"
               >
                 {MEASUREMENT_LABELS[type]}

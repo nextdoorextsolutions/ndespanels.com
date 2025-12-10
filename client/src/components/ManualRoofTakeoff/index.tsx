@@ -20,6 +20,12 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
   const [linearMeasurements, setLinearMeasurements] = useState<LinearMeasurement[]>([]);
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   
+  // Click-click-exit state
+  const [activeTool, setActiveTool] = useState<MeasurementType | null>(null);
+  const [tempLineStart, setTempLineStart] = useState<google.maps.LatLng | null>(null);
+  const [tempLine, setTempLine] = useState<google.maps.Polyline | null>(null);
+  const [mousePosition, setMousePosition] = useState<google.maps.LatLng | null>(null);
+  
   // Refs
   const mapRef = useRef<google.maps.Map | null>(null);
   const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
@@ -64,6 +70,12 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
 
     // Handle overlay completion
     google.maps.event.addListener(drawingManager, 'overlaycomplete', handleOverlayComplete);
+    
+    // Add click listener for click-click-exit drawing
+    google.maps.event.addListener(map, 'click', handleMapClick);
+    
+    // Add mousemove listener for temporary line preview
+    google.maps.event.addListener(map, 'mousemove', handleMapMouseMove);
 
     return () => {
       if (drawingManager) {
@@ -206,6 +218,111 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     } : null);
   };
 
+  // Handle map click for click-click-exit drawing
+  const handleMapClick = (event: google.maps.MapMouseEvent) => {
+    if (!event.latLng || !activeTool || activeTool === 'area') return;
+    
+    if (!tempLineStart) {
+      // First click: set start point
+      setTempLineStart(event.latLng);
+      toast.info(`Click the end point for ${activeTool}`);
+    } else {
+      // Second click: create line and reset
+      const path = [tempLineStart, event.latLng];
+      
+      const newPolyline = new google.maps.Polyline({
+        path,
+        strokeWeight: 3,
+        strokeColor: MEASUREMENT_COLORS[activeTool],
+        editable: true,
+        map: mapRef.current,
+      });
+      
+      const length = calculatePolylineLength(newPolyline);
+      
+      const newMeasurement: LinearMeasurement = {
+        type: activeTool,
+        length,
+        polyline: newPolyline,
+      };
+      
+      const updatedMeasurements = [...linearMeasurements, newMeasurement];
+      setLinearMeasurements(updatedMeasurements);
+      updateLinearMeasurements(updatedMeasurements);
+      
+      toast.success(`${activeTool.charAt(0).toUpperCase() + activeTool.slice(1)}: ${Math.round(length)} ft`);
+      
+      // Listen for polyline edits
+      const handlePolylineEdit = () => {
+        const updatedLength = calculatePolylineLength(newPolyline);
+        setLinearMeasurements(prev => prev.map(m => 
+          m.polyline === newPolyline ? { ...m, length: updatedLength } : m
+        ));
+      };
+      
+      google.maps.event.addListener(newPolyline.getPath(), 'set_at', handlePolylineEdit);
+      google.maps.event.addListener(newPolyline.getPath(), 'insert_at', handlePolylineEdit);
+      
+      // Auto-exit: reset tool
+      setActiveTool(null);
+      setTempLineStart(null);
+      setMousePosition(null);
+      
+      // Clear temporary line
+      if (tempLine) {
+        tempLine.setMap(null);
+        setTempLine(null);
+      }
+    }
+  };
+  
+  // Handle mouse move for temporary line preview
+  const handleMapMouseMove = (event: google.maps.MapMouseEvent) => {
+    if (!event.latLng || !activeTool || !tempLineStart || activeTool === 'area') return;
+    
+    setMousePosition(event.latLng);
+    
+    // Update or create temporary line
+    if (tempLine) {
+      tempLine.setPath([tempLineStart, event.latLng]);
+    } else {
+      const newTempLine = new google.maps.Polyline({
+        path: [tempLineStart, event.latLng],
+        strokeWeight: 2,
+        strokeColor: MEASUREMENT_COLORS[activeTool],
+        strokeOpacity: 0.5,
+        map: mapRef.current,
+        clickable: false,
+      });
+      setTempLine(newTempLine);
+    }
+  };
+  
+  // Toggle tool selection
+  const handleToolSelect = (type: MeasurementType) => {
+    if (activeTool === type) {
+      // Deselect if clicking the same tool
+      setActiveTool(null);
+      setTempLineStart(null);
+      setMousePosition(null);
+      if (tempLine) {
+        tempLine.setMap(null);
+        setTempLine(null);
+      }
+      toast.info('Tool deselected');
+    } else {
+      // Select new tool
+      setActiveTool(type);
+      setTempLineStart(null);
+      setMousePosition(null);
+      if (tempLine) {
+        tempLine.setMap(null);
+        setTempLine(null);
+      }
+      toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} tool selected. Click start point on the map.`);
+    }
+  };
+
   // Start drawing (polygon or polyline)
   const handleStartDrawing = (type: MeasurementType = 'area') => {
     if (!drawingManagerRef.current) return;
@@ -215,20 +332,11 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     if (type === 'area') {
       drawingManagerRef.current.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
       toast.info('Click on the map to draw the roof outline');
+      setIsDrawing(true);
     } else {
-      drawingManagerRef.current.setOptions({
-        polylineOptions: {
-          strokeWeight: 3,
-          strokeColor: MEASUREMENT_COLORS[type],
-          editable: true,
-        },
-      });
-      
-      drawingManagerRef.current.setDrawingMode(google.maps.drawing.OverlayType.POLYLINE);
-      toast.info(`Click on the map to measure ${type} (in linear feet)`);
+      // Use click-click-exit for linear measurements
+      handleToolSelect(type);
     }
-    
-    setIsDrawing(true);
   };
 
   // Cancel drawing
@@ -395,6 +503,7 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
             <LinearMeasurementButtons 
               onStartDrawing={handleStartDrawing}
               isDrawing={isDrawing}
+              activeTool={activeTool}
             />
           )}
         </CardContent>
