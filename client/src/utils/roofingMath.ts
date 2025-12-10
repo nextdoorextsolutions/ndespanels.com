@@ -345,6 +345,46 @@ export function runUnitTests() {
   console.log('✅ All roofing math tests passed!');
 }
 
+// ============================================================================
+// GOOGLE MAPS UTILITIES
+// ============================================================================
+
+/**
+ * Calculate length of a Google Maps polyline in feet
+ * 
+ * @param polyline - Google Maps Polyline object
+ * @returns Length in feet
+ */
+export function calculatePolylineLength(polyline: google.maps.Polyline): number {
+  const path = polyline.getPath();
+  const lengthMeters = google.maps.geometry.spherical.computeLength(path);
+  return convertMetersToFeet(lengthMeters);
+}
+
+/**
+ * Calculate area of a Google Maps polygon in square feet
+ * 
+ * @param polygon - Google Maps Polygon object
+ * @returns Area in square feet
+ */
+export function calculatePolygonArea(polygon: google.maps.Polygon): number {
+  const path = polygon.getPath();
+  const areaMeters = google.maps.geometry.spherical.computeArea(path);
+  return convertSqMetersToSqFeet(areaMeters);
+}
+
+/**
+ * Calculate perimeter of a Google Maps polygon in feet
+ * 
+ * @param polygon - Google Maps Polygon object
+ * @returns Perimeter in feet
+ */
+export function calculatePolygonPerimeter(polygon: google.maps.Polygon): number {
+  const path = polygon.getPath();
+  const perimeterMeters = google.maps.geometry.spherical.computeLength(path);
+  return convertMetersToFeet(perimeterMeters);
+}
+
 // Uncomment to run tests in development
 // if (import.meta.env.DEV) {
 //   runUnitTests();

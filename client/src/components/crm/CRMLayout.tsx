@@ -158,7 +158,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Top Navigation Bar - AccuLynx Style */}
-      <header className="bg-gradient-to-r from-[#0d4f4f] to-[#0a3d3d] shadow-lg sticky top-0 z-50">
+      <header className="bg-gradient-to-r from-[#0d4f4f] to-[#0a3d3d] shadow-lg sticky top-0 z-50 w-full">
         <div className="flex items-center justify-between px-4 h-14">
           {/* Logo */}
           <div className="flex items-center gap-8">
