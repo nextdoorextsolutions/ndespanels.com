@@ -687,6 +687,109 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 -- ============================================
 -- MIGRATION COMPLETE
 -- ============================================
+
+-- =============================================
+-- Products Table - Roofing Product Catalog
+-- =============================================
+CREATE TABLE IF NOT EXISTS products (
+  id SERIAL PRIMARY KEY,
+  category VARCHAR(50) NOT NULL,
+  manufacturer VARCHAR(100),
+  product_name VARCHAR(255) NOT NULL,
+  color VARCHAR(100),
+  wind_rating VARCHAR(50),
+  warranty_info TEXT,
+  description TEXT,
+  image_url TEXT,
+  price_per_square NUMERIC(10, 2),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Index for filtering by category
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
+
+-- RLS Policies for products (read-only for authenticated users)
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow authenticated users to read products"
+  ON products FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow service role full access to products"
+  ON products FOR ALL
+  TO service_role
+  USING (true);
+
+-- Grant permissions
+GRANT SELECT, INSERT, UPDATE, DELETE ON "products" TO authenticated;
+
+-- Tamko Titan XT Shingle Products
+INSERT INTO "products" (
+  "category", "manufacturer", "product_name", "color", "wind_rating", 
+  "warranty_info", "description", "image_url"
+)
+VALUES 
+(
+  'Shingle', 'Tamko', 'Titan XT', 'Black Walnut', '160 MPH', 
+  'Limited Lifetime (Tamko Pro Enhanced)', 'High-contrast color blend.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/BlackWalnut.jpg'
+),
+(
+  'Shingle', 'Tamko', 'Titan XT', 'Glacier White', '160 MPH', 
+  'Limited Lifetime (Tamko Pro Enhanced)', 'Bright, clean appearance.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/GlacierWhite.jpg'
+),
+(
+  'Shingle', 'Tamko', 'Titan XT', 'Olde English Pewter', '160 MPH', 
+  'Limited Lifetime (Tamko Pro Enhanced)', 'Stately deep gray.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/OldeEnglishPewter.jpg'
+),
+(
+  'Shingle', 'Tamko', 'Titan XT', 'Oxford Grey', '160 MPH', 
+  'Limited Lifetime (Tamko Pro Enhanced)', 'Versatile medium gray.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/OxfordGrey.jpg'
+),
+(
+  'Shingle', 'Tamko', 'Titan XT', 'Rustic Black', '160 MPH', 
+  'Limited Lifetime (Tamko Pro Enhanced)', 'Deep rich black.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/RusticBlack.jpg'
+),
+(
+  'Shingle', 'Tamko', 'Titan XT', 'Shadow Grey', '160 MPH', 
+  'Limited Lifetime (Tamko Pro Enhanced)', 'Soft blended gray.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/ShadowGrey.jpg'
+),
+(
+  'Shingle', 'Tamko', 'Titan XT', 'Thunderstorm Grey', '160 MPH', 
+  'Limited Lifetime (Tamko Pro Enhanced)', 'Dark stormy grey.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/ThunderstormGrey.jpg'
+),
+(
+  'Shingle', 'Tamko', 'Titan XT', 'Virginia Slate', '160 MPH', 
+  'Limited Lifetime (Tamko Pro Enhanced)', 'Classic slate appearance.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/VirginiaSlate.jpg'
+),
+(
+  'Marketing', 'Tamko', 'Titan XT Logo', NULL, NULL, 
+  NULL, 'Official Branding.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/TitanXT_logo.jpg'
+),
+(
+  'Marketing', 'Tamko', 'Titan XT Aerial Shot', NULL, NULL, 
+  NULL, 'Hero Image.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/TitanXT_Aerial.jpg'
+),
+(
+  'Marketing', 'Tamko', 'Layers of Protection', NULL, NULL, 
+  NULL, 'Tech Breakdown.',
+  'https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/Proposal_Bucket/tamko-complete-optimized.jpg'
+)
+ON CONFLICT DO NOTHING;
+
 -- Verify tables were created:
 -- SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
 --

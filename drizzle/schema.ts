@@ -381,6 +381,28 @@ export type MaterialOrder = typeof materialOrders.$inferSelect;
 export type InsertMaterialOrder = typeof materialOrders.$inferInsert;
 
 /**
+ * Products table - Catalog of roofing products (shingles, materials, marketing assets)
+ */
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  category: varchar("category", { length: 50 }).notNull(), // e.g., "Shingle", "Marketing"
+  manufacturer: varchar("manufacturer", { length: 100 }),
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  color: varchar("color", { length: 100 }),
+  windRating: varchar("wind_rating", { length: 50 }), // e.g., "160 MPH"
+  warrantyInfo: text("warranty_info"), // e.g., "Limited Lifetime (Tamko Pro Enhanced)"
+  description: text("description"),
+  imageUrl: text("image_url"), // URL to product swatch/image
+  pricePerSquare: numeric("price_per_square", { precision: 10, scale: 2 }), // Optional pricing
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = typeof products.$inferInsert;
+
+/**
  * Company Settings table - Business information for proposals and legal compliance
  * Single row table (id=1) storing company-wide settings
  */
