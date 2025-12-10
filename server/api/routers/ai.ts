@@ -13,6 +13,40 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+// Florida Construction Laws Knowledge Base
+const FL_LAWS = `
+FLORIDA CONSTRUCTION LAW REFERENCE:
+
+Chapter 713 - Lien Deadlines:
+- Notice to Owner (NTO): Must be served within 45 days of first labor/material delivery to project
+- Claim of Lien: Must be recorded within 90 days of final furnishing of labor/materials
+- Lien enforcement lawsuit: Must be filed within 1 year of recording lien
+- Failure to meet these deadlines results in complete loss of lien rights
+
+Chapter 626.854 - Public Adjuster Restrictions:
+- Contractors CANNOT negotiate insurance claims unless separately licensed as a Public Adjuster
+- Contractors cannot adjust, negotiate, or settle claims on behalf of policyholders
+- Violating this statute may result in contractor license disciplinary action
+
+Florida Statute 817.234 - Deductible Payment Prohibition:
+- It is a THIRD-DEGREE FELONY to advertise or promise to pay a policyholder's insurance deductible
+- Contractors cannot waive, rebate, or pay deductibles as an inducement for business
+- This includes direct payment, credits, or any arrangement that effectively eliminates the deductible
+- Marketing materials stating "we pay your deductible" violate this law
+
+Chapter 558 - Pre-Suit Notice Requirements:
+- Property owners must serve written Notice of Defect at least 60 days before filing construction defect lawsuit
+- Contractors have 30 days to inspect after receiving notice
+- Contractors then have 30 days after inspection to make settlement offer or repair proposal
+- Failure by owner to provide proper notice can dismiss lawsuit
+
+Assignment of Benefits (AOB) Restrictions (FS 627.7152 & 627.7153):
+- Post-loss AOB agreements must meet strict formatting requirements
+- 3-day rescission period for homeowner after signing AOB
+- Cannot be executed until after insurer issues coverage determination
+- Contractors must provide detailed disclosures about implications
+`;
+
 export const aiRouter = router({
   /**
    * Generate proposal content with AI
@@ -100,7 +134,7 @@ CLOSING:
 
         // Parse the response
         const scopeMatch = text.match(/SCOPE:\s*([\s\S]*?)(?=CLOSING:|$)/i);
-        const closingMatch = text.match(/CLOSING:\s*([\s\S]*?)$/i);
+        const closingMatch = text.match(/CLOSING:\s*([\s\S]*)$/i);
 
         aiContent = {
           scope: scopeMatch ? scopeMatch[1].trim() : text,
@@ -150,7 +184,8 @@ CLOSING:
 Available Tools:
 1. "lookup_job" - Search for jobs by customer name, phone number, or address
 2. "get_job_summary" - Get the latest 5 activities/updates for a specific job
-3. "general_chat" - General conversation, email writing, or other non-CRM tasks
+3. "check_statute" - Check questions against Florida Construction Laws (liens, deadlines, Public Adjuster rules, deductibles, Florida Statutes 558/489/626/713/817)
+4. "general_chat" - General conversation, email writing, or other non-CRM tasks
 `;
 
       // ============ STEP 2: Intent Classification (AI Pass #1) ============
@@ -163,6 +198,7 @@ ${toolDefinitions}
 Rules:
 - Use "lookup_job" if the user asks about a person, phone number, or address
 - Use "get_job_summary" if the user asks for "latest updates", "recent activity", "catch me up", or "what's happening" with a job
+- Use "check_statute" if the user asks about liens, lien deadlines, Notice to Owner, Public Adjuster, paying deductibles, Florida Statutes (558/489/626/713/817), pre-suit notices, or legal compliance
 - Use "general_chat" for everything else (greetings, email writing, general questions)
 
 User Question: "${input.question}"
@@ -170,7 +206,7 @@ ${input.jobContext ? `Current Job Context ID: ${input.jobContext}` : ''}
 
 Return ONLY valid JSON in this exact format:
 {
-  "tool": "lookup_job" | "get_job_summary" | "general_chat",
+  "tool": "lookup_job" | "get_job_summary" | "check_statute" | "general_chat",
   "search_term": "extracted search term or null",
   "reasoning": "brief explanation"
 }`;
@@ -297,6 +333,46 @@ Return ONLY valid JSON in this exact format:
           break;
         }
 
+        case "check_statute": {
+          console.log("[AI Assistant] Executing check_statute");
+          
+          // Pass user question and FL_LAWS to Gemini for analysis
+          const statutePrompt = `You are a Florida Construction Compliance Assistant. Compare the user's question to the provided Florida Construction Laws and provide guidance.
+
+USER QUESTION: "${input.question}"
+
+FLORIDA CONSTRUCTION LAWS:
+${FL_LAWS}
+
+INSTRUCTIONS:
+1. Identify which statute(s) apply to the user's question
+2. Flag any compliance risks or deadline concerns
+3. Cite the specific statute (e.g., "Per FS 817.234..." or "Under Chapter 713...")
+4. Provide clear, actionable guidance
+5. Use professional but direct language
+6. If the question involves illegal activity (like paying deductibles), clearly state "NO" and explain why
+
+Format your response professionally with statute citations.`;
+
+          try {
+            const statuteResult = await model.generateContent(statutePrompt);
+            const statuteResponse = await statuteResult.response;
+            const statuteAnswer = statuteResponse.text();
+            
+            toolData = {
+              statuteGuidance: statuteAnswer,
+              lawsReferenced: FL_LAWS
+            };
+            toolResult = "Florida statute guidance generated";
+            console.log("[AI Assistant] Statute check completed");
+          } catch (error) {
+            console.error("[AI Assistant] Statute check failed:", error);
+            toolResult = "Failed to analyze statute compliance";
+            toolData = null;
+          }
+          break;
+        }
+
         case "general_chat":
         default: {
           console.log("[AI Assistant] Executing general_chat");
@@ -322,6 +398,7 @@ Instructions:
 - Answer naturally in a conversational tone
 - If data was found, present it clearly and helpfully
 - If no data was found, acknowledge it and offer to help differently
+- For statute guidance, present the information directly and clearly with citations
 - For general chat, just respond naturally
 - Keep responses concise but complete
 - Use proper formatting for readability`;
