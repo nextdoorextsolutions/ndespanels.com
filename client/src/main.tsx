@@ -1,3 +1,8 @@
+// Polyfill Buffer for browser environment (needed for PDF generation and other Node.js libraries)
+import { Buffer } from 'buffer';
+window.Buffer = Buffer;
+window.global = window as any;
+
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
