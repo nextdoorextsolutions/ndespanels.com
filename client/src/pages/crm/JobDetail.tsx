@@ -48,6 +48,7 @@ import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { useRealtimeJob } from "@/hooks/useRealtimeJob";
 import { JobPipelineTracker } from "@/components/JobPipelineTracker";
+import type { Job, JobStatus, DealType, hasSolarData, getRoofAreaSqFt, getRoofAreaSource } from "@/types";
 import { InsuranceInfoCard } from "@/components/crm/InsuranceInfoCard";
 import { MentionInput } from "@/components/MentionInput";
 import { RoofingReportView } from "@/components/RoofingReportView";
@@ -575,7 +576,7 @@ export default function JobDetail() {
     if (!jobData?.job) return;
 
     if (validateStatusChange(newStatus, jobData.job)) {
-      updateLead.mutate({ id: jobId, status: newStatus as any });
+      updateLead.mutate({ id: jobId, status: newStatus as JobStatus });
     }
   };
 

@@ -174,9 +174,9 @@ export const appRouter = router({
   activities: activitiesRouter, // Refactored to server/api/routers/activities.ts
   documents: documentsRouter, // Refactored to server/api/routers/documents.ts
   
-  // Jobs router - core job/lead operations, analytics, scheduling
-  // TODO: Consider extracting to server/api/routers/jobs.ts in future
-  jobs: router({
+  // CRM router - core job/lead operations, analytics, scheduling
+  // (Semantically this is "jobs" but kept as "crm" for frontend compatibility)
+  crm: router({
     // Dashboard stats (filtered by role)
     getStats: protectedProcedure.query(async ({ ctx }) => {
       const db = await getDb();

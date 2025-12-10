@@ -1,9 +1,8 @@
 // @ts-nocheck
 /**
- * Main Router Assembly (OPTIONAL ENTRY POINT)
+ * Main Router Assembly
  * 
- * This file can be used as an alternative entry point for the router.
- * Currently, the main router is still assembled in server/routers.ts
+ * This file re-exports the main router and provides individual router exports.
  * 
  * Refactored routers:
  * - auth -> server/api/routers/auth.ts
@@ -11,8 +10,12 @@
  * - report -> server/api/routers/report.ts
  * - proposals -> server/api/routers/proposals.ts
  * - materials -> server/api/routers/materials.ts
+ * - users -> server/api/routers/users.ts
+ * - activities -> server/api/routers/activities.ts
+ * - documents -> server/api/routers/documents.ts
  * 
- * TODO: Rename remaining CRM router to jobs.ts
+ * Note: The 'jobs' router is mapped to 'crm' key in appRouter for frontend backwards compatibility.
+ * Frontend code uses trpc.crm.* but the internal router is named 'jobs' for semantic clarity.
  */
 
 export { authRouter } from "./auth";
@@ -24,5 +27,6 @@ export { usersRouter } from "./users";
 export { activitiesRouter } from "./activities";
 export { documentsRouter } from "./documents";
 
-// Re-export the main router from the legacy file for now
+// Re-export the main router (assembled in server/routers.ts)
+// The 'jobs' router is exposed as 'crm' for frontend compatibility
 export { appRouter, type AppRouter } from "../../routers";
