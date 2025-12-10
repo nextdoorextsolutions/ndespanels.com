@@ -58,7 +58,7 @@ export function ProposalCalculator({
   const utils = trpc.useUtils();
 
   // Calculate roof squares using centralized utility
-  // Priority: Manual override > Solar data > Manual fallback
+  // Priority: Manual input override > Solar API data > Manual roof takeoff (fallback when Solar API unavailable)
   const manualOverride = parseFloat(manualSqFt) || 0;
   const finalSqFt = manualOverride > 0 ? manualOverride : (roofArea || manualAreaSqFt || 0);
   const roofSquares = finalSqFt / SQUARE_FEET_PER_SQUARE;
@@ -273,6 +273,14 @@ export function ProposalCalculator({
         textColor: "text-green-100"
       };
     }
+    if (manualAreaSqFt && manualAreaSqFt > 0) {
+      return {
+        icon: "📐",
+        label: "Manual Takeoff",
+        color: "bg-blue-500",
+        textColor: "text-blue-100"
+      };
+    }
     return {
       icon: "📏",
       label: "Manual Measure Required",
@@ -373,7 +381,7 @@ export function ProposalCalculator({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-400">Roof Size</p>
-                <p className="text-2xl font-bold text-white">{roofSquares.toFixed(1)} squares</p>
+                <p className="text-2xl font-bold text-white">{roofSquares.toFixed(2)} squares</p>
                 <p className="text-xs text-slate-500 mt-1">{finalSqFt.toFixed(0)} sq ft</p>
               </div>
               <Shield className="w-12 h-12 text-slate-600" />

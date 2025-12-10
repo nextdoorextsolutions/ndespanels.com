@@ -41,14 +41,17 @@ export function MaterialEmailDialog({
     // Starter (BDL): Perimeter / 100 -> Round Up
     const starterBundles = perimeter > 0 ? Math.ceil(perimeter / 100) : Math.ceil(roofArea / 1000);
     
-    // Hip & Ridge (BDL): (Ridges + Hips) / 25 -> Round Up
-    const hipRidgeBundles = ridgeLength > 0 ? Math.ceil(ridgeLength / 25) : Math.ceil(roofArea / 500);
+    // Hip (BDL): Hips / 25 -> Round Up
+    const hipBundles = ridgeLength > 0 ? Math.ceil(ridgeLength * 0.5 / 25) : Math.ceil(roofArea / 1000);
+    
+    // Ridge (BDL): Ridges / 25 -> Round Up
+    const ridgeBundles = ridgeLength > 0 ? Math.ceil(ridgeLength * 0.5 / 25) : Math.ceil(roofArea / 1000);
     
     // Underlayment (RL): Area / 1000 -> Round Up
     const underlaymentRolls = Math.ceil(roofArea / 1000);
     
-    // Ice & Water (RL): Estimate based on eaves and valleys
-    const iceWaterRolls = Math.ceil(perimeter / 200) || Math.ceil(roofArea / 2000);
+    // Synthetic Underlayment (RL): Estimate based on eaves and valleys
+    const syntheticUnderlaymentRolls = Math.ceil(perimeter / 200) || Math.ceil(roofArea / 2000);
     
     // Nails (CTN): Area / 2000 -> Round Up (1 box per 20 squares)
     const nailBoxes = Math.ceil(roofArea / 2000);
@@ -56,9 +59,10 @@ export function MaterialEmailDialog({
     return {
       shingleBundles,
       starterBundles,
-      hipRidgeBundles,
+      hipBundles,
+      ridgeBundles,
       underlaymentRolls,
-      iceWaterRolls,
+      syntheticUnderlaymentRolls,
       nailBoxes,
     };
   };
@@ -72,9 +76,10 @@ export function MaterialEmailDialog({
     body += `-- ROOFING SYSTEM --\n`;
     body += `[ ] ${calc.shingleBundles} BDL - Tamko Titan XT (Color: ${shingleColor || '_______'})\n`;
     body += `[ ] ${calc.starterBundles} BDL - Starter Strip\n`;
-    body += `[ ] ${calc.hipRidgeBundles} BDL - Hip & Ridge Cap\n`;
-    body += `[ ] ${calc.underlaymentRolls} RL  - Synthetic Underlayment\n`;
-    body += `[ ] ${calc.iceWaterRolls} RL  - Ice & Water Shield\n`;
+    body += `[ ] ${calc.hipBundles} BDL - Hip Cap\n`;
+    body += `[ ] ${calc.ridgeBundles} BDL - Ridge Cap\n`;
+    body += `[ ] ${calc.underlaymentRolls} RL  - Felt Underlayment\n`;
+    body += `[ ] ${calc.syntheticUnderlaymentRolls} RL  - Synthetic Underlayment\n`;
     body += `[ ] ${calc.nailBoxes} CTN - Coil Nails (1-1/4")\n\n`;
     
     body += `-- ACCESSORIES --\n`;

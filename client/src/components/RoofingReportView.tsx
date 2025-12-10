@@ -405,18 +405,6 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
                       <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
                     </div>
                   )}
-                  
-                  {/* Start Manual Measurement Button Overlay - ALWAYS VISIBLE */}
-                  <div className="absolute top-4 left-4 z-10">
-                    <Button
-                      onClick={handleStartManualMeasurement}
-                      disabled={!isDrawingLibraryLoaded}
-                      className="bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Ruler className="w-4 h-4 mr-2" />
-                      {isDrawingLibraryLoaded ? 'Start Manual Measurement' : 'Loading Drawing Tools...'}
-                    </Button>
-                  </div>
                 </div>
               )}
 
@@ -693,11 +681,18 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
                   <td className="py-3 px-4 text-center text-slate-400 text-sm">{materials.dripEdge.unit}</td>
                 </tr>
                 <tr className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                  <td className="py-3 px-4 text-white font-medium">Hip & Ridge Cap</td>
-                  <td className="py-3 px-4 text-slate-300">{materials.hipRidgeCap.source}</td>
-                  <td className="py-3 px-4 text-right text-white">{formatLinearFeet(materials.hipRidgeCap.rawFootage)}</td>
-                  <td className="py-3 px-4 text-right text-[#00d4aa] font-semibold">{formatLinearFeet(materials.hipRidgeCap.withWaste)}</td>
-                  <td className="py-3 px-4 text-center text-slate-400 text-sm">{materials.hipRidgeCap.unit}</td>
+                  <td className="py-3 px-4 text-white font-medium">Hip Cap</td>
+                  <td className="py-3 px-4 text-slate-300">Hips</td>
+                  <td className="py-3 px-4 text-right text-white">{formatLinearFeet(metrics.hips)}</td>
+                  <td className="py-3 px-4 text-right text-[#00d4aa] font-semibold">{formatLinearFeet(Math.ceil(metrics.hips * (1 + wasteFactorPercent / 100)))}</td>
+                  <td className="py-3 px-4 text-center text-slate-400 text-sm">linear feet</td>
+                </tr>
+                <tr className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                  <td className="py-3 px-4 text-white font-medium">Ridge Cap</td>
+                  <td className="py-3 px-4 text-slate-300">Ridges</td>
+                  <td className="py-3 px-4 text-right text-white">{formatLinearFeet(metrics.ridges)}</td>
+                  <td className="py-3 px-4 text-right text-[#00d4aa] font-semibold">{formatLinearFeet(Math.ceil(metrics.ridges * (1 + wasteFactorPercent / 100)))}</td>
+                  <td className="py-3 px-4 text-center text-slate-400 text-sm">linear feet</td>
                 </tr>
                 <tr className="border-b border-slate-700/50 hover:bg-slate-700/30">
                   <td className="py-3 px-4 text-white font-medium">Valley Metal</td>
@@ -707,7 +702,7 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
                   <td className="py-3 px-4 text-center text-slate-400 text-sm">{materials.valleyMetal.unit}</td>
                 </tr>
                 <tr className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                  <td className="py-3 px-4 text-white font-medium">Ice & Water Shield</td>
+                  <td className="py-3 px-4 text-white font-medium">Synthetic Underlayment</td>
                   <td className="py-3 px-4 text-slate-300">{materials.iceWaterShield.source}</td>
                   <td className="py-3 px-4 text-right text-white">{formatLinearFeet(materials.iceWaterShield.rawFootage)}</td>
                   <td className="py-3 px-4 text-right text-[#00d4aa] font-semibold">{formatLinearFeet(materials.iceWaterShield.withWaste)}</td>

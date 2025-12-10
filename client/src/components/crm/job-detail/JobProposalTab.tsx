@@ -14,7 +14,7 @@ export function JobProposalTab({ jobId, job, userRole, onUpdate }: JobProposalTa
       <ProposalCalculator
         jobId={jobId}
         roofArea={job.solarApiData?.totalArea}
-        manualAreaSqFt={undefined}
+        manualAreaSqFt={job.manualAreaSqFt || undefined}
         solarCoverage={job.solarApiData?.solarCoverage || false}
         currentPricePerSq={job.pricePerSq}
         currentTotalPrice={job.totalPrice}

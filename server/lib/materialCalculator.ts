@@ -35,8 +35,9 @@ export interface MaterialOrder {
   summary: {
     shingleBundles: number;
     starterBundles: number;
-    hipRidgeBundles: number;
-    iceWaterRolls: number;
+    hipBundles: number;
+    ridgeBundles: number;
+    syntheticUnderlaymentRolls: number;
     underlaymentRolls: number;
     dripEdgePieces: number;
     valleyMetalPieces: number;
@@ -60,7 +61,7 @@ export function calculateMaterialOrder(
   const shingleRule = MATERIAL_DEFAULTS.ARCHITECTURAL_SHINGLES;
   const starterRule = MATERIAL_DEFAULTS.STARTER_STRIP_STANDARD;
   const hipRidgeRule = MATERIAL_DEFAULTS.HIP_RIDGE_STANDARD;
-  const iceWaterRule = MATERIAL_DEFAULTS.ICE_WATER_SHIELD;
+  const syntheticUnderlaymentRule = MATERIAL_DEFAULTS.SYNTHETIC_UNDERLAYMENT_ICE_WATER;
   const underlaymentRule = MATERIAL_DEFAULTS.SYNTHETIC_UNDERLAYMENT;
   const dripEdgeRule = MATERIAL_DEFAULTS.DRIP_EDGE;
   const valleyRule = MATERIAL_DEFAULTS.VALLEY_METAL;
@@ -79,33 +80,38 @@ export function calculateMaterialOrder(
   const starterLinearFt = (eaves + rakes) * starterWaste;
   const starterBundles = Math.ceil(starterLinearFt / starterRule.coverage);
 
-  // 3. HIP & RIDGE CAP - 25 linear ft per bundle (standard 3-tab cut)
-  const hipRidgeWaste = hipRidgeRule.wasteFactor[roofComplexity];
-  const hipRidgeLinearFt = (ridges + hips) * hipRidgeWaste;
-  const hipRidgeBundles = Math.ceil(hipRidgeLinearFt / hipRidgeRule.coverage);
+  // 3. HIP CAP - 25 linear ft per bundle (standard 3-tab cut)
+  const hipWaste = hipRidgeRule.wasteFactor[roofComplexity];
+  const hipLinearFt = hips * hipWaste;
+  const hipBundles = Math.ceil(hipLinearFt / hipRidgeRule.coverage);
 
-  // 4. ICE & WATER SHIELD - 2 squares (200 sq ft) per roll
+  // 4. RIDGE CAP - 25 linear ft per bundle (standard 3-tab cut)
+  const ridgeWaste = hipRidgeRule.wasteFactor[roofComplexity];
+  const ridgeLinearFt = ridges * ridgeWaste;
+  const ridgeBundles = Math.ceil(ridgeLinearFt / hipRidgeRule.coverage);
+
+  // 5. SYNTHETIC UNDERLAYMENT - 2 squares (200 sq ft) per roll
   // Valley coverage: ~66 linear ft per roll (assuming 3 ft width)
-  const iceWaterWaste = iceWaterRule.wasteFactor[roofComplexity];
-  const valleyAreaSqFt = valleys * 3 * iceWaterWaste; // 3 ft wide coverage
-  const eaveAreaSqFt = eaves * 3 * iceWaterWaste; // 3 ft wide coverage on eaves
-  const totalIceWaterArea = valleyAreaSqFt + eaveAreaSqFt;
-  const iceWaterRolls = Math.ceil(totalIceWaterArea / iceWaterRule.coverage);
+  const syntheticUnderlaymentWaste = syntheticUnderlaymentRule.wasteFactor[roofComplexity];
+  const valleyAreaSqFt = valleys * 3 * syntheticUnderlaymentWaste; // 3 ft wide coverage
+  const eaveAreaSqFt = eaves * 3 * syntheticUnderlaymentWaste; // 3 ft wide coverage on eaves
+  const totalSyntheticUnderlaymentArea = valleyAreaSqFt + eaveAreaSqFt;
+  const syntheticUnderlaymentRolls = Math.ceil(totalSyntheticUnderlaymentArea / syntheticUnderlaymentRule.coverage);
 
-  // 5. UNDERLAYMENT - 10 squares (1,000 sq ft) per roll
+  // 6. UNDERLAYMENT - 10 squares (1,000 sq ft) per roll
   const underlaymentWaste = underlaymentRule.wasteFactor[roofComplexity];
   const underlaymentRolls = Math.ceil((squaresWithWaste * 100) / underlaymentRule.coverage);
 
-  // 6. DRIP EDGE - 10 ft pieces
+  // 7. DRIP EDGE - 10 ft pieces
   const dripEdgeWaste = dripEdgeRule.wasteFactor[roofComplexity];
   const dripEdgeLinearFt = (eaves + rakes) * dripEdgeWaste;
   const dripEdgePieces = Math.ceil(dripEdgeLinearFt / dripEdgeRule.coverage);
 
-  // 7. VALLEY METAL - 10 ft pieces (if open valleys)
+  // 8. VALLEY METAL - 10 ft pieces (if open valleys)
   const valleyWaste = valleyRule.wasteFactor[roofComplexity];
   const valleyMetalPieces = valleys > 0 ? Math.ceil((valleys * valleyWaste) / valleyRule.coverage) : 0;
 
-  // 8. NAILS - Calculate based on standard 4-nail pattern
+  // 9. NAILS - Calculate based on standard 4-nail pattern
   const nailCalc = calculateNailsNeeded(squaresWithWaste, "STANDARD_4_NAIL");
   const nailBoxes = nailCalc.boxes;
 
@@ -124,22 +130,28 @@ export function calculateMaterialOrder(
       calculation: `${starterLinearFt.toFixed(0)} ft ÷ ${starterRule.coverage} ft/bundle`,
     },
     {
-      productName: "Hip & Ridge Cap Shingles",
-      quantity: hipRidgeBundles,
+      productName: "Hip Cap Shingles",
+      quantity: hipBundles,
       unit: "bundles",
-      calculation: `${hipRidgeLinearFt.toFixed(0)} ft ÷ ${hipRidgeRule.coverage} ft/bundle`,
+      calculation: `${hipLinearFt.toFixed(0)} ft ÷ ${hipRidgeRule.coverage} ft/bundle`,
     },
     {
-      productName: "Ice & Water Shield",
-      quantity: iceWaterRolls,
-      unit: "rolls",
-      calculation: `${totalIceWaterArea.toFixed(0)} sq ft ÷ ${iceWaterRule.coverage} sq ft/roll`,
+      productName: "Ridge Cap Shingles",
+      quantity: ridgeBundles,
+      unit: "bundles",
+      calculation: `${ridgeLinearFt.toFixed(0)} ft ÷ ${hipRidgeRule.coverage} ft/bundle`,
     },
     {
       productName: "Synthetic Underlayment",
+      quantity: syntheticUnderlaymentRolls,
+      unit: "rolls",
+      calculation: `${totalSyntheticUnderlaymentArea.toFixed(0)} sq ft ÷ ${syntheticUnderlaymentRule.coverage} sq ft/roll`,
+    },
+    {
+      productName: "Felt Underlayment",
       quantity: underlaymentRolls,
       unit: "rolls",
-      calculation: `${squaresWithWaste.toFixed(1)} squares ÷ 4 sq/roll`,
+      calculation: `${squaresWithWaste.toFixed(1)} squares ÷ 10 sq/roll`,
     },
     {
       productName: "Drip Edge",
@@ -185,8 +197,9 @@ export function calculateMaterialOrder(
     summary: {
       shingleBundles,
       starterBundles,
-      hipRidgeBundles,
-      iceWaterRolls: iceWaterRolls,
+      hipBundles,
+      ridgeBundles,
+      syntheticUnderlaymentRolls,
       underlaymentRolls,
       dripEdgePieces,
       valleyMetalPieces,

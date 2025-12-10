@@ -139,10 +139,10 @@ export const MATERIAL_DEFAULTS: Record<string, MaterialCoverageRule> = {
     notes: "4 squares (400 sq ft) per roll. More waste due to overlaps.",
   },
 
-  // ==================== ICE & WATER SHIELD ====================
-  ICE_WATER_SHIELD: {
-    name: "Ice & Water Shield",
-    productType: "ice_water",
+  // ==================== SYNTHETIC UNDERLAYMENT (ICE & WATER) ====================
+  SYNTHETIC_UNDERLAYMENT_ICE_WATER: {
+    name: "Synthetic Underlayment",
+    productType: "synthetic_underlayment",
     coverage: 200, // sq ft per roll (2 squares)
     coverageUnit: "sq ft per roll",
     packageUnit: "roll",

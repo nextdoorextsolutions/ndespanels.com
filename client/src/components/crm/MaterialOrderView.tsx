@@ -63,9 +63,10 @@ export function MaterialOrderView({
   const [calculatedItems, setCalculatedItems] = useState({
     shingleBundles: 0,
     starterBundles: 0,
-    hipRidgeBundles: 0,
+    hipBundles: 0,
+    ridgeBundles: 0,
     underlaymentRolls: 0,
-    iceWaterRolls: 0,
+    syntheticUnderlaymentRolls: 0,
     nailBoxes: 0,
   });
 
@@ -82,14 +83,17 @@ export function MaterialOrderView({
       // Starter: Perimeter in feet / 100 (each bundle covers ~100 LF)
       starterBundles: Math.ceil(perimeter / 100),
       
-      // Hip & Ridge: Total hip+ridge length / 25 (each bundle covers ~25 LF)
-      hipRidgeBundles: Math.ceil((ridgeLength + hipLength) / 25),
+      // Hip: Hip length / 25 (each bundle covers ~25 LF)
+      hipBundles: Math.ceil(hipLength / 25),
+      
+      // Ridge: Ridge length / 25 (each bundle covers ~25 LF)
+      ridgeBundles: Math.ceil(ridgeLength / 25),
       
       // Underlayment: 1 roll per 10 squares (1000 sq ft)
       underlaymentRolls: Math.ceil(areaWithWaste / 1000),
       
-      // Ice & Water: Valley length / 66 (each roll covers ~66 LF)
-      iceWaterRolls: Math.ceil(valleyLength / 66),
+      // Synthetic Underlayment: Valley length / 66 (each roll covers ~66 LF)
+      syntheticUnderlaymentRolls: Math.ceil(valleyLength / 66),
       
       // Nails: 1 box per 20 squares
       nailBoxes: Math.ceil(squaresWithWaste / 20),
@@ -201,22 +205,28 @@ export function MaterialOrderView({
                   <td className="p-3 text-slate-300">Starter Strip Shingles</td>
                 </tr>
                 <tr className="border-t border-slate-700">
-                  <td className="p-3 text-white">Hip & Ridge</td>
-                  <td className="p-3 text-right text-[#00d4aa] font-semibold">{calculatedItems.hipRidgeBundles}</td>
+                  <td className="p-3 text-white">Hip Cap</td>
+                  <td className="p-3 text-right text-[#00d4aa] font-semibold">{calculatedItems.hipBundles}</td>
                   <td className="p-3 text-right text-slate-400">BDL</td>
-                  <td className="p-3 text-slate-300">Hip & Ridge Cap Shingles - {shingleColor || '[Color]'}</td>
+                  <td className="p-3 text-slate-300">Hip Cap Shingles - {shingleColor || '[Color]'}</td>
+                </tr>
+                <tr className="border-t border-slate-700">
+                  <td className="p-3 text-white">Ridge Cap</td>
+                  <td className="p-3 text-right text-[#00d4aa] font-semibold">{calculatedItems.ridgeBundles}</td>
+                  <td className="p-3 text-right text-slate-400">BDL</td>
+                  <td className="p-3 text-slate-300">Ridge Cap Shingles - {shingleColor || '[Color]'}</td>
                 </tr>
                 <tr className="border-t border-slate-700">
                   <td className="p-3 text-white">Underlayment</td>
                   <td className="p-3 text-right text-[#00d4aa] font-semibold">{calculatedItems.underlaymentRolls}</td>
                   <td className="p-3 text-right text-slate-400">ROLL</td>
-                  <td className="p-3 text-slate-300">Synthetic Underlayment (10 SQ/Roll)</td>
+                  <td className="p-3 text-slate-300">Felt Underlayment (10 SQ/Roll)</td>
                 </tr>
                 <tr className="border-t border-slate-700">
-                  <td className="p-3 text-white">Ice & Water</td>
-                  <td className="p-3 text-right text-[#00d4aa] font-semibold">{calculatedItems.iceWaterRolls}</td>
+                  <td className="p-3 text-white">Synthetic Underlayment</td>
+                  <td className="p-3 text-right text-[#00d4aa] font-semibold">{calculatedItems.syntheticUnderlaymentRolls}</td>
                   <td className="p-3 text-right text-slate-400">ROLL</td>
-                  <td className="p-3 text-slate-300">Ice & Water Shield (66 LF/Roll)</td>
+                  <td className="p-3 text-slate-300">Synthetic Underlayment (66 LF/Roll)</td>
                 </tr>
                 <tr className="border-t border-slate-700">
                   <td className="p-3 text-white">Roofing Nails</td>
