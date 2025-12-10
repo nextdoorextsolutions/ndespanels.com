@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { PITCH_MULTIPLIERS, calculatePolylineLength, calculatePolygonArea, calculatePolygonPerimeter } from '@/utils/roofingMath';
 import { LinearMeasurementButtons } from './LinearMeasurementButtons';
 import { MeasurementResults } from './MeasurementResults';
-import { MEASUREMENT_COLORS } from './constants';
+import { MEASUREMENT_COLORS, MEASUREMENT_LABELS } from './constants';
 import type { ManualRoofTakeoffProps, RoofMeasurements, MeasurementType, LinearMeasurement } from './types';
 
 export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = false }: ManualRoofTakeoffProps) {
@@ -156,11 +156,10 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     }
   };
 
-  // Helper function to find nearest vertex for snapping
+  // Helper function to find nearest vertex for snapping (polygon + line endpoints)
   const findNearestVertex = (latLng: google.maps.LatLng): google.maps.LatLng | null => {
-    if (!polygon || !mapRef.current) return null;
+    if (!mapRef.current) return null;
     
-    const path = polygon.getPath();
     const projection = mapRef.current.getProjection();
     if (!projection) return null;
     
@@ -168,25 +167,48 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     if (!point) return null;
     
     const zoom = mapRef.current.getZoom() || 21;
-    const snapThreshold = 10 / Math.pow(2, zoom); // ~10 pixels in world coordinates
+    const snapThreshold = 15 / Math.pow(2, zoom); // Increased to 15 pixels for better magnetic effect
     
     let nearestVertex: google.maps.LatLng | null = null;
     let minDistance = snapThreshold;
     
-    for (let i = 0; i < path.getLength(); i++) {
-      const vertex = path.getAt(i);
-      const vertexPoint = projection.fromLatLngToPoint(vertex);
-      if (!vertexPoint) continue;
-      
-      const distance = Math.sqrt(
-        Math.pow(point.x - vertexPoint.x, 2) + Math.pow(point.y - vertexPoint.y, 2)
-      );
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestVertex = vertex;
+    // Check polygon vertices
+    if (polygon) {
+      const path = polygon.getPath();
+      for (let i = 0; i < path.getLength(); i++) {
+        const vertex = path.getAt(i);
+        const vertexPoint = projection.fromLatLngToPoint(vertex);
+        if (!vertexPoint) continue;
+        
+        const distance = Math.sqrt(
+          Math.pow(point.x - vertexPoint.x, 2) + Math.pow(point.y - vertexPoint.y, 2)
+        );
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestVertex = vertex;
+        }
       }
     }
+    
+    // Check existing line endpoints for magnetic snapping
+    linearMeasurements.forEach(measurement => {
+      const path = measurement.polyline.getPath();
+      for (let i = 0; i < path.getLength(); i++) {
+        const vertex = path.getAt(i);
+        const vertexPoint = projection.fromLatLngToPoint(vertex);
+        if (!vertexPoint) continue;
+        
+        const distance = Math.sqrt(
+          Math.pow(point.x - vertexPoint.x, 2) + Math.pow(point.y - vertexPoint.y, 2)
+        );
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestVertex = vertex;
+        }
+      }
+    });
     
     return nearestVertex;
   };
@@ -309,7 +331,7 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
       
       const newPolyline = new google.maps.Polyline({
         path,
-        strokeWeight: 3,
+        strokeWeight: activeTool === 'rakes' ? 4 : 3, // Make rakes thicker for visibility
         strokeColor: MEASUREMENT_COLORS[activeTool],
         editable: true,
         map: mapRef.current,
@@ -507,7 +529,34 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     }
   };
 
-  // Clear linear measurements
+  // Clear linear measurements by type
+  const handleClearLinearMeasurementsByType = (type: MeasurementType) => {
+    const toRemove = linearMeasurements.filter(m => m.type === type);
+    toRemove.forEach(m => m.polyline.setMap(null));
+    
+    const remaining = linearMeasurements.filter(m => m.type !== type);
+    setLinearMeasurements(remaining);
+    
+    // Recalculate totals
+    const totals = remaining.reduce((acc, m) => {
+      acc[m.type] = (acc[m.type] || 0) + m.length;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    setMeasurements(prev => prev ? {
+      ...prev,
+      eaves: Math.round(totals.eaves || 0),
+      rakes: Math.round(totals.rakes || 0),
+      valleys: Math.round(totals.valleys || 0),
+      ridges: Math.round(totals.ridges || 0),
+      hips: Math.round(totals.hips || 0),
+      flashing: Math.round(totals.flashing || 0),
+    } : null);
+    
+    toast.info(`${MEASUREMENT_LABELS[type]} cleared`);
+  };
+  
+  // Clear all linear measurements
   const handleClearLinearMeasurements = () => {
     linearMeasurements.forEach(m => m.polyline.setMap(null));
     setLinearMeasurements([]);
@@ -668,6 +717,7 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
           selectedPitch={selectedPitch}
           onPitchChange={setSelectedPitch}
           onSave={handleSave}
+          onClearMeasurementType={handleClearLinearMeasurementsByType}
         />
       )}
     </div>

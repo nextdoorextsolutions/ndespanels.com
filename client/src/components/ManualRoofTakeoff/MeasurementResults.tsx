@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save } from 'lucide-react';
+import { Save, X } from 'lucide-react';
 import { PITCH_MULTIPLIERS } from '@/utils/roofingMath';
-import type { RoofMeasurements } from './types';
+import type { RoofMeasurements, MeasurementType } from './types';
 import { MEASUREMENT_TEXT_COLORS } from './constants';
 
 interface MeasurementResultsProps {
@@ -11,6 +11,7 @@ interface MeasurementResultsProps {
   selectedPitch: string;
   onPitchChange: (pitch: string) => void;
   onSave: () => void;
+  onClearMeasurementType?: (type: MeasurementType) => void;
 }
 
 export function MeasurementResults({
@@ -18,6 +19,7 @@ export function MeasurementResults({
   selectedPitch,
   onPitchChange,
   onSave,
+  onClearMeasurementType,
 }: MeasurementResultsProps) {
   const hasLinearMeasurements = 
     measurements.eaves || 
@@ -85,40 +87,106 @@ export function MeasurementResults({
           {hasLinearMeasurements && (
             <div className="border-t border-slate-700 pt-3 space-y-2">
               <p className="text-xs text-slate-400 font-semibold">Linear Measurements:</p>
-              {measurements.eaves && (
-                <div className="flex justify-between items-center">
+              {(measurements.eaves || 0) > 0 && (
+                <div className="flex justify-between items-center group">
                   <span className={`text-xs ${MEASUREMENT_TEXT_COLORS.eaves}`}>Eaves:</span>
-                  <span className="text-white text-sm">{measurements.eaves} LF</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm">{measurements.eaves} LF</span>
+                    {onClearMeasurementType && (
+                      <button
+                        onClick={() => onClearMeasurementType('eaves')}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded"
+                        title="Clear eaves measurements"
+                      >
+                        <X className="w-3 h-3 text-red-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
-              {measurements.rakes && (
-                <div className="flex justify-between items-center">
-                  <span className={`text-xs ${MEASUREMENT_TEXT_COLORS.rakes}`}>Rakes:</span>
-                  <span className="text-white text-sm">{measurements.rakes} LF</span>
+              {(measurements.rakes || 0) > 0 && (
+                <div className="flex justify-between items-center group">
+                  <span className={`text-xs font-semibold ${MEASUREMENT_TEXT_COLORS.rakes}`}>Rakes:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm font-semibold">{measurements.rakes} LF</span>
+                    {onClearMeasurementType && (
+                      <button
+                        onClick={() => onClearMeasurementType('rakes')}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded"
+                        title="Clear rakes measurements"
+                      >
+                        <X className="w-3 h-3 text-red-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
-              {measurements.valleys && (
-                <div className="flex justify-between items-center">
+              {(measurements.valleys || 0) > 0 && (
+                <div className="flex justify-between items-center group">
                   <span className={`text-xs ${MEASUREMENT_TEXT_COLORS.valleys}`}>Valleys:</span>
-                  <span className="text-white text-sm">{measurements.valleys} LF</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm">{measurements.valleys} LF</span>
+                    {onClearMeasurementType && (
+                      <button
+                        onClick={() => onClearMeasurementType('valleys')}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded"
+                        title="Clear valleys measurements"
+                      >
+                        <X className="w-3 h-3 text-red-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
-              {measurements.ridges && (
-                <div className="flex justify-between items-center">
+              {(measurements.ridges || 0) > 0 && (
+                <div className="flex justify-between items-center group">
                   <span className={`text-xs ${MEASUREMENT_TEXT_COLORS.ridges}`}>Ridges:</span>
-                  <span className="text-white text-sm">{measurements.ridges} LF</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm">{measurements.ridges} LF</span>
+                    {onClearMeasurementType && (
+                      <button
+                        onClick={() => onClearMeasurementType('ridges')}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded"
+                        title="Clear ridges measurements"
+                      >
+                        <X className="w-3 h-3 text-red-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
-              {measurements.hips && (
-                <div className="flex justify-between items-center">
+              {(measurements.hips || 0) > 0 && (
+                <div className="flex justify-between items-center group">
                   <span className={`text-xs ${MEASUREMENT_TEXT_COLORS.hips}`}>Hips:</span>
-                  <span className="text-white text-sm">{measurements.hips} LF</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm">{measurements.hips} LF</span>
+                    {onClearMeasurementType && (
+                      <button
+                        onClick={() => onClearMeasurementType('hips')}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded"
+                        title="Clear hips measurements"
+                      >
+                        <X className="w-3 h-3 text-red-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
-              {measurements.flashing && (
-                <div className="flex justify-between items-center">
+              {(measurements.flashing || 0) > 0 && (
+                <div className="flex justify-between items-center group">
                   <span className={`text-xs ${MEASUREMENT_TEXT_COLORS.flashing}`}>Flashing:</span>
-                  <span className="text-white text-sm">{measurements.flashing} LF</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm">{measurements.flashing} LF</span>
+                    {onClearMeasurementType && (
+                      <button
+                        onClick={() => onClearMeasurementType('flashing')}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded"
+                        title="Clear flashing measurements"
+                      >
+                        <X className="w-3 h-3 text-red-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

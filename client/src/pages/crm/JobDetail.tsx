@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useParams } from "wouter";
-import { ArrowLeft, Search } from "lucide-react";
+import { useParams, useLocation } from "wouter";
+import { ArrowLeft, Search, Trash2 } from "lucide-react";
 import { Link } from "wouter";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
@@ -53,12 +55,14 @@ const ACTIVITY_ICONS: Record<string, any> = {
 
 export default function JobDetail() {
   const { id } = useParams();
+  const [, setLocation] = useLocation();
   const jobId = parseInt(id || "0");
 
   // State
   const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Data fetching
   const { data: job, isLoading, error, refetch } = trpc.crm.getLead.useQuery({ id: jobId });
@@ -115,6 +119,16 @@ export default function JobDetail() {
     onSuccess: () => {
       toast.success("History entry deleted");
       refetch();
+    },
+  });
+
+  const deleteJob = trpc.crm.deleteLead.useMutation({
+    onSuccess: () => {
+      toast.success("Job deleted successfully");
+      setLocation("/crm");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete job");
     },
   });
 
@@ -226,6 +240,48 @@ export default function JobDetail() {
                   <p className="text-slate-400 text-sm">{job.address}</p>
                 </div>
               </div>
+              {canDelete && (
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline"
+                      className="bg-red-900/20 border-red-600 text-red-400 hover:bg-red-900/40 hover:text-red-300"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Job
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-slate-800 border-slate-700">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-white">Delete Job?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-slate-300">
+                        Are you sure you want to delete this job for <strong className="text-white">{job.fullName}</strong>?
+                        <br /><br />
+                        This will permanently delete:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>Job details and customer information</li>
+                          <li>All documents and photos</li>
+                          <li>Messages and timeline</li>
+                          <li>Edit history</li>
+                        </ul>
+                        <br />
+                        <strong className="text-red-400">This action cannot be undone.</strong>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteJob.mutate({ id: jobId })}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        {deleteJob.isPending ? "Deleting..." : "Delete Job"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
 
             {/* Tabs */}

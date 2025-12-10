@@ -3,7 +3,7 @@ import type { MeasurementType } from './types';
 export const MEASUREMENT_COLORS: Record<MeasurementType, string> = {
   area: '#FF0000',
   eaves: '#EF4444',
-  rakes: '#3B82F6',
+  rakes: '#60A5FA', // Brighter blue for better visibility
   valleys: '#10B981',
   ridges: '#EAB308',
   hips: '#F97316',
