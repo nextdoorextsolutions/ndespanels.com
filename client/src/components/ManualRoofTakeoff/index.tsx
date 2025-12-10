@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -35,9 +35,9 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
   const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Google Map
+  // Initialize Google Map (only once on mount)
   useEffect(() => {
-    if (!mapContainerRef.current || !window.google) return;
+    if (!mapContainerRef.current || !window.google || mapRef.current) return;
 
     const map = new google.maps.Map(mapContainerRef.current, {
       center: { lat: latitude, lng: longitude },
@@ -75,25 +75,46 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     drawingManager.setMap(map);
     drawingManagerRef.current = drawingManager;
 
-    // Handle overlay completion
-    google.maps.event.addListener(drawingManager, 'overlaycomplete', handleOverlayComplete);
-    
-    // Add click listener for click-click-exit drawing
-    google.maps.event.addListener(map, 'click', handleMapClick);
-    
-    // Add mousemove listener for temporary line preview
-    google.maps.event.addListener(map, 'mousemove', handleMapMouseMove);
-
     return () => {
-      if (drawingManager) {
-        google.maps.event.clearInstanceListeners(drawingManager);
-        drawingManager.setMap(null);
+      if (drawingManagerRef.current) {
+        google.maps.event.clearInstanceListeners(drawingManagerRef.current);
+        drawingManagerRef.current.setMap(null);
       }
-      if (polygon) {
-        polygon.setMap(null);
+      if (mapRef.current) {
+        google.maps.event.clearInstanceListeners(mapRef.current);
       }
     };
+  }, []); // Empty dependency array - only run once on mount
+  
+  // Update map center when coordinates change
+  useEffect(() => {
+    if (mapRef.current && latitude && longitude) {
+      mapRef.current.setCenter({ lat: latitude, lng: longitude });
+    }
   }, [latitude, longitude]);
+  
+  // Attach event listeners separately (so they can access current state)
+  useEffect(() => {
+    if (!mapRef.current || !drawingManagerRef.current) return;
+    
+    const map = mapRef.current;
+    const drawingManager = drawingManagerRef.current;
+    
+    // Handle overlay completion
+    const overlayListener = google.maps.event.addListener(drawingManager, 'overlaycomplete', handleOverlayComplete);
+    
+    // Add click listener for click-click-exit drawing
+    const clickListener = google.maps.event.addListener(map, 'click', handleMapClick);
+    
+    // Add mousemove listener for temporary line preview
+    const mouseMoveListener = google.maps.event.addListener(map, 'mousemove', handleMapMouseMove);
+
+    return () => {
+      google.maps.event.removeListener(overlayListener);
+      google.maps.event.removeListener(clickListener);
+      google.maps.event.removeListener(mouseMoveListener);
+    };
+  }); // No dependencies - reattach on every render to capture latest state
 
   // Recalculate when pitch changes
   useEffect(() => {
