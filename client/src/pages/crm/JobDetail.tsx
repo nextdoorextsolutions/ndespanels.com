@@ -2069,7 +2069,7 @@ export default function JobDetail() {
             <div>
               <ProposalCalculator
                 jobId={jobId}
-                roofArea={(job as any).solarApiData?.roofArea}
+                roofArea={(job as any).solarApiData?.totalArea}
                 manualAreaSqFt={(job as any).manualAreaSqFt}
                 currentPricePerSq={(job as any).pricePerSq}
                 currentTotalPrice={(job as any).totalPrice}
