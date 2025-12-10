@@ -256,7 +256,7 @@ export const jobsRouter = router({
           // Assignment - automatically assign to creator
           assignedTo: ctx.user.id,
           teamLeadId: ctx.user.teamLeadId || null,
-          status: "prospect",
+          status: "lead",
           priority: "medium" as const,
           handsOnInspection: false,
           amountPaid: 0,
