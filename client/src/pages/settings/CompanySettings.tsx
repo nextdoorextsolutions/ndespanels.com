@@ -1,14 +1,20 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Upload, MapPin, FileText, Truck, Save, ShieldAlert } from "lucide-react";
-import { toast } from "sonner";
+import { Save, ShieldAlert, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import SettingsLayout from "./SettingsLayout";
 import { Link } from "wouter";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { companySettingsSchema, type CompanySettingsFormData } from "@/lib/validations/companySettings";
+import { GeneralInfoForm } from "@/components/settings/company/GeneralInfoForm";
+import { BrandingForm } from "@/components/settings/company/BrandingForm";
+import { CredentialsForm } from "@/components/settings/company/CredentialsForm";
+import { DefaultsForm } from "@/components/settings/company/DefaultsForm";
+import { LegalForm } from "@/components/settings/company/LegalForm";
+import { useState } from "react";
 
 // Access Denied component for non-owners
 function AccessDenied() {
@@ -35,80 +41,112 @@ function AccessDenied() {
 
 export default function CompanySettings() {
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingRole, setIsCheckingRole] = useState(true);
   
-  // Company Info
-  const [companyName, setCompanyName] = useState("NextDoor Exterior Solutions");
-  const [companyAddress, setCompanyAddress] = useState("");
-  const [companyCity, setCompanyCity] = useState("");
-  const [companyState, setCompanyState] = useState("");
-  const [companyZip, setCompanyZip] = useState("");
-  const [companyPhone, setCompanyPhone] = useState("");
-  const [taxId, setTaxId] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
+  // Custom hook for company settings
+  const { settings, isLoading, isSaving, saveSettings } = useCompanySettings();
   
-  // Supplier Defaults
-  const [beaconAccountNumber, setBeaconAccountNumber] = useState("");
-  const [beaconBranchCode, setBeaconBranchCode] = useState("");
-  const [preferredSupplier, setPreferredSupplier] = useState("Beacon");
-  const [defaultShingleBrand, setDefaultShingleBrand] = useState("GAF Timberline HDZ");
+  // Initialize react-hook-form with Zod validation
+  const form = useForm<CompanySettingsFormData>({
+    resolver: zodResolver(companySettingsSchema),
+    defaultValues: {
+      companyName: "NextDoor Exterior Solutions",
+      quoteExpirationDays: 30,
+      laborWarrantyYears: 10,
+      materialWarrantyYears: 25,
+      defaultDepositPercent: 50,
+      preferredSupplier: "Beacon",
+      defaultShingleBrand: "GAF Timberline HDZ",
+    },
+  });
+  
+  // Load settings into form when data arrives
+  useEffect(() => {
+    if (settings) {
+      form.reset({
+        companyName: settings.companyName || "NextDoor Exterior Solutions",
+        legalEntityType: settings.legalEntityType || undefined,
+        dbaName: settings.dbaName || "",
+        logoUrl: settings.logoUrl || "",
+        companyEmail: settings.companyEmail || "",
+        companyPhone: settings.companyPhone || "",
+        websiteUrl: settings.websiteUrl || "",
+        address: settings.address || "",
+        city: settings.city || "",
+        state: settings.state || "",
+        zipCode: settings.zipCode || "",
+        taxId: settings.taxId || "",
+        contractorLicenseNumber: settings.contractorLicenseNumber || "",
+        insurancePolicyNumber: settings.insurancePolicyNumber || "",
+        insuranceExpirationDate: settings.insuranceExpirationDate 
+          ? new Date(settings.insuranceExpirationDate).toISOString().split('T')[0] 
+          : "",
+        insuranceProvider: settings.insuranceProvider || "",
+        bondingInfo: settings.bondingInfo || "",
+        quoteExpirationDays: settings.quoteExpirationDays || 30,
+        laborWarrantyYears: settings.laborWarrantyYears || 10,
+        materialWarrantyYears: settings.materialWarrantyYears || 25,
+        defaultDepositPercent: parseFloat(settings.defaultDepositPercent || "50"),
+        paymentTerms: settings.paymentTerms || "",
+        termsAndConditions: settings.termsAndConditions || "",
+        cancellationPolicy: settings.cancellationPolicy || "",
+        privacyPolicyUrl: settings.privacyPolicyUrl || "",
+        beaconAccountNumber: settings.beaconAccountNumber || "",
+        beaconBranchCode: settings.beaconBranchCode || "",
+        preferredSupplier: settings.preferredSupplier || "Beacon",
+        defaultShingleBrand: settings.defaultShingleBrand || "GAF Timberline HDZ",
+      });
+    }
+  }, [settings, form]);
 
-  // Check user role
+  // Check user role for access control
   useEffect(() => {
     const checkRole = async () => {
       if (!supabase) {
-        setIsLoading(false);
+        setIsCheckingRole(false);
         return;
       }
       
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) {
-          setIsLoading(false);
+          setIsCheckingRole(false);
           return;
         }
 
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('users')
           .select('role')
           .eq('open_id', session.user.id)
           .single();
 
-        if (error) {
-          console.error('Error fetching role:', error);
-          setIsLoading(false);
-          return;
-        }
-
         setUserRole(data?.role || null);
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error checking role:', error);
       } finally {
-        setIsLoading(false);
+        setIsCheckingRole(false);
       }
     };
 
     checkRole();
   }, []);
 
-  const handleSaveCompanyInfo = () => {
-    toast.success("Company information saved!");
+  // Form submission handler
+  const onSubmit = async (data: CompanySettingsFormData) => {
+    try {
+      await saveSettings(data);
+    } catch (error) {
+      // Error already handled by hook
+      console.error('Save failed:', error);
+    }
   };
 
-  const handleSaveSupplierDefaults = () => {
-    toast.success("Supplier defaults saved!");
-  };
-
-  const handleUploadLogo = () => {
-    toast.info("Logo upload coming soon!");
-  };
-
-  // Show loading state
-  if (isLoading) {
+  // Show loading state while checking role
+  if (isCheckingRole) {
     return (
-      <SettingsLayout title="Company Settings" description="Business information and supplier defaults">
+      <SettingsLayout title="Company Settings" description="Business information and legal compliance">
         <div className="flex items-center justify-center py-16">
-          <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#00d4aa]" />
         </div>
       </SettingsLayout>
     );
@@ -120,224 +158,52 @@ export default function CompanySettings() {
   }
 
   return (
-    <SettingsLayout title="Company Settings" description="Business information and supplier defaults">
-      <div className="space-y-8">
-        {/* Company Logo */}
-        <Card className="bg-slate-900 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Upload className="w-5 h-5 text-[#00d4aa]" />
-              Company Logo
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              Upload your company logo for reports and invoices
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-lg bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center">
-                <Building2 className="w-10 h-10 text-slate-500" />
-              </div>
-              <div className="space-y-2">
-                <Button onClick={handleUploadLogo} variant="outline" className="border-slate-600 text-slate-300">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Logo
-                </Button>
-                <p className="text-xs text-slate-500">PNG, JPG up to 2MB. Recommended: 200x200px</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Business Information */}
-        <Card className="bg-slate-900 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-[#00d4aa]" />
-              Business Information
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              Your company address and contact details
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="companyName" className="text-slate-300">Company Name</Label>
-              <Input
-                id="companyName"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="bg-slate-800 border-slate-600 text-white"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="companyAddress" className="text-slate-300">Street Address</Label>
-              <Input
-                id="companyAddress"
-                value={companyAddress}
-                onChange={(e) => setCompanyAddress(e.target.value)}
-                placeholder="123 Main Street"
-                className="bg-slate-800 border-slate-600 text-white"
-              />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="companyCity" className="text-slate-300">City</Label>
-                <Input
-                  id="companyCity"
-                  value={companyCity}
-                  onChange={(e) => setCompanyCity(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="companyState" className="text-slate-300">State</Label>
-                <Input
-                  id="companyState"
-                  value={companyState}
-                  onChange={(e) => setCompanyState(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="companyZip" className="text-slate-300">ZIP</Label>
-                <Input
-                  id="companyZip"
-                  value={companyZip}
-                  onChange={(e) => setCompanyZip(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="companyPhone" className="text-slate-300">Phone Number</Label>
-              <Input
-                id="companyPhone"
-                value={companyPhone}
-                onChange={(e) => setCompanyPhone(e.target.value)}
-                placeholder="(555) 123-4567"
-                className="bg-slate-800 border-slate-600 text-white"
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSaveCompanyInfo}
-                className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Company Info
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
+    <SettingsLayout title="Company Settings" description="Business information and legal compliance">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Branding */}
+        <BrandingForm form={form} />
+        
         <Separator className="bg-slate-700" />
-
-        {/* Tax & License */}
-        <Card className="bg-slate-900 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#00d4aa]" />
-              Tax & License Information
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              Business registration and licensing details
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="taxId" className="text-slate-300">Tax ID / EIN</Label>
-                <Input
-                  id="taxId"
-                  value={taxId}
-                  onChange={(e) => setTaxId(e.target.value)}
-                  placeholder="XX-XXXXXXX"
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="licenseNumber" className="text-slate-300">Contractor License #</Label>
-                <Input
-                  id="licenseNumber"
-                  value={licenseNumber}
-                  onChange={(e) => setLicenseNumber(e.target.value)}
-                  placeholder="License number"
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+        
+        {/* General Info */}
+        <GeneralInfoForm form={form} />
+        
         <Separator className="bg-slate-700" />
-
-        {/* Supplier Defaults */}
-        <Card className="bg-slate-900 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Truck className="w-5 h-5 text-[#00d4aa]" />
-              Beacon / Supplier Defaults
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              Default settings for material orders
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="beaconAccount" className="text-slate-300">Beacon Account Number</Label>
-                <Input
-                  id="beaconAccount"
-                  value={beaconAccountNumber}
-                  onChange={(e) => setBeaconAccountNumber(e.target.value)}
-                  placeholder="Account #"
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="beaconBranch" className="text-slate-300">Branch Code</Label>
-                <Input
-                  id="beaconBranch"
-                  value={beaconBranchCode}
-                  onChange={(e) => setBeaconBranchCode(e.target.value)}
-                  placeholder="Branch code"
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="preferredSupplier" className="text-slate-300">Preferred Supplier</Label>
-                <Input
-                  id="preferredSupplier"
-                  value={preferredSupplier}
-                  onChange={(e) => setPreferredSupplier(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="defaultShingle" className="text-slate-300">Default Shingle Brand</Label>
-                <Input
-                  id="defaultShingle"
-                  value={defaultShingleBrand}
-                  onChange={(e) => setDefaultShingleBrand(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSaveSupplierDefaults}
-                className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
-              >
+        
+        {/* Credentials */}
+        <CredentialsForm form={form} />
+        
+        <Separator className="bg-slate-700" />
+        
+        {/* Business Defaults */}
+        <DefaultsForm form={form} />
+        
+        <Separator className="bg-slate-700" />
+        
+        {/* Legal & Compliance */}
+        <LegalForm form={form} />
+        
+        {/* Save Button */}
+        <div className="flex justify-end gap-4 pt-6 border-t border-slate-700">
+          <Button
+            type="submit"
+            disabled={isSaving || isLoading}
+            className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold px-8"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
                 <Save className="w-4 h-4 mr-2" />
-                Save Supplier Defaults
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                Save All Settings
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
     </SettingsLayout>
   );
 }

@@ -182,7 +182,17 @@ export const jobsRouter = router({
           throw new Error("You don't have permission to view this job");
         }
 
-        const leadActivities = await db.select().from(activities)
+        const leadActivities = await db.select({
+          id: activities.id,
+          reportRequestId: activities.reportRequestId,
+          userId: activities.userId,
+          activityType: activities.activityType,
+          description: activities.description,
+          metadata: activities.metadata,
+          parentId: activities.parentId,
+          tags: activities.tags,
+          createdAt: activities.createdAt,
+        }).from(activities)
           .where(eq(activities.reportRequestId, input.id))
           .orderBy(desc(activities.createdAt));
 
@@ -1286,6 +1296,8 @@ export const jobsRouter = router({
           activityType: activities.activityType,
           description: activities.description,
           metadata: activities.metadata,
+          parentId: activities.parentId,
+          tags: activities.tags,
           createdAt: activities.createdAt,
           userId: activities.userId,
         })
@@ -1326,6 +1338,7 @@ export const jobsRouter = router({
           ...a,
           user: a.userId ? userMap[a.userId] : null,
           attachments: attachmentsByActivity[a.id] || [],
+          tags: a.tags || [], // Ensure tags is always an array, never null
         }));
 
         // Get all documents

@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
-import { useRealtimeJob } from "@/hooks/useRealtimeJob";
 import type { Job } from "@/types/job";
 
 // Tab Components
@@ -19,6 +18,10 @@ import { JobPhotosTab } from "@/components/crm/job-detail/JobPhotosTab";
 import { JobMessagesTab } from "@/components/crm/job-detail/JobMessagesTab";
 import { JobTimelineTab } from "@/components/crm/job-detail/JobTimelineTab";
 import { JobEditHistoryTab } from "@/components/crm/job-detail/JobEditHistoryTab";
+
+// Threaded Timeline Support
+import { buildActivityTree } from "@/lib/activityTree";
+import type { ThreadedActivity, ActivityTag } from "@/types/activity";
 
 // Helper function to format mentions in messages
 const formatMentions = (text: string) => {
@@ -63,6 +66,8 @@ export default function JobDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<ActivityTag[]>([]);
+  const [filterTag, setFilterTag] = useState<ActivityTag | "all">("all");
 
   // Data fetching
   const { data: job, isLoading, error, refetch } = trpc.crm.getLead.useQuery({ id: jobId });
@@ -146,6 +151,20 @@ export default function JobDetail() {
     addMessage.mutate({
       leadId: jobId,
       note: newMessage,
+      tags: selectedTags.length > 0 ? selectedTags : undefined,
+    }, {
+      onSuccess: () => {
+        setSelectedTags([]); // Clear tags after sending
+      }
+    });
+  };
+
+  const handleReply = (text: string, parentId: number) => {
+    if (!text.trim()) return;
+    addMessage.mutate({
+      leadId: jobId,
+      note: text,
+      parentId: parentId,
     });
   };
 
@@ -203,7 +222,13 @@ export default function JobDetail() {
 
   // Extract data from job response
   const documents = job?.documents || [];
-  const activities = job?.activities || [];
+  const rawActivities = job?.activities || [];
+
+  // Build threaded activity tree
+  // Cast activities to match Activity type (tags from backend are string[] | null, we normalize to ActivityTag[] | undefined)
+  const threadedActivities: ThreadedActivity[] = rawActivities.length > 0 
+    ? buildActivityTree(rawActivities as any)
+    : [];
 
   // Filter data based on search
   const filteredDocuments = documents.filter((doc: any) =>
@@ -212,12 +237,32 @@ export default function JobDetail() {
   const filteredPhotos = documents.filter((doc: any) =>
     doc.fileType?.startsWith("image/") && doc.fileName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const filteredMessages = activities.filter((msg: any) =>
+  const filteredMessages = rawActivities.filter((msg: any) =>
     msg.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const filteredTimeline = activities.filter((activity: any) =>
-    activity.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  
+  // For timeline, use threaded structure but filter by search and tag
+  let filteredTimeline = threadedActivities;
+  
+  // Filter by tag
+  if (filterTag !== "all") {
+    filteredTimeline = filteredTimeline.filter((activity: ThreadedActivity) => {
+      // Check if activity or any of its replies have the tag
+      const hasTag = activity.tags?.includes(filterTag);
+      const replyHasTag = activity.replies?.some(reply => 
+        reply.tags?.includes(filterTag)
+      );
+      return hasTag || replyHasTag;
+    });
+  }
+  
+  // Filter by search query
+  if (searchQuery) {
+    filteredTimeline = filteredTimeline.filter((activity: ThreadedActivity) =>
+      activity.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
+  
   const filteredEditHistory = (editHistory || []).filter((edit: any) =>
     edit.fieldName.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -384,6 +429,8 @@ export default function JobDetail() {
               onSendMessage={handleSendMessage}
               isSending={addMessage.isPending}
               formatMentions={formatMentions}
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
             />
           )}
 
@@ -391,6 +438,9 @@ export default function JobDetail() {
             <JobTimelineTab
               activities={filteredTimeline}
               activityIcons={ACTIVITY_ICONS}
+              onReply={handleReply}
+              filterTag={filterTag}
+              onFilterChange={setFilterTag}
             />
           )}
 

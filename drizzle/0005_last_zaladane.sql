@@ -1,1 +1,0 @@
-ALTER TABLE `activities` MODIFY COLUMN `activityType` enum('status_change','note_added','call_logged','email_sent','sms_sent','appointment_scheduled','document_uploaded','payment_received','assigned','created','message','photo_uploaded') NOT NULL;

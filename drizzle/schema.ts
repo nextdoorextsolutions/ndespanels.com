@@ -70,6 +70,14 @@ export const editTypeEnum = pgEnum("edit_type", [
   "status_change"
 ]);
 
+export const legalEntityTypeEnum = pgEnum("legal_entity_type", [
+  "LLC",
+  "Inc",
+  "Corp",
+  "Sole Proprietor",
+  "Partnership"
+]);
+
 /**
  * CRM Users table - team members with role-based access
  * Roles:
@@ -195,6 +203,7 @@ export type InsertReportRequest = typeof reportRequests.$inferInsert;
 
 /**
  * Activity log - tracks all actions on leads/jobs
+ * Supports threaded replies via parentId and topic tags
  */
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
@@ -205,6 +214,12 @@ export const activities = pgTable("activities", {
   
   description: text("description").notNull(),
   metadata: text("metadata"),
+  
+  // Threading support
+  parentId: integer("parent_id"), // References activities(id) for threaded replies
+  
+  // Topic tags for filtering
+  tags: text("tags").array(), // Array of tags: urgent, material_order, production, inspection, billing
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -364,3 +379,65 @@ export const materialOrders = pgTable("material_orders", {
 
 export type MaterialOrder = typeof materialOrders.$inferSelect;
 export type InsertMaterialOrder = typeof materialOrders.$inferInsert;
+
+/**
+ * Company Settings table - Business information for proposals and legal compliance
+ * Single row table (id=1) storing company-wide settings
+ */
+export const companySettings = pgTable("company_settings", {
+  id: serial("id").primaryKey(),
+  
+  // Identity & Branding
+  companyName: varchar("company_name", { length: 255 }).notNull(),
+  legalEntityType: legalEntityTypeEnum("legal_entity_type"),
+  dbaName: varchar("dba_name", { length: 255 }), // Doing Business As (if different)
+  logoUrl: varchar("logo_url", { length: 500 }),
+  
+  // Contact Information
+  companyEmail: varchar("company_email", { length: 320 }),
+  companyPhone: varchar("company_phone", { length: 50 }),
+  websiteUrl: varchar("website_url", { length: 500 }),
+  
+  // Physical Address
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 2 }),
+  zipCode: varchar("zip_code", { length: 10 }),
+  
+  // Tax & Registration
+  taxId: varchar("tax_id", { length: 20 }), // EIN format: XX-XXXXXXX
+  
+  // Credentials (Critical for Proposals)
+  contractorLicenseNumber: varchar("contractor_license_number", { length: 50 }),
+  additionalLicenses: jsonb("additional_licenses"), // Array of {type, number, state, expiration}
+  insurancePolicyNumber: varchar("insurance_policy_number", { length: 100 }),
+  insuranceExpirationDate: timestamp("insurance_expiration_date"),
+  insuranceProvider: varchar("insurance_provider", { length: 255 }),
+  bondingInfo: text("bonding_info"),
+  
+  // Business Defaults
+  quoteExpirationDays: integer("quote_expiration_days").default(30),
+  laborWarrantyYears: integer("labor_warranty_years").default(10),
+  materialWarrantyYears: integer("material_warranty_years").default(25),
+  defaultDepositPercent: numeric("default_deposit_percent", { precision: 5, scale: 2 }).default("50.00"),
+  paymentTerms: text("payment_terms"), // e.g., "Net 30", "50% deposit, 50% on completion"
+  
+  // Legal & Compliance
+  termsAndConditions: text("terms_and_conditions"),
+  cancellationPolicy: text("cancellation_policy"),
+  privacyPolicyUrl: varchar("privacy_policy_url", { length: 500 }),
+  
+  // Supplier Defaults (existing fields from current UI)
+  beaconAccountNumber: varchar("beacon_account_number", { length: 100 }),
+  beaconBranchCode: varchar("beacon_branch_code", { length: 50 }),
+  preferredSupplier: varchar("preferred_supplier", { length: 100 }).default("Beacon"),
+  defaultShingleBrand: varchar("default_shingle_brand", { length: 100 }).default("GAF Timberline HDZ"),
+  
+  // Metadata
+  updatedBy: integer("updated_by"), // User ID who last updated
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type CompanySettings = typeof companySettings.$inferSelect;
+export type InsertCompanySettings = typeof companySettings.$inferInsert;

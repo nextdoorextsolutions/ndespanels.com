@@ -83,6 +83,14 @@ export const activitiesRouter = router({
     .input(z.object({
       leadId: z.number(),
       note: z.string().min(1),
+      parentId: z.number().optional(), // For threaded replies
+      tags: z.array(z.enum([
+        "urgent",
+        "material_order",
+        "production",
+        "inspection",
+        "billing"
+      ])).optional(), // Topic tags
       attachments: z.array(z.object({
         fileName: z.string(),
         fileData: z.string(), // base64
@@ -108,6 +116,8 @@ export const activitiesRouter = router({
         userId: ctx.user?.id,
         activityType: "note_added",
         description: input.note,
+        parentId: input.parentId || null,
+        tags: input.tags || [],
       }).returning({ id: activities.id });
 
       // Handle file attachments if provided

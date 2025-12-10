@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MentionInput } from "@/components/MentionInput";
 import { Send, MessageSquare } from "lucide-react";
+import { TagSelector } from "./TagSelector";
+import { ActivityTag } from "@/types/activity";
 
 interface Message {
   id: number;
@@ -22,6 +24,8 @@ interface JobMessagesTabProps {
   onSendMessage: () => void;
   isSending: boolean;
   formatMentions: (text: string) => React.ReactNode;
+  selectedTags: ActivityTag[];
+  onTagsChange: (tags: ActivityTag[]) => void;
 }
 
 export function JobMessagesTab({
@@ -32,6 +36,8 @@ export function JobMessagesTab({
   onSendMessage,
   isSending,
   formatMentions,
+  selectedTags,
+  onTagsChange,
 }: JobMessagesTabProps) {
   return (
     <div>
@@ -43,6 +49,15 @@ export function JobMessagesTab({
       {canEdit && (
         <Card className="bg-slate-800 border-slate-700 mb-6">
           <CardContent className="pt-4">
+            {/* Tag Selector */}
+            <div className="mb-3">
+              <TagSelector 
+                selectedTags={selectedTags}
+                onChange={onTagsChange}
+              />
+            </div>
+            
+            {/* Message Input */}
             <div className="flex gap-3">
               <MentionInput
                 placeholder="Add a note or message... (Type @ to mention someone)"
