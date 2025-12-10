@@ -330,6 +330,12 @@ export const usersRouter = router({
         .set(updateData)
         .where(eq(users.id, targetUserId));
 
+      // Extract client IP from x-forwarded-for (first IP in chain, truncated to 45 chars)
+      const xForwardedFor = (ctx.req?.headers?.["x-forwarded-for"] as string);
+      const clientIp = xForwardedFor 
+        ? xForwardedFor.split(',')[0].trim().substring(0, 45)
+        : (ctx.req?.ip || '').substring(0, 45) || null;
+
       // Log each change to edit history (using reportRequestId = 0 for user edits)
       for (const change of changes) {
         await db.insert(editHistory).values({
@@ -339,7 +345,7 @@ export const usersRouter = router({
           oldValue: change.oldValue,
           newValue: change.newValue,
           editType: "update",
-          ipAddress: (ctx.req?.headers?.["x-forwarded-for"] as string) || ctx.req?.ip || null,
+          ipAddress: clientIp,
           userAgent: (ctx.req?.headers?.["user-agent"] as string)?.substring(0, 500) || null,
         });
       }
