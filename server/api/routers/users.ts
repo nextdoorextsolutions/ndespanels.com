@@ -102,7 +102,7 @@ export const usersRouter = router({
     .input(z.object({
       userId: z.number(),
       role: z.enum(["user", "admin", "owner", "office", "sales_rep", "project_manager", "team_lead", "field_crew"]),
-      repCode: z.string().optional(),
+      repCode: z.string().transform(v => v || null).optional(),
       isActive: z.boolean().optional(),
       teamLeadId: z.number().nullable().optional(),
     }))
@@ -260,9 +260,9 @@ export const usersRouter = router({
       data: z.object({
         name: z.string().min(1).optional(),
         email: z.union([z.string().email(), z.literal('')]).optional(),
-        phone: z.string().optional(),
+        phone: z.string().transform(v => v || null).optional(),
         role: z.enum(["user", "admin", "owner", "office", "sales_rep", "project_manager", "team_lead", "field_crew"]).optional(),
-        repCode: z.string().optional(),
+        repCode: z.string().transform(v => v || null).optional(),
         teamLeadId: z.number().nullable().optional(),
         isActive: z.boolean().optional(),
       }),

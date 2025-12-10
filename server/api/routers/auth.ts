@@ -23,7 +23,7 @@ export const authRouter = router({
       email: z.string(),
       name: z.string().optional(),
       role: z.string().optional(),
-      repCode: z.string().optional(),
+      repCode: z.string().transform(v => v || null).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const startTime = Date.now();
@@ -64,7 +64,7 @@ export const authRouter = router({
               role: targetRole as any,
               isActive: true,
               lastSignedIn: new Date(),
-              repCode: input.repCode || null,
+              repCode: input.repCode,
             })
             .onConflictDoUpdate({
               target: users.email,
