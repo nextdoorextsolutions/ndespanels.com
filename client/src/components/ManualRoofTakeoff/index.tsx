@@ -83,6 +83,30 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     }
   }, [selectedPitch]);
 
+  // Add escape key and right-click handlers to cancel drawing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDrawing) {
+        handleCancelDrawing();
+      }
+    };
+
+    const handleRightClick = (e: MouseEvent) => {
+      if (isDrawing && mapContainerRef.current?.contains(e.target as Node)) {
+        e.preventDefault();
+        handleCancelDrawing();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('contextmenu', handleRightClick);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('contextmenu', handleRightClick);
+    };
+  }, [isDrawing]);
+
   // Handle overlay completion (polygon or polyline)
   const handleOverlayComplete = (event: google.maps.drawing.OverlayCompleteEvent) => {
     if (event.type === 'polygon') {
@@ -211,6 +235,7 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
   const handleCancelDrawing = () => {
     drawingManagerRef.current?.setDrawingMode(null);
     setIsDrawing(false);
+    toast.info('Drawing cancelled');
   };
 
   // Clear polygon

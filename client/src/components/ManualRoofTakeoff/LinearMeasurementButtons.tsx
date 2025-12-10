@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import type { MeasurementType } from './types';
 import { MEASUREMENT_LABELS, MEASUREMENT_BUTTON_STYLES } from './constants';
+import { RoofMeasurementGuide } from './RoofMeasurementGuide';
 
 interface LinearMeasurementButtonsProps {
   onStartDrawing: (type: MeasurementType) => void;
@@ -20,21 +21,31 @@ export function LinearMeasurementButtons({ onStartDrawing, isDrawing }: LinearMe
   if (isDrawing) return null;
 
   return (
-    <div className="mt-4">
-      <p className="text-sm text-slate-300 mb-2 font-semibold">
-        Click to measure roof edges (in Linear Feet):
-      </p>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-        {LINEAR_MEASUREMENT_TYPES.map((type) => (
-          <Button
-            key={type}
-            onClick={() => onStartDrawing(type)}
-            className={`${MEASUREMENT_BUTTON_STYLES[type]} text-white text-xs`}
-            size="sm"
-          >
-            {MEASUREMENT_LABELS[type]}
-          </Button>
-        ))}
+    <div className="mt-4 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Measurement Buttons */}
+        <div className="lg:col-span-2">
+          <p className="text-sm text-slate-300 mb-2 font-semibold">
+            Click to measure roof edges (in Linear Feet):
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {LINEAR_MEASUREMENT_TYPES.map((type) => (
+              <Button
+                key={type}
+                onClick={() => onStartDrawing(type)}
+                className={`${MEASUREMENT_BUTTON_STYLES[type]} text-white text-xs`}
+                size="sm"
+              >
+                {MEASUREMENT_LABELS[type]}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Reference Guide */}
+        <div className="lg:col-span-1">
+          <RoofMeasurementGuide />
+        </div>
       </div>
     </div>
   );

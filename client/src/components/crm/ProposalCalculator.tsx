@@ -53,7 +53,8 @@ export function ProposalCalculator({
   const [customerName, setCustomerName] = useState("");
   const [dealType, setDealType] = useState<"insurance" | "cash" | "financed">("cash");
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>();
-  const [manualSqFt, setManualSqFt] = useState<string>(manualAreaSqFt?.toString() || "");
+  const [manualSqFt, setManualSqFt] = useState<string>("");
+  const [isOverrideActive, setIsOverrideActive] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -357,22 +358,54 @@ export function ProposalCalculator({
                 {coverageBadge.icon} {coverageBadge.label}
               </Badge>
             </Label>
-            <Input
-              id="manualSqFt"
-              type="number"
-              step="1"
-              min="0"
-              value={manualSqFt}
-              onChange={(e) => handleManualSqFtChange(e.target.value)}
-              placeholder={roofArea ? `Auto: ${roofArea.toFixed(0)} sq ft` : "Enter manual area"}
-              className="bg-slate-700 border-slate-600 text-white"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="manualSqFt"
+                type="number"
+                step="1"
+                min="0"
+                value={manualSqFt}
+                onChange={(e) => handleManualSqFtChange(e.target.value)}
+                placeholder={roofArea ? `Auto: ${roofArea.toFixed(0)} sq ft` : "Enter manual area"}
+                className="bg-slate-700 border-slate-600 text-white"
+                disabled={!isOverrideActive}
+              />
+              {!isOverrideActive && (roofArea || manualAreaSqFt) && (
+                <Button
+                  onClick={() => {
+                    const savedValue = (roofArea || manualAreaSqFt || 0).toString();
+                    setManualSqFt(savedValue);
+                    setIsOverrideActive(true);
+                    handleManualSqFtChange(savedValue);
+                  }}
+                  variant="outline"
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-blue-500 whitespace-nowrap"
+                >
+                  Override
+                </Button>
+              )}
+              {isOverrideActive && (
+                <Button
+                  onClick={() => {
+                    setManualSqFt("");
+                    setIsOverrideActive(false);
+                    handleManualSqFtChange("");
+                  }}
+                  variant="outline"
+                  className="bg-slate-600 hover:bg-slate-700 text-white border-slate-500"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
             <p className="text-xs text-slate-400">
               {manualOverride > 0 
-                ? "Using manual override value" 
+                ? "Using manual override value - edit or clear to revert" 
                 : roofArea 
-                  ? "Leave blank to use solar-measured area" 
-                  : "Manual measurement required"}
+                  ? "Click Override to modify the solar-measured area" 
+                  : manualAreaSqFt
+                    ? "Click Override to modify the manual takeoff measurement"
+                    : "Manual measurement required"}
             </p>
           </div>
 
