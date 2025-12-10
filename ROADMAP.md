@@ -138,7 +138,7 @@
 - [x] Include job details, days remaining, and action links in emails
 - [x] Send notifications to all admin and owner users
 - [x] Add manual "Send Lien Rights Alert" button to Dashboard
-- [ ] Set up scheduled task for weekly lien rights checks (requires external scheduler)
+- [x] Set up scheduled task for weekly lien rights checks (GitHub Actions workflow)
 - [x] Test notification delivery
 
 ## Website Dead-End Review
@@ -227,10 +227,10 @@
 - [x] Display photo timestamp and location in gallery view with Google Maps link
 
 ## CRM Login Conversion
-- [ ] Create username/password authentication system
-- [ ] Update home route to redirect to CRM login
-- [ ] Remove landing page, make CRM the main app
-- [ ] Test login flow and push to GitHub
+- [x] Create username/password authentication system (Supabase Auth)
+- [x] Update home route to redirect to CRM login
+- [x] Remove landing page, make CRM the main app
+- [x] Test login flow and push to GitHub
 
 ## Supabase Auth Implementation
 - [x] Create Supabase Auth login component with signInWithPassword
@@ -288,7 +288,7 @@
 ## Bug Fixes (Dec 2024)
 - [x] Fix login page logo not displaying in production (added publicDir to vite.config.ts)
 - [x] Fix 403 errors on roof report generator (GOOGLE_MAPS_API_KEY env var - user corrected in Render)
-- [ ] Fix "3D model not available" popup (depends on Google Solar API data availability per address)
+- [x] Fix "3D model not available" popup (graceful error handling with helpful message)
 - [x] Fix roof measurement showing data for multiple houses instead of just target property (fixed coordinate mapping to use satellite image bounds based on zoom level)
 
 ## Domino Effect Bug Fixes (Dec 9, 2024)

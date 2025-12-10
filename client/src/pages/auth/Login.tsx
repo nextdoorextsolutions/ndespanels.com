@@ -141,7 +141,7 @@ export default function Login() {
 
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <ShieldCheck className="h-3 w-3" />
-              <span>Secure authentication powered by Supabase</span>
+              <span>Secure authentication with enterprise-grade encryption</span>
             </div>
           </CardFooter>
         </form>

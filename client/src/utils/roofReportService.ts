@@ -62,7 +62,15 @@ async function fetchBuildingInsights(lat: number, lng: number): Promise<Building
   const response = await fetch(url);
   
   if (!response.ok) {
-    throw new Error(`Solar API request failed: ${response.status} ${response.statusText}`);
+    const errorData = await response.json().catch(() => null);
+    const errorMessage = errorData?.error?.message || response.statusText;
+    
+    // Handle specific solar data errors gracefully
+    if (response.status === 404 || errorMessage.includes('not available') || errorMessage.includes('3D model')) {
+      throw new Error('Solar data not available for this address. Satellite imagery for this location is not yet available. Please use manual measurement.');
+    }
+    
+    throw new Error(`Unable to retrieve roof data. Please try again or use manual measurement. (Error ${response.status})`);
   }
   
   const data = await response.json();

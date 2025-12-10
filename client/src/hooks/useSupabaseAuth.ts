@@ -100,9 +100,9 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   useEffect(() => {
     let mounted = true;
 
-    // Check if Supabase is configured
+    // Check if authentication service is configured
     if (!isSupabaseAvailable() || !supabase) {
-      console.warn("[Auth] Supabase is not configured. Authentication will not work.");
+      console.warn("[Auth] Authentication service is not configured.");
       setState(prev => ({ ...prev, loading: false }));
       return;
     }
@@ -210,13 +210,13 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    // Check if Supabase is configured
+    // Check if authentication service is configured
     if (!isSupabaseAvailable() || !supabase) {
-      console.error("[Auth] Supabase client is not available");
+      console.error("[Auth] Authentication service is not available");
       return { 
         error: { 
-          message: "Authentication service is not configured. Please contact support.",
-          name: "ConfigurationError",
+          message: "Authentication service is temporarily unavailable. Please try again later or contact support.",
+          name: "ServiceError",
           status: 500
         } as AuthError 
       };
@@ -300,8 +300,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     if (!isSupabaseAvailable() || !supabase) {
       return { 
         error: { 
-          message: "Authentication service is not configured. Please contact support.",
-          name: "ConfigurationError",
+          message: "Authentication service is temporarily unavailable. Please try again later or contact support.",
+          name: "ServiceError",
           status: 500
         } as AuthError 
       };
@@ -340,8 +340,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     if (!isSupabaseAvailable() || !supabase) {
       return { 
         error: { 
-          message: "Authentication service is not configured. Please contact support.",
-          name: "ConfigurationError",
+          message: "Authentication service is temporarily unavailable. Please try again later or contact support.",
+          name: "ServiceError",
           status: 500
         } as AuthError 
       };

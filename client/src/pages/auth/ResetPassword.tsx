@@ -23,7 +23,7 @@ export default function ResetPassword() {
 
   // Check if user came from a valid reset link (they should have a session)
   useEffect(() => {
-    // Give time for Supabase to process the reset token from URL
+    // Give time for authentication service to process the reset token from URL
     const timer = setTimeout(() => {
       if (!session) {
         setError("Invalid or expired reset link. Please request a new password reset.");

@@ -1,0 +1,24 @@
+name: Weekly Lien Rights Check
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC (4:00 AM EST)
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  check-lien-rights:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Send Lien Rights Alert
+        run: |
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_API_KEY }}" \
+            -d '{"crmUrl": "https://ndespanels.com"}' \
+            https://ndespanels.com/api/trpc/crm.sendLienRightsAlert
+      
+      - name: Check Response
+        if: failure()
+        run: echo "Lien rights check failed - please investigate"

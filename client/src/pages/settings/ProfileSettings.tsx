@@ -62,7 +62,7 @@ export default function ProfileSettings() {
     setIsLoading(true);
     try {
       if (!supabase) {
-        toast.error("Database not available");
+        toast.error("Service temporarily unavailable. Please try again.");
         return;
       }
 
@@ -103,7 +103,7 @@ export default function ProfileSettings() {
     setIsLoading(true);
     try {
       if (!supabase) {
-        toast.error("Authentication not available");
+        toast.error("Service temporarily unavailable. Please try again.");
         return;
       }
 
