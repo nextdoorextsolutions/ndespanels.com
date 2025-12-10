@@ -15,7 +15,12 @@ import {
   FileText,
   Shield,
   TrendingUp,
-  Calculator
+  Calculator,
+  Lock,
+  Unlock,
+  Edit2,
+  Percent,
+  Sparkles
 } from "lucide-react";
 import { SignaturePad } from "./SignaturePad";
 import { convertSqFeetToSquares, SQUARE_FEET_PER_SQUARE } from "@/utils/roofingMath";
@@ -55,6 +60,10 @@ export function ProposalCalculator({
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>();
   const [manualSqFt, setManualSqFt] = useState<string>("");
   const [isOverrideActive, setIsOverrideActive] = useState(false);
+  const [isPriceLocked, setIsPriceLocked] = useState(false);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState("");
+  const [discountReason, setDiscountReason] = useState("");
 
   const utils = trpc.useUtils();
 
@@ -423,9 +432,42 @@ export function ProposalCalculator({
 
           {/* Price Input */}
           <div className="space-y-2">
-            <Label htmlFor="pricePerSq" className="text-white">
-              Price Per Square
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="pricePerSq" className="text-white">
+                Price Per Square
+              </Label>
+              {pricePerSq && (
+                <div className="flex items-center gap-2">
+                  {isPriceLocked ? (
+                    <>
+                      <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                        <Lock className="w-3 h-3 mr-1" />
+                        Locked
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsPriceLocked(false)}
+                        className="h-7 text-xs border-slate-600 text-slate-300 hover:bg-slate-700"
+                      >
+                        <Edit2 className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsPriceLocked(true)}
+                      className="h-7 text-xs border-slate-600 text-slate-300 hover:bg-slate-700"
+                    >
+                      <Lock className="w-3 h-3 mr-1" />
+                      Lock Price
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
@@ -436,7 +478,8 @@ export function ProposalCalculator({
                 value={pricePerSq}
                 onChange={(e) => setPricePerSq(e.target.value)}
                 placeholder="Enter price per square"
-                className="pl-10 bg-slate-700 border-slate-600 text-white text-lg font-semibold"
+                disabled={isPriceLocked}
+                className={`pl-10 bg-slate-700 border-slate-600 text-white text-lg font-semibold ${isPriceLocked ? 'opacity-75 cursor-not-allowed' : ''}`}
               />
             </div>
           </div>
@@ -456,9 +499,22 @@ export function ProposalCalculator({
             <div className={`p-4 bg-slate-700 rounded-lg border-2 ${pricingZone.borderColor}`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-slate-400">Total Job Price</span>
-                <Badge className={`${pricingZone.color} text-white`}>
-                  {pricingZone.label}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className={`${pricingZone.color} text-white`}>
+                    {pricingZone.label}
+                  </Badge>
+                  {isPriceLocked && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowDiscountModal(true)}
+                      className="h-7 text-xs border-purple-600 text-purple-300 hover:bg-purple-900/20"
+                    >
+                      <Percent className="w-3 h-3 mr-1" />
+                      Apply Discount
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="text-3xl font-bold text-[#00d4aa]">
                 ${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -861,6 +917,108 @@ export function ProposalCalculator({
         documentType={dealType}
         pdfPreviewUrl={pdfPreviewUrl}
       />
+
+      {/* Discount Modal */}
+      {showDiscountModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Percent className="w-5 h-5 text-purple-400" />
+              Apply Discount
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="discountPercent" className="text-white">
+                  Discount Percentage
+                </Label>
+                <Input
+                  id="discountPercent"
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="100"
+                  value={discountPercent}
+                  onChange={(e) => setDiscountPercent(e.target.value)}
+                  placeholder="e.g., 10"
+                  className="bg-slate-700 border-slate-600 text-white"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="discountReason" className="text-white">
+                  Reason for Discount
+                </Label>
+                <Input
+                  id="discountReason"
+                  type="text"
+                  value={discountReason}
+                  onChange={(e) => setDiscountReason(e.target.value)}
+                  placeholder="e.g., Referral bonus, Seasonal promotion"
+                  className="bg-slate-700 border-slate-600 text-white"
+                />
+              </div>
+
+              {discountPercent && (
+                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                  <div className="text-sm text-slate-400">New Price Per Square:</div>
+                  <div className="text-xl font-bold text-purple-300">
+                    ${(pricePerSqNum * (1 - parseFloat(discountPercent) / 100)).toFixed(2)}
+                  </div>
+                  <div className="text-sm text-slate-500 mt-1">
+                    New Total: ${(totalPrice * (1 - parseFloat(discountPercent) / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDiscountModal(false);
+                    setDiscountPercent("");
+                    setDiscountReason("");
+                  }}
+                  className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    const discount = parseFloat(discountPercent);
+                    if (isNaN(discount) || discount <= 0 || discount > 100) {
+                      toast.error("Please enter a valid discount percentage (1-100)");
+                      return;
+                    }
+                    if (!discountReason.trim()) {
+                      toast.error("Please provide a reason for the discount");
+                      return;
+                    }
+
+                    const newPricePerSq = pricePerSqNum * (1 - discount / 100);
+                    setPricePerSq(newPricePerSq.toFixed(2));
+                    setShowDiscountModal(false);
+                    setDiscountPercent("");
+                    setDiscountReason("");
+                    
+                    toast.success(`${discount}% discount applied! AI will update the proposal with this discount.`, {
+                      description: `Reason: ${discountReason}`,
+                    });
+                  }}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Apply & Regenerate
+                </Button>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                The AI will automatically update your proposal to reflect this discount when you regenerate it.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

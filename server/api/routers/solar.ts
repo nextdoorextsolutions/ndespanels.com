@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../../_core/trpc";
 import { z } from "zod";
 import { getDb } from "../../db";
-import { reportRequests } from "../../../drizzle/schema";
+import { reportRequests, documents } from "../../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import * as solarApi from "../../lib/solarApi";
 
@@ -150,9 +150,26 @@ export const solarRouter = router({
         })
         .where(eq(reportRequests.id, input.jobId));
 
+      // Create a document record for the solar report
+      const reportFileName = `Solar_Report_${job.fullName?.replace(/\s+/g, '_') || 'Job'}_${new Date().toISOString().split('T')[0]}.json`;
+      const reportUrl = `data:application/json;base64,${Buffer.from(JSON.stringify(validatedData, null, 2)).toString('base64')}`;
+      
+      await db.insert(documents).values({
+        reportRequestId: input.jobId,
+        uploadedBy: user.id,
+        fileName: reportFileName,
+        fileUrl: reportUrl,
+        fileType: 'application/json',
+        fileSize: JSON.stringify(validatedData).length,
+        category: 'report',
+      });
+
+      console.log(`[Solar] Created document record: ${reportFileName}`);
+
       return {
         success: true,
         solarData: validatedData,
+        documentCreated: true,
       };
     }),
 });
