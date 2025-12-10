@@ -85,10 +85,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: '#00d4aa',
     marginBottom: 10,
     paddingBottom: 5,
-    borderBottom: '1 solid #e2e8f0',
+    borderBottom: '2 solid #00d4aa',
   },
   paragraph: {
     fontSize: 11,
@@ -178,11 +178,13 @@ export const ProposalPDF = ({ job, company, product, aiContent }: ProposalPDFPro
         {/* Header */}
         <View style={styles.header}>
           <View>
-            {company?.companyName && (
+            {company?.logo_url ? (
+              <Image src={company.logo_url} style={styles.logo} />
+            ) : company?.companyName ? (
               <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0f172a' }}>
                 {company.companyName}
               </Text>
-            )}
+            ) : null}
           </View>
           <Text style={styles.proposalTitle}>PROPOSAL</Text>
         </View>
