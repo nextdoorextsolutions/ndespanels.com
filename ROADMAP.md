@@ -342,3 +342,76 @@
 - [x] Validate data before storing in `solar_api_data` JSONB field.
 - [x] Remove `@ts-nocheck` and `as any` casts from solar router.
 - [x] Runtime validation ensures data integrity.
+
+## 🔐 Security & Stability Implementations
+
+### Priority 1: Lock Down API Keys
+**Risk:** Unrestricted API keys can be stolen and abused, leading to unexpected bills or quota exhaustion.
+
+- [ ] **Split API Keys into Two-Key System:**
+  - Frontend Key: Restricted to `https://ndespanels.com/*` domain only
+  - Backend Key: Restricted to server IP addresses or specific APIs (Solar/Geocoding)
+- [ ] **Update Environment Variables:**
+  - `VITE_GOOGLE_MAPS_KEY` - Frontend key (domain-restricted)
+  - `GOOGLE_MAPS_API_KEY` - Backend key (IP-restricted or API-restricted)
+- [ ] **Configure Google Cloud Console:**
+  - Set HTTP referrer restrictions for frontend key
+  - Set IP address restrictions for backend key
+  - Enable only necessary APIs for each key
+- [ ] **Test Both Keys:**
+  - Verify frontend maps/geocoding still work
+  - Verify backend Solar API calls still work
+  - Confirm unauthorized domains are blocked
+
+### Priority 2: Complete Type Safety Audit
+**Risk:** Untyped code can silently break when database schema changes, causing runtime errors.
+
+**Current Status:** 7 of ~50 `as any` casts fixed (14% complete)
+
+- [x] Audit: Found all `as any` casts in `/client` (24 instances)
+- [x] Fix: Replaced 7 instances with proper types (Job, role enums, union types)
+- [ ] **Weekly Goal: Replace 5 `as any` casts per week**
+  - Week 1: Focus on Team.tsx callback parameters (5 instances)
+  - Week 2: Focus on Pipeline.tsx and Dashboard.tsx (5 instances)
+  - Week 3: Focus on ProposalCalculator.tsx tRPC types (3 instances)
+  - Week 4: Focus on remaining UI components (4 instances)
+- [ ] **Create Type Definitions:**
+  - Define proper types for tRPC procedure responses
+  - Create shared types for common data structures
+  - Document type patterns in `/docs/TYPE_PATTERNS.md`
+
+### Priority 3: Enhanced Solar Data Validation
+**Risk:** API format changes from Google can crash the ProposalCalculator with white screen errors.
+
+**Current Status:** Basic Zod validation exists in `server/api/routers/solar.ts`
+
+- [x] Add Zod schemas for solar API data structure
+- [x] Validate data before storing in database
+- [ ] **Add Frontend Validation:**
+  - Validate `solarApiData` before using in ProposalCalculator
+  - Add error boundaries around solar data components
+  - Graceful fallback when data is malformed
+- [ ] **Add Data Sanitization:**
+  - Strip unknown fields from Google API responses
+  - Normalize field names and types
+  - Handle missing optional fields gracefully
+- [ ] **Add Monitoring:**
+  - Log validation failures to track API changes
+  - Alert on repeated validation errors
+  - Track which fields are most commonly missing
+
+### Priority 4: Error Handling & Monitoring
+**Risk:** Silent failures can go unnoticed until customers complain.
+
+- [ ] **Implement Error Boundaries:**
+  - Wrap major components in React Error Boundaries
+  - Show user-friendly error messages instead of white screens
+  - Log errors to monitoring service
+- [ ] **Add Request Logging:**
+  - Log all API requests with timestamps
+  - Track response times and error rates
+  - Monitor quota usage for external APIs
+- [ ] **Set Up Alerts:**
+  - Email notifications for critical errors
+  - Slack/Discord webhooks for deployment failures
+  - Daily summary of error rates and API usage
