@@ -8,7 +8,7 @@ interface OwnerRouteProps {
 }
 
 export function OwnerRoute({ children }: OwnerRouteProps) {
-  const { user, isAuthenticated, loading } = useSupabaseAuth();
+  const { crmUser, isAuthenticated, loading } = useSupabaseAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function OwnerRoute({ children }: OwnerRouteProps) {
   }
 
   // Check if user has owner role
-  if (user?.role !== "owner") {
+  if (crmUser?.role !== "owner") {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-8">
