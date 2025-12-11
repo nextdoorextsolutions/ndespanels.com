@@ -5,6 +5,7 @@ import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { OwnerRoute } from "./components/OwnerRoute";
 
 // Auth pages
 import Login from "./pages/auth/Login";
@@ -95,11 +96,11 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path={"/finance"}>
-        <ProtectedRoute>
+        <OwnerRoute>
           <ErrorBoundary>
             <Finance />
           </ErrorBoundary>
-        </ProtectedRoute>
+        </OwnerRoute>
       </Route>
       
       {/* Settings routes - protected */}

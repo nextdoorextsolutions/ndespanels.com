@@ -13,7 +13,8 @@ import {
   Briefcase, 
   MoreVertical,
   Wallet,
-  Loader2
+  Loader2,
+  LucideIcon
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -26,9 +27,30 @@ import {
 } from 'recharts';
 import { useFinanceMetrics } from '@/hooks/useFinanceMetrics';
 
-// --- Sub-Components ---
+// TypeScript Interfaces
+interface SidebarItemProps {
+  icon: LucideIcon;
+  label: string;
+  active?: boolean;
+}
 
-const SidebarItem = ({ icon: Icon, label, active = false }) => (
+type InvoiceStatus = 'Paid' | 'Overdue' | 'Sent' | 'Draft';
+
+interface StatusBadgeProps {
+  status: InvoiceStatus;
+}
+
+interface KPICard {
+  title: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  icon: LucideIcon;
+  color: string;
+}
+
+// Sub-Components
+const SidebarItem: React.FC<SidebarItemProps> = ({ icon: Icon, label, active = false }) => (
   <button 
     className={`flex items-center w-full gap-3 px-4 py-3 transition-all duration-200 rounded-xl group ${
       active 
@@ -42,8 +64,8 @@ const SidebarItem = ({ icon: Icon, label, active = false }) => (
   </button>
 );
 
-const StatusBadge = ({ status }) => {
-  const styles = {
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
+  const styles: Record<InvoiceStatus, string> = {
     Paid: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     Overdue: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
     Sent: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
@@ -357,7 +379,7 @@ export default function OwnerFinanceDashboard() {
                           {inv.invoiceDate}
                         </td>
                         <td className="px-6 py-4">
-                          <StatusBadge status={inv.status} />
+                          <StatusBadge status={inv.status as InvoiceStatus} />
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button className="p-2 text-gray-500 hover:text-white rounded-lg hover:bg-gray-700 transition-colors">

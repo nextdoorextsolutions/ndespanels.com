@@ -15,6 +15,7 @@ import {
   LogOut,
   User,
   Building2,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -216,6 +217,20 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
                   </Link>
                 )
               )}
+              {/* Finance Link - Owner Only */}
+              {userProfile?.role === "owner" && (
+                <Link href="/finance">
+                  <Button
+                    variant="ghost"
+                    className={`text-white/90 hover:text-white hover:bg-white/10 gap-1 ${
+                      isActive("/finance") ? "bg-white/20 text-white" : ""
+                    }`}
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    Finance
+                  </Button>
+                </Link>
+              )}
             </nav>
           </div>
 
@@ -339,6 +354,19 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
                     </div>
                   </Link>
                 )
+              )}
+              {/* Finance Link - Owner Only (Mobile) */}
+              {userProfile?.role === "owner" && (
+                <Link href="/finance" onClick={() => setMobileMenuOpen(false)}>
+                  <div
+                    className={`flex items-center gap-2 text-white/90 hover:bg-white/10 px-3 py-2 rounded ${
+                      isActive("/finance") ? "bg-white/20" : ""
+                    }`}
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    Finance
+                  </div>
+                </Link>
               )}
             </div>
           </nav>
