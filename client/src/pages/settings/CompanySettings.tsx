@@ -30,7 +30,7 @@ export default function CompanySettings() {
     onSuccess: () => {
       toast.success("Company settings saved successfully");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error(`Failed to save: ${error.message}`);
     },
   });

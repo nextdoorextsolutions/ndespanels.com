@@ -274,7 +274,7 @@ export const proposalsRouter = router({
       return { 
         success: true, 
         message: 'Signed proposal generated successfully',
-        documentUrl: publicUrl,
+        documentUrl: fileUrl,
         signatureDate: signatureDate.toISOString(),
       };
     }),

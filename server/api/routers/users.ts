@@ -2,7 +2,7 @@ import { protectedProcedure, router } from "../../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "../../db";
-import { users, editHistory } from "../../../drizzle/schema";
+import { users, editHistory, companySettings } from "../../../drizzle/schema";
 import { eq, and, or, isNotNull, sql } from "drizzle-orm";
 import { supabaseAdmin } from "../../lib/supabase";
 import { sendWelcomeEmail } from "../../email";
@@ -96,6 +96,83 @@ export const usersRouter = router({
 
     return uniqueLeads;
   }),
+
+  // Get company settings
+  getCompanySettings: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    // Get first row (should only be one)
+    const [settings] = await db.select().from(companySettings).limit(1);
+    
+    // Return empty object with defaults if no settings exist yet
+    if (!settings) {
+      return {
+        companyName: "",
+        logoUrl: "",
+        companyEmail: "",
+        companyPhone: "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        contractorLicenseNumber: "",
+        beaconAccountNumber: "",
+        beaconBranchCode: "",
+      };
+    }
+
+    return settings;
+  }),
+
+  // Update company settings (Owner only)
+  updateCompanySettings: protectedProcedure
+    .input(z.object({
+      companyName: z.string().optional(),
+      logoUrl: z.string().optional(),
+      companyEmail: z.string().email().optional().or(z.literal("")),
+      companyPhone: z.string().optional(),
+      address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().max(2).optional(),
+      zipCode: z.string().optional(),
+      contractorLicenseNumber: z.string().optional(),
+      beaconAccountNumber: z.string().optional(),
+      beaconBranchCode: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Only owners can update company settings
+      if (!isOwner(ctx.user)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only owners can update company settings" });
+      }
+
+      // Check if settings exist
+      const [existing] = await db.select().from(companySettings).limit(1);
+
+      const updateData: Record<string, any> = {
+        ...input,
+        updatedBy: ctx.user!.id,
+        updatedAt: new Date(),
+      };
+
+      if (existing) {
+        // Update existing settings
+        await db.update(companySettings)
+          .set(updateData)
+          .where(eq(companySettings.id, existing.id));
+      } else {
+        // Create new settings row
+        await db.insert(companySettings).values({
+          companyName: input.companyName || "Next Door Exterior Solutions",
+          ...updateData,
+        });
+      }
+
+      return { success: true, message: "Company settings updated successfully" };
+    }),
 
   // Update team member role (Owner only for role changes)
   updateTeamMember: protectedProcedure
