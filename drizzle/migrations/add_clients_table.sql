@@ -59,4 +59,3 @@ CREATE POLICY "Only owners can delete clients"
 -- Grant permissions
 GRANT SELECT, INSERT, UPDATE ON clients TO authenticated;
 GRANT DELETE ON clients TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE clients_id_seq TO authenticated;
