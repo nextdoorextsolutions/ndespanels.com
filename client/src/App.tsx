@@ -20,7 +20,10 @@ import CRMTeam from "./pages/crm/Team";
 import CRMCalendar from "./pages/crm/Calendar";
 import CRMReports from "./pages/crm/Reports";
 import JobDetail from "./pages/crm/JobDetail";
+
+// Finance pages
 import Finance from "./pages/finance/Finance";
+import Invoices from "./pages/finance/Invoices";
 
 // Settings pages
 import ProfileSettings from "./pages/settings/ProfileSettings";
@@ -99,6 +102,13 @@ function Router() {
         <OwnerRoute>
           <ErrorBoundary>
             <Finance />
+          </ErrorBoundary>
+        </OwnerRoute>
+      </Route>
+      <Route path={"/invoices"}>
+        <OwnerRoute>
+          <ErrorBoundary>
+            <Invoices />
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
