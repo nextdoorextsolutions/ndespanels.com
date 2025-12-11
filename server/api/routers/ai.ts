@@ -92,7 +92,7 @@ export const aiRouter = router({
       };
 
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         // Construct prompt based on whether product is selected
         let prompt = "";
@@ -210,7 +210,7 @@ CLOSING:
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
       // ============ STEP 1: Define Available Tools ============
       const toolDefinitions = `
@@ -616,7 +616,7 @@ Instructions:
         // ============ ACTION A: AI Vision Analysis (The Eyes) ============
         console.log("[Photo AI] Step 1: Analyzing image with Gemini Vision");
         
-        const visionModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const visionModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         
         // Fetch the image
         const imageResponse = await fetch(input.photoUrl);
