@@ -19,6 +19,7 @@ import CRMTeam from "./pages/crm/Team";
 import CRMCalendar from "./pages/crm/Calendar";
 import CRMReports from "./pages/crm/Reports";
 import JobDetail from "./pages/crm/JobDetail";
+import Finance from "./pages/finance/Finance";
 
 // Settings pages
 import ProfileSettings from "./pages/settings/ProfileSettings";
@@ -90,6 +91,13 @@ function Router() {
         <ProtectedRoute>
           <ErrorBoundary>
             <JobDetail />
+          </ErrorBoundary>
+        </ProtectedRoute>
+      </Route>
+      <Route path={"/finance"}>
+        <ProtectedRoute>
+          <ErrorBoundary>
+            <Finance />
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
