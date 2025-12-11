@@ -528,3 +528,20 @@ export const expenses = pgTable("expenses", {
 
 export type Expense = typeof expenses.$inferSelect;
 export type InsertExpense = typeof expenses.$inferInsert;
+
+export const clients = pgTable("clients", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address").notNull(),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  status: text("status").default("Lead"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = typeof clients.$inferInsert;
