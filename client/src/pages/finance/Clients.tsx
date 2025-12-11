@@ -12,6 +12,7 @@ import {
   Mail,
   MoreVertical
 } from 'lucide-react';
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { Sidebar } from '@/components/finance/Sidebar';
 
 type ClientStatus = 'Lead' | 'Customer' | 'Active Lead' | 'Past Customer' | 'Warranty' | 'Estimate';
@@ -80,13 +81,71 @@ const Clients: React.FC = () => {
     },
   ];
 
-  // Helper: Mock coordinates for map positioning (will be replaced with real Google Map)
-  const getMapCoordinates = (lat: number | null, lon: number | null) => {
-    // Use random positioning for mock map visualization
-    return { 
-      x: Math.random() * 100, 
-      y: Math.random() * 100 
-    };
+  // Dark theme map style for Google Maps
+  const darkMapStyle = [
+    { elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#64748b' }] },
+    {
+      featureType: 'administrative.locality',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#94a3b8' }]
+    },
+    {
+      featureType: 'poi',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#475569' }]
+    },
+    {
+      featureType: 'poi.park',
+      elementType: 'geometry',
+      stylers: [{ color: '#1e3a2f' }]
+    },
+    {
+      featureType: 'poi.park',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#4ade80' }]
+    },
+    {
+      featureType: 'road',
+      elementType: 'geometry',
+      stylers: [{ color: '#334155' }]
+    },
+    {
+      featureType: 'road',
+      elementType: 'geometry.stroke',
+      stylers: [{ color: '#1e293b' }]
+    },
+    {
+      featureType: 'road.highway',
+      elementType: 'geometry',
+      stylers: [{ color: '#475569' }]
+    },
+    {
+      featureType: 'road.highway',
+      elementType: 'geometry.stroke',
+      stylers: [{ color: '#1e293b' }]
+    },
+    {
+      featureType: 'water',
+      elementType: 'geometry',
+      stylers: [{ color: '#0f172a' }]
+    },
+    {
+      featureType: 'water',
+      elementType: 'labels.text.fill',
+      stylers: [{ color: '#334155' }]
+    }
+  ];
+
+  // Calculate map center from clients with coordinates
+  const getMapCenter = () => {
+    const clientsWithCoords = clients.filter(c => c.latitude && c.longitude);
+    if (clientsWithCoords.length === 0) return { lat: 39.8, lng: -89.65 }; // Default to Springfield, IL
+    
+    const avgLat = clientsWithCoords.reduce((sum, c) => sum + (c.latitude || 0), 0) / clientsWithCoords.length;
+    const avgLng = clientsWithCoords.reduce((sum, c) => sum + (c.longitude || 0), 0) / clientsWithCoords.length;
+    return { lat: avgLat, lng: avgLng };
   };
 
   // Helper: Get time since last contact
@@ -250,67 +309,67 @@ const Clients: React.FC = () => {
             flex-1 bg-[#161b22] relative overflow-hidden
             ${activeTab === 'map' ? 'block' : 'hidden md:block'}
           `}>
-              {/* Map Placeholder Content */}
-              <div className="absolute inset-0 opacity-10 pointer-events-none">
-                  <div className="w-full h-full" style={{ 
-                      backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)', 
-                      backgroundSize: '40px 40px' 
-                  }}></div>
-              </div>
+              <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}>
+                <Map
+                  defaultCenter={getMapCenter()}
+                  defaultZoom={12}
+                  mapId="dark-map"
+                  styles={darkMapStyle}
+                  disableDefaultUI={true}
+                  gestureHandling="greedy"
+                  className="w-full h-full"
+                >
+                  {filteredClients.map((client) => {
+                    // Only render markers for clients with valid coordinates
+                    if (!client.latitude || !client.longitude) return null;
+                    
+                    return (
+                      <AdvancedMarker
+                        key={client.id}
+                        position={{ lat: client.latitude, lng: client.longitude }}
+                        onClick={() => setSelectedClient(client.id)}
+                      >
+                        <div className="relative group">
+                          {/* Custom Pin */}
+                          <div className={`
+                            relative flex items-center justify-center w-8 h-8 rounded-full 
+                            ${selectedClient === client.id ? 'bg-white scale-125' : 'bg-cyan-500'}
+                            border-2 border-white
+                            transition-all duration-300 shadow-lg cursor-pointer
+                          `}>
+                            <div className={`w-3 h-3 rounded-full ${selectedClient === client.id ? 'bg-cyan-500' : 'bg-white'}`}></div>
+                            
+                            {/* Pulse animation */}
+                            {selectedClient === client.id && (
+                              <div className="absolute inset-0 rounded-full border-2 border-cyan-500 animate-ping opacity-75"></div>
+                            )}
+                          </div>
 
-              {/* Map Controls (Floating) */}
-              <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
-                  <button className="bg-[#1e293b] p-2 rounded-lg border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700 shadow-lg">
-                      <Navigation className="w-5 h-5" />
-                  </button>
-                  <button className="bg-[#1e293b] p-2 rounded-lg border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700 shadow-lg font-bold">
-                      +
-                  </button>
-                  <button className="bg-[#1e293b] p-2 rounded-lg border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700 shadow-lg font-bold">
-                      -
-                  </button>
-              </div>
-
-              {/* Mock Pins */}
-              {filteredClients.map((client) => {
-                const coords = getMapCoordinates(client.latitude, client.longitude);
-                return (
-                  <div 
-                      key={client.id}
-                      className="absolute group cursor-pointer z-10"
-                      style={{ left: `${coords.x}%`, top: `${coords.y}%` }}
-                      onClick={() => setSelectedClient(client.id)}
-                  >
-                      {/* The Visual Pin */}
-                      <div className={`
-                          relative flex items-center justify-center w-6 h-6 rounded-full 
-                          ${selectedClient === client.id ? 'bg-white z-20 scale-125' : 'bg-cyan-900/40 hover:bg-cyan-500'}
-                          border-2 ${selectedClient === client.id ? 'border-cyan-500' : 'border-cyan-500'} 
-                          transition-all duration-300 shadow-[0_0_10px_rgba(6,182,212,0.6)]
-                      `}>
-                          <div className={`w-2 h-2 rounded-full ${selectedClient === client.id ? 'bg-cyan-500' : 'bg-white'}`}></div>
-                          
-                          {/* Radar Pulse Animation */}
-                          <div className="absolute inset-0 rounded-full border border-cyan-500 animate-ping opacity-75"></div>
-                      </div>
-
-                      {/* Tooltip (Hover) */}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
-                          <div className="bg-[#1e293b] border border-gray-700 rounded-lg shadow-xl p-3 text-left relative">
-                              {/* Arrow */}
+                          {/* Tooltip */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                            <div className="bg-[#1e293b] border border-gray-700 rounded-lg shadow-xl p-3 text-left relative">
                               <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#1e293b] border-b border-r border-gray-700 rotate-45"></div>
                               
-                              {/* Content */}
                               <h4 className="font-bold text-white text-sm truncate">{client.name}</h4>
                               <div className="text-xs text-gray-400 mt-1">
-                                  <span className={`${getStatusColor(client.status)} px-1.5 py-0.5 rounded text-[10px]`}>{client.status}</span>
+                                <span className={`${getStatusColor(client.status)} px-1.5 py-0.5 rounded text-[10px]`}>{client.status}</span>
                               </div>
                               <div className="text-[10px] text-gray-500 mt-1 truncate">{client.address}</div>
+                            </div>
                           </div>
-                      </div>
+                        </div>
+                      </AdvancedMarker>
+                    );
+                  })}
+                </Map>
+              </APIProvider>
+
+              {/* Map Controls Overlay */}
+              <div className="absolute top-4 right-4 flex flex-col gap-2 z-10 pointer-events-none">
+                  <div className="bg-[#1e293b]/90 backdrop-blur-sm p-2 rounded-lg border border-gray-700 text-gray-300 shadow-lg">
+                      <Navigation className="w-5 h-5" />
                   </div>
-                );
-              })}
+              </div>
           </div>
 
         </div>
