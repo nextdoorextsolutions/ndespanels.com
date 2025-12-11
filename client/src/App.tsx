@@ -24,6 +24,7 @@ import JobDetail from "./pages/crm/JobDetail";
 // Finance pages
 import Finance from "./pages/finance/Finance";
 import Invoices from "./pages/finance/Invoices";
+import Jobs from "./pages/finance/Jobs";
 
 // Settings pages
 import ProfileSettings from "./pages/settings/ProfileSettings";
@@ -109,6 +110,13 @@ function Router() {
         <OwnerRoute>
           <ErrorBoundary>
             <Invoices />
+          </ErrorBoundary>
+        </OwnerRoute>
+      </Route>
+      <Route path={"/jobs"}>
+        <OwnerRoute>
+          <ErrorBoundary>
+            <Jobs />
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
