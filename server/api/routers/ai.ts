@@ -232,16 +232,20 @@ Rules:
 - Use "lookup_job" if the user asks about a person, phone number, or address
 - Use "get_job_summary" if the user asks for "latest updates", "recent activity", "catch me up", or "what's happening" with a job
 - Use "check_statute" if the user asks about liens, lien deadlines, Notice to Owner, Public Adjuster, paying deductibles, Florida Statutes (558/489/626/713/817), pre-suit notices, or legal compliance
-- Use "general_chat" for everything else (greetings, email writing, general questions)
+- Use "draft_email" if the user asks to write, draft, or compose an email to a customer
+- Use "update_job_status" if the user asks to change, update, or move a job's status/stage
+- Use "general_chat" for everything else (greetings, general questions)
 
 User Question: "${input.question}"
 ${input.jobContext ? `Current Job Context ID: ${input.jobContext}` : ''}
 
 Return ONLY valid JSON in this exact format:
 {
-  "tool": "lookup_job" | "get_job_summary" | "check_statute" | "general_chat",
+  "tool": "lookup_job" | "get_job_summary" | "check_statute" | "draft_email" | "update_job_status" | "general_chat",
   "search_term": "extracted search term or null",
-  "reasoning": "brief explanation"
+  "reasoning": "brief explanation",
+  "email_topic": "topic for email (if draft_email tool)",
+  "new_status": "new status (if update_job_status tool)"
 }`;
 
       let intentResponse;
@@ -403,6 +407,126 @@ Format your response professionally with statute citations.`;
             toolResult = "Failed to analyze statute compliance";
             toolData = null;
           }
+          break;
+        }
+
+        case "draft_email": {
+          console.log("[AI Assistant] Executing draft_email");
+          
+          // Get job context if available
+          let jobInfo = null;
+          if (input.jobContext) {
+            const [job] = await db
+              .select({
+                id: reportRequests.id,
+                fullName: reportRequests.fullName,
+                address: reportRequests.address,
+                cityStateZip: reportRequests.cityStateZip,
+                status: reportRequests.status,
+              })
+              .from(reportRequests)
+              .where(eq(reportRequests.id, input.jobContext))
+              .limit(1);
+            
+            jobInfo = job;
+          }
+
+          const emailTopic = intentResponse.email_topic || "follow up";
+          const customerName = jobInfo?.fullName || "the customer";
+          const firstName = customerName.split(' ')[0];
+          
+          // Professional email generation with proper structure
+          const emailPrompt = `Write a professional customer email for a roofing company.
+
+CUSTOMER: ${customerName}
+${jobInfo ? `ADDRESS: ${jobInfo.address}, ${jobInfo.cityStateZip}` : ''}
+${jobInfo ? `STATUS: ${jobInfo.status}` : ''}
+TOPIC: ${emailTopic}
+
+REQUIREMENTS:
+1. Use proper business email structure (greeting, body, closing)
+2. Professional but warm tone
+3. Clear and concise
+4. Proper grammar and punctuation
+5. Address customer as "${firstName}"
+6. Sign off as "The NDE Panels Team"
+
+Write the complete email including subject line.
+
+Format:
+SUBJECT: [subject line]
+
+BODY:
+[email body]`;
+
+          try {
+            const emailResult = await model.generateContent(emailPrompt);
+            const emailResponse = await emailResult.response;
+            const emailText = emailResponse.text();
+            
+            toolData = {
+              emailDraft: emailText,
+              customerName,
+              jobInfo,
+            };
+            toolResult = "Professional email draft generated";
+            console.log("[AI Assistant] Email draft created");
+          } catch (error) {
+            console.error("[AI Assistant] Email generation failed:", error);
+            toolResult = "Failed to generate email draft";
+            toolData = null;
+          }
+          break;
+        }
+
+        case "update_job_status": {
+          console.log("[AI Assistant] Executing update_job_status");
+          
+          const jobId = input.jobContext;
+          const newStatus = intentResponse.new_status;
+          
+          if (!jobId) {
+            toolResult = "No job ID provided. Please specify which job to update.";
+            break;
+          }
+
+          if (!newStatus) {
+            toolResult = "No status provided. Please specify the new status.";
+            break;
+          }
+
+          // Get current job info
+          const [job] = await db
+            .select({
+              id: reportRequests.id,
+              fullName: reportRequests.fullName,
+              status: reportRequests.status,
+            })
+            .from(reportRequests)
+            .where(eq(reportRequests.id, jobId))
+            .limit(1);
+
+          if (!job) {
+            toolResult = `Job #${jobId} not found.`;
+            break;
+          }
+
+          // Compliance check for "Completed" status
+          let complianceWarning = "";
+          if (newStatus.toLowerCase().includes("completed") || newStatus === "completed") {
+            complianceWarning = "\n\n⚠️ CRITICAL COMPLIANCE ALERT:\nJob marked as COMPLETED. The 90-day lien rights clock has started per Florida Chapter 713. You MUST:\n1. Verify Notice to Owner (NTO) was sent within 45 days of first delivery\n2. Record Claim of Lien within 90 days of completion\n3. Failure to meet these deadlines = COMPLETE LOSS of lien rights";
+          }
+
+          toolData = {
+            jobId,
+            jobName: job.fullName,
+            oldStatus: job.status,
+            newStatus,
+            complianceWarning,
+          };
+          
+          toolResult = `Status update prepared for "${job.fullName}" from "${job.status}" to "${newStatus}"${complianceWarning}`;
+          console.log("[AI Assistant] Status update prepared with compliance check");
           break;
         }
 

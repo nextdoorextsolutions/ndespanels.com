@@ -5,6 +5,7 @@ import CRMLayout from "@/components/crm/CRMLayout";
 import { Card } from "@/components/ui/card";
 import { useState } from "react";
 import { Link } from "wouter";
+import { AIChatWidget } from "@/components/shared/AIChatWidget";
 
 type PipelineStatus = "lead" | "appointment_set" | "prospect" | "approved" | "project_scheduled" | "completed" | "invoiced" | "lien_legal" | "closed_deal" | "closed_lost";
 
