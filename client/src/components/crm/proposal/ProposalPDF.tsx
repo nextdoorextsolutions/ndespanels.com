@@ -13,6 +13,56 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
   },
+  coverPage: {
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  coverLogo: {
+    width: 200,
+    height: 80,
+    objectFit: 'contain',
+    marginBottom: 60,
+  },
+  coverTitle: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  coverSubtitle: {
+    fontSize: 18,
+    color: '#64748b',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  coverName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#00d4aa',
+    marginBottom: 60,
+    textAlign: 'center',
+  },
+  coverFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    backgroundColor: '#00d4aa',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coverFooterText: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -92,7 +142,7 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     fontSize: 11,
-    lineHeight: 1.6,
+    lineHeight: 1.5,
     color: '#334155',
     marginBottom: 10,
     textAlign: 'justify',
@@ -120,17 +170,19 @@ const styles = StyleSheet.create({
   },
   priceSection: {
     marginTop: 20,
-    padding: 20,
-    backgroundColor: '#0f172a',
+    padding: 25,
+    backgroundColor: '#f1f5f9',
     borderRadius: 8,
+    border: '2 solid #00d4aa',
   },
   priceLabel: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginBottom: 5,
+    fontSize: 14,
+    color: '#475569',
+    marginBottom: 8,
+    fontWeight: 'bold',
   },
   priceValue: {
-    fontSize: 32,
+    fontSize: 40,
     fontWeight: 'bold',
     color: '#00d4aa',
   },
@@ -174,6 +226,24 @@ export const ProposalPDF = ({ job, company, product, aiContent }: ProposalPDFPro
 
   return (
     <Document>
+      {/* Cover Page */}
+      <Page size="A4" style={styles.coverPage}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 60 }}>
+          {company?.logo_url && (
+            <Image src={company.logo_url} style={styles.coverLogo} />
+          )}
+          <Text style={styles.coverTitle}>Roofing Replacement Proposal</Text>
+          <Text style={styles.coverSubtitle}>Prepared For:</Text>
+          <Text style={styles.coverName}>{job.fullName}</Text>
+          <Text style={styles.coverSubtitle}>Prepared By:</Text>
+          <Text style={styles.coverName}>{company?.companyName || 'Next Door Exterior Solutions'}</Text>
+        </View>
+        <View style={styles.coverFooter}>
+          <Text style={styles.coverFooterText}>License #CCC1334600 | TAMKO Pro Certified</Text>
+        </View>
+      </Page>
+
+      {/* Main Content Page */}
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
@@ -251,9 +321,9 @@ export const ProposalPDF = ({ job, company, product, aiContent }: ProposalPDFPro
           </View>
         )}
 
-        {/* Scope of Work */}
+        {/* Executive Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Scope of Work</Text>
+          <Text style={styles.sectionTitle}>Executive Summary</Text>
           <Text style={styles.paragraph}>{aiContent.scope}</Text>
         </View>
 

@@ -97,33 +97,56 @@ export const aiRouter = router({
         // Construct prompt based on whether product is selected
         let prompt = "";
         if (product) {
-          prompt = `You are a professional roofing estimator writing a proposal. Write a compelling "Scope of Work" section (2-3 paragraphs) for a roof replacement project using ${product.productName} shingles in ${product.color} color by ${product.manufacturer}. 
+          // Enterprise-level persuasive Executive Summary
+          prompt = `ROLE: You are a professional roofing consultant writing a persuasive Executive Summary for a high-end roofing proposal.
 
-Key product features to highlight:
+TASK: Write an Executive Summary for ${job.fullName}'s property in ${job.cityStateZip || job.address}.
+
+PRODUCT TO HIGHLIGHT: ${product.productName} by ${product.manufacturer}
 - Wind Rating: ${product.windRating}
 - Warranty: ${product.warrantyInfo}
-- Description: ${product.description}
+- Features: ${product.description}
 
-The scope should be professional, detailed, and emphasize quality and protection. Do not include pricing.
+TONE: Professional, reassuring, and value-focused. Avoid technical jargon. Write in a way that builds trust and confidence.
 
-Then write a warm, professional closing statement (1 paragraph) that thanks the customer and encourages them to reach out with questions.
+STRUCTURE:
+1. Opening: Acknowledge the customer's need for a reliable roofing solution
+2. Product Benefits: Highlight the key advantages of ${product.productName} (${product.manufacturer}) - focus on durability, protection, and peace of mind
+3. Value Proposition: Emphasize long-term benefits, warranty coverage, and how this investment protects their home and family
+4. Reassurance: Mention our expertise and commitment to quality workmanship
+
+LENGTH: 2-3 well-crafted paragraphs (approximately 250-300 words)
+
+AVOID: Technical specifications, pricing details, overly salesy language, phrases like "we believe" or "we think"
+
+Then write a warm, professional closing statement (1 paragraph) that thanks the customer and encourages them to reach out with any questions.
 
 Format your response as:
 SCOPE:
-[scope of work here]
+[executive summary here]
 
 CLOSING:
 [closing statement here]`;
         } else {
-          prompt = `You are a professional roofing estimator writing a proposal. Write a compelling "Scope of Work" section (2-3 paragraphs) for a roof replacement project using high-quality architectural shingles. 
+          prompt = `ROLE: You are a professional roofing consultant writing a persuasive Executive Summary for a high-end roofing proposal.
 
-The scope should be professional, detailed, and emphasize quality and protection. Do not include pricing or specific product names.
+TASK: Write an Executive Summary for ${job.fullName}'s property in ${job.cityStateZip || job.address}.
 
-Then write a warm, professional closing statement (1 paragraph) that thanks the customer and encourages them to reach out with questions.
+TONE: Professional, reassuring, and value-focused. Avoid technical jargon.
+
+STRUCTURE:
+1. Opening: Acknowledge the customer's need for a reliable roofing solution
+2. Product Benefits: Highlight the advantages of premium architectural shingles - durability, protection, peace of mind
+3. Value Proposition: Emphasize long-term benefits and warranty coverage
+4. Reassurance: Mention our expertise and commitment to quality
+
+LENGTH: 2-3 paragraphs (250-300 words)
+
+Then write a warm closing statement (1 paragraph).
 
 Format your response as:
 SCOPE:
-[scope of work here]
+[executive summary here]
 
 CLOSING:
 [closing statement here]`;

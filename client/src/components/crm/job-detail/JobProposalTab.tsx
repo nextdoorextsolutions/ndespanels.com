@@ -91,12 +91,17 @@ export function JobProposalTab({ jobId, job, userRole, onUpdate }: JobProposalTa
   };
   
   const handleSaveProposal = async () => {
-    if (!proposalData) return;
+    if (!proposalData) {
+      toast.error('No proposal data available');
+      return;
+    }
     
     setIsSaving(true);
+    console.log('[PROPOSAL] Starting save to documents...');
     
     try {
       // Generate PDF blob
+      console.log('[PROPOSAL] Generating PDF blob...');
       const pdfDoc = <ProposalPDF
         job={proposalData.job}
         company={proposalData.company}
@@ -105,26 +110,38 @@ export function JobProposalTab({ jobId, job, userRole, onUpdate }: JobProposalTa
       />;
       
       const blob = await pdf(pdfDoc).toBlob();
+      console.log('[PROPOSAL] PDF blob generated, size:', blob.size);
       
-      // Convert blob to base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        const fileName = `Proposal - ${job.fullName} - ${new Date().toLocaleDateString()}.pdf`;
-        
-        // Upload to documents
-        uploadDocument.mutate({
-          leadId: jobId,
-          fileName,
-          fileData: base64,
-          fileType: 'application/pdf',
-          category: 'proposal',
-        });
-      };
-      reader.readAsDataURL(blob);
+      // Convert blob to base64 using Promise
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      console.log('[PROPOSAL] Blob converted to base64, length:', base64.length);
+      
+      const fileName = `Proposal - ${job.fullName} - ${new Date().toLocaleDateString()}.pdf`;
+      console.log('[PROPOSAL] Uploading to documents bucket:', fileName);
+      
+      // Upload to documents using mutateAsync to wait for completion
+      await uploadDocument.mutateAsync({
+        leadId: jobId,
+        fileName,
+        fileData: base64,
+        fileType: 'application/pdf',
+        category: 'proposal',
+      });
+      
+      console.log('[PROPOSAL] Upload completed successfully');
     } catch (error) {
-      console.error('Failed to generate PDF blob:', error);
-      toast.error('Failed to save proposal');
+      console.error('[PROPOSAL] Failed to save proposal:', error);
+      toast.error(`Failed to save proposal: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsSaving(false);
     }
   };
