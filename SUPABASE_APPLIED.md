@@ -80,30 +80,45 @@ Any new migrations should be:
 
 ## 📝 Recent Changes
 
-### December 10, 2024 - Threaded Timeline Feature (Ticket 1)
-**Applied:** Threading and tagging support for activities table
+### December 11, 2024 - Finance Dashboard Tables
+**Applied:** Invoices and Expenses tables for financial tracking
 
-**SQL Migration:**
-```sql
-ALTER TABLE activities 
-ADD COLUMN parent_id INTEGER REFERENCES activities(id) ON DELETE CASCADE,
-ADD COLUMN tags TEXT[] DEFAULT '{}';
+**Migration File:** `drizzle/migrations/add_invoices_expenses.sql`
 
-CREATE INDEX idx_activities_parent_id ON activities(parent_id);
-CREATE INDEX idx_activities_tags ON activities USING GIN(tags);
-```
+**New Tables:**
+- ✅ `invoices` - Customer billing and payment tracking
+  - Fields: invoice_number, client_name, amount, status (draft/sent/paid/overdue/cancelled), dates, payment tracking
+  - Indexes on status, invoice_date, report_request_id
+- ✅ `expenses` - Business expense tracking
+  - Fields: date, category, amount, description, vendor_name, receipt_url, tax tracking
+  - Indexes on date, category, report_request_id
 
-**Changes:**
-- ✅ Added `parent_id` column for threaded replies
-- ✅ Added `tags` column (TEXT[]) for topic filtering (urgent, material_order, production, inspection, billing)
-- ✅ Created index on `parent_id` for efficient thread lookups
-- ✅ Created GIN index on `tags` for fast tag filtering
-- ✅ Updated `drizzle/schema.ts` to match
-- ✅ Updated backend routers to support new fields
+**New Enums:**
+- ✅ `invoice_status` - draft, sent, paid, overdue, cancelled
+- ✅ `expense_category` - materials, labor, equipment, vehicle, insurance, utilities, marketing, office, professional_services, other
+
+**Features:**
+- ✅ RLS policies for authenticated users
+- ✅ Foreign key links to report_requests (jobs)
+- ✅ JSONB line_items for invoice details
+- ✅ Tax deductibility tracking for expenses
+- ✅ Payment method and reference tracking
 
 **Status:** Complete and deployed
 
 ---
 
-**Last Updated:** December 10, 2024 (Threading feature added)
+### December 10, 2024 - Threaded Timeline Feature
+**Applied:** Threading and tagging support for activities table
+
+**Changes:**
+- ✅ Added `parent_id` column for threaded replies
+- ✅ Added `tags` column (TEXT[]) for topic filtering
+- ✅ Created indexes for performance
+
+**Status:** Complete and deployed
+
+---
+
+**Last Updated:** December 11, 2024 (Finance tables added)
 **Applied By:** Manual SQL execution in Supabase SQL Editor

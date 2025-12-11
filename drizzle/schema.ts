@@ -466,46 +466,28 @@ export const companySettings = pgTable("company_settings", {
 export type CompanySettings = typeof companySettings.$inferSelect;
 export type InsertCompanySettings = typeof companySettings.$inferInsert;
 
-/**
- * Invoice Status Enum
- */
 export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "paid", "overdue", "cancelled"]);
 
-/**
- * Invoices table - Track customer invoices and payments
- */
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
   invoiceNumber: varchar("invoice_number", { length: 50 }).notNull().unique(),
-  reportRequestId: integer("report_request_id"), // Link to job if applicable
-  
-  // Client info
+  reportRequestId: integer("report_request_id"),
   clientName: varchar("client_name", { length: 255 }).notNull(),
   clientEmail: varchar("client_email", { length: 320 }),
   clientPhone: varchar("client_phone", { length: 50 }),
   address: text("address"),
-  
-  // Financial details
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
   taxAmount: numeric("tax_amount", { precision: 10, scale: 2 }).default("0.00"),
   totalAmount: numeric("total_amount", { precision: 10, scale: 2 }).notNull(),
-  
-  // Status and dates
   status: invoiceStatusEnum("status").default("draft").notNull(),
   invoiceDate: timestamp("invoice_date").notNull(),
   dueDate: timestamp("due_date").notNull(),
   paidDate: timestamp("paid_date"),
-  
-  // Payment tracking
-  paymentMethod: varchar("payment_method", { length: 50 }), // e.g., "check", "credit_card", "ach"
-  paymentReference: varchar("payment_reference", { length: 100 }), // Check number, transaction ID, etc.
-  
-  // Line items and notes
-  lineItems: jsonb("line_items"), // Array of {description, quantity, rate, amount}
+  paymentMethod: varchar("payment_method", { length: 50 }),
+  paymentReference: varchar("payment_reference", { length: 100 }),
+  lineItems: jsonb("line_items"),
   notes: text("notes"),
   internalNotes: text("internal_notes"),
-  
-  // Metadata
   createdBy: integer("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -514,9 +496,6 @@ export const invoices = pgTable("invoices", {
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = typeof invoices.$inferInsert;
 
-/**
- * Expense Category Enum
- */
 export const expenseCategoryEnum = pgEnum("expense_category", [
   "materials",
   "labor",
@@ -530,31 +509,18 @@ export const expenseCategoryEnum = pgEnum("expense_category", [
   "other"
 ]);
 
-/**
- * Expenses table - Track business expenses
- */
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
-  
-  // Expense details
   date: timestamp("date").notNull(),
   category: expenseCategoryEnum("category").notNull(),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
   description: text("description").notNull(),
-  
-  // Optional links
-  reportRequestId: integer("report_request_id"), // Link to job if job-specific expense
+  reportRequestId: integer("report_request_id"),
   vendorName: varchar("vendor_name", { length: 255 }),
-  
-  // Payment tracking
   paymentMethod: varchar("payment_method", { length: 50 }),
-  receiptUrl: varchar("receipt_url", { length: 500 }), // Link to receipt image/PDF
-  
-  // Tax and accounting
+  receiptUrl: varchar("receipt_url", { length: 500 }),
   isTaxDeductible: boolean("is_tax_deductible").default(true).notNull(),
-  taxCategory: varchar("tax_category", { length: 100 }), // For accountant reference
-  
-  // Metadata
+  taxCategory: varchar("tax_category", { length: 100 }),
   createdBy: integer("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
