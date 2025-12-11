@@ -30,7 +30,17 @@ export async function storagePut(
     throw new Error(`Storage upload failed for ${key}`);
   }
 
-  return { key, url: result.url };
+  // For private 'documents' bucket, generate signed URL (valid for 1 year)
+  // For other buckets, use public URL
+  let url = result.url;
+  if (bucket === 'documents') {
+    const signedUrl = await getSignedUrl(key, 365 * 24 * 60 * 60, bucket);
+    if (signedUrl) {
+      url = signedUrl;
+    }
+  }
+
+  return { key, url };
 }
 
 // Get URL for file (public URL since bucket has public access)

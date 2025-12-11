@@ -228,10 +228,10 @@ export const proposalsRouter = router({
       const { generateProposalPDF } = await import('../../lib/pdfTemplateGenerator');
       const pdfBuffer = await generateProposalPDF(proposalData);
 
-      // Save to Supabase storage
-      const fileName = `proposal-signed-${input.jobId}-${Date.now()}.pdf`;
+      // Save to Supabase storage in private 'documents' bucket
+      const fileName = `proposals/proposal-signed-${input.jobId}-${Date.now()}.pdf`;
       const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-        .from('Proposal_Bucket')
+        .from('documents')
         .upload(fileName, pdfBuffer, {
           contentType: 'application/pdf',
           upsert: false,
@@ -239,17 +239,21 @@ export const proposalsRouter = router({
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabaseAdmin.storage
-        .from('Proposal_Bucket')
-        .getPublicUrl(fileName);
+      // Get signed URL for private access (valid for 1 year)
+      const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
+        .from('documents')
+        .createSignedUrl(fileName, 365 * 24 * 60 * 60); // 1 year
+
+      if (signedUrlError) throw signedUrlError;
+      const fileUrl = signedUrlData.signedUrl;
 
       // Save document record to database
       await db.insert(documents).values({
         reportRequestId: input.jobId,
         fileName: fileName,
-        fileUrl: publicUrl,
+        fileUrl: fileUrl,
         fileType: 'application/pdf',
+        category: 'proposal',
         uploadedBy: user!.id,
       });
 

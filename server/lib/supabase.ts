@@ -56,10 +56,11 @@ export function getPublicUrl(path: string, bucket: string = STORAGE_BUCKET): str
 // Get signed URL for a file (for private access if needed)
 export async function getSignedUrl(
   path: string,
-  expiresIn: number = 60 * 60 // 1 hour default
+  expiresIn: number = 60 * 60, // 1 hour default
+  bucket: string = STORAGE_BUCKET
 ): Promise<string | null> {
   const { data, error } = await supabaseAdmin.storage
-    .from(STORAGE_BUCKET)
+    .from(bucket)
     .createSignedUrl(path, expiresIn);
 
   if (error) {

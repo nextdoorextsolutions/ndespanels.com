@@ -74,8 +74,8 @@ export const documentsRouter = router({
       const safeName = input.fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
       const filePath = `jobs/${input.leadId}/documents/${timestamp}_${safeName}`;
 
-      // Upload to Supabase Storage
-      const { url } = await storagePut(filePath, buffer, input.fileType);
+      // Upload to Supabase Storage in private 'documents' bucket
+      const { url } = await storagePut(filePath, buffer, input.fileType, 'documents');
 
       // Save document record
       const [result] = await db.insert(documents).values({
