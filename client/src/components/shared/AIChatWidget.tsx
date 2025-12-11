@@ -7,9 +7,10 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, X, Send, Loader2, Sparkles, User, Bot } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { GeminiIcon } from "@/components/icons/GeminiIcon";
 import { toast } from "sonner";
 import { RichMessage } from "./RichMessage";
 import type { ChatMessage } from "@/types/chat";
@@ -104,7 +105,7 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
             className
           )}
         >
-          <Bot className="w-6 h-6" />
+          <GeminiIcon size={24} />
         </Button>
       )}
 
@@ -122,7 +123,7 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
           <div className="flex items-center justify-between p-4 border-b border-slate-700">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center">
-                <Bot className="w-4 h-4 text-slate-900" />
+                <GeminiIcon size={16} />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-white">Assistant</h3>
@@ -144,7 +145,7 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
             <div className="space-y-4">
               {messages.length === 0 && (
                 <div className="text-center text-slate-500 text-sm py-8">
-                  <Sparkles className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                  <GeminiIcon size={32} className="mx-auto mb-2 opacity-60" />
                   <p>Start a conversation!</p>
                   <p className="text-xs mt-1">Ask about jobs, customers, or anything else.</p>
                 </div>
@@ -160,7 +161,7 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
                 >
                   {message.role === "assistant" && (
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 text-slate-900" />
+                      <GeminiIcon size={16} />
                     </div>
                   )}
                   
@@ -199,7 +200,7 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
               {askAssistant.isPending && (
                 <div className="flex gap-2 justify-start">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-slate-900" />
+                    <GeminiIcon size={16} />
                   </div>
                   <div className="bg-slate-800 text-white rounded-lg p-3">
                     <Loader2 className="w-4 h-4 animate-spin" />
