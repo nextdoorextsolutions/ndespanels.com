@@ -9,7 +9,6 @@ import {
   Phone,
   ChevronRight,
   Plus,
-  Eye,
   TrendingUp,
   DollarSign,
   BarChart3,
@@ -30,7 +29,7 @@ import CRMLayout from "@/components/crm/CRMLayout";
 import { PipelineOverview } from "@/components/PipelineOverview";
 import { LeadTrendsChart } from "@/components/crm/LeadTrendsChart";
 
-// New pipeline stage configuration
+// --- Configuration ---
 const pipelineStages = [
   { key: "lead", label: "Lead", short: "L", color: "bg-orange-500" },
   { key: "appointment_set", label: "Appt Set", short: "A", color: "bg-yellow-500" },
@@ -43,7 +42,6 @@ const pipelineStages = [
   { key: "closed_deal", label: "Closed", short: "W", color: "bg-green-500" },
 ];
 
-// Category tabs configuration - updated for new pipeline
 const categoryTabs = [
   { key: "lead", label: "Leads", color: "bg-orange-500" },
   { key: "appointment_set", label: "Appt Set", color: "bg-yellow-500" },
@@ -56,7 +54,6 @@ const categoryTabs = [
   { key: "closed_lost", label: "Lost", color: "bg-red-500" },
 ];
 
-// Action items configuration
 const actionItems = [
   { key: "unassigned", label: "Unassigned Leads", icon: Users, color: "text-orange-400" },
   { key: "follow_up", label: "Needs Follow-up", icon: Phone, color: "text-yellow-400" },
@@ -66,8 +63,8 @@ const actionItems = [
   { key: "overdue", label: "Overdue Tasks", icon: Clock, color: "text-red-400" },
 ];
 
+// --- Sub-Components ---
 
-// Conversion funnel component
 function ConversionFunnel({ stats }: { stats: any }) {
   if (!stats) return null;
 
@@ -82,24 +79,23 @@ function ConversionFunnel({ stats }: { stats: any }) {
   const maxCount = Math.max(...stages.map(s => s.count), 1);
 
   return (
-    <div className="space-y-3">
-      {stages.map((stage, index) => (
-        <div key={stage.label} className="flex items-center gap-3">
-          <div className="w-20 text-xs text-slate-400">{stage.label}</div>
-          <div className="flex-1 h-6 bg-slate-700 rounded-full overflow-hidden">
+    <div className="space-y-4">
+      {stages.map((stage) => (
+        <div key={stage.label} className="flex items-center gap-3 group">
+          <div className="w-20 text-xs font-medium text-gray-400 group-hover:text-white transition-colors">{stage.label}</div>
+          <div className="flex-1 h-3 bg-gray-800 rounded-full overflow-hidden">
             <div
-              className={`h-full ${stage.color} transition-all duration-500`}
+              className={`h-full ${stage.color} opacity-80 group-hover:opacity-100 transition-all duration-500`}
               style={{ width: `${(stage.count / maxCount) * 100}%` }}
             />
           </div>
-          <div className="w-10 text-right text-sm font-semibold text-white">{stage.count}</div>
+          <div className="w-10 text-right text-sm font-bold text-white">{stage.count}</div>
         </div>
       ))}
     </div>
   );
 }
 
-// Send Lien Rights Alert Button Component
 function SendLienRightsAlertButton() {
   const sendAlert = trpc.crm.sendLienRightsAlert.useMutation({
     onSuccess: (result) => {
@@ -121,7 +117,7 @@ function SendLienRightsAlertButton() {
   return (
     <Button
       variant="outline"
-      className="border-red-400 text-red-400 hover:bg-red-400/10 bg-transparent"
+      className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500 hover:text-red-300 transition-all bg-transparent"
       onClick={() => sendAlert.mutate({})}
       disabled={sendAlert.isPending}
     >
@@ -135,77 +131,38 @@ function SendLienRightsAlertButton() {
   );
 }
 
+// --- Main Component ---
+
 export default function CRMDashboard() {
   const [activeTab, setActiveTab] = useState("all");
-  
-  // Stabilize date reference to prevent infinite re-renders
   const [todayDate] = useState(() => new Date().toISOString().split("T")[0]);
-  
-  // All queries run in parallel automatically with React Query
-  // Using stable references and optimized staleTime from QueryClient defaults
-  const { data: stats, isLoading: statsLoading } = trpc.crm.getStats.useQuery(
-    undefined,
-    { staleTime: 30 * 1000 } // Stats refresh every 30 seconds
-  );
-  const { data: appointments } = trpc.crm.getAppointments.useQuery({
-    startDate: todayDate,
-    endDate: todayDate,
-  });
-  const { data: monthlyTrends } = trpc.crm.getMonthlyTrends.useQuery(
-    { months: 6 },
-    { staleTime: 5 * 60 * 1000 } // Trends can be stale for 5 minutes
-  );
-  const { data: categoryCounts } = trpc.crm.getCategoryCounts.useQuery(
-    undefined,
-    { staleTime: 60 * 1000 } // Category counts refresh every minute
-  );
-  const { data: lienRightsJobs } = trpc.crm.getLienRightsJobs.useQuery(
-    undefined,
-    { staleTime: 2 * 60 * 1000 } // Lien rights data can be stale for 2 minutes
-  );
+
+  // Data Fetching
+  const { data: stats, isLoading: statsLoading } = trpc.crm.getStats.useQuery(undefined, { staleTime: 30 * 1000 });
+  const { data: appointments } = trpc.crm.getAppointments.useQuery({ startDate: todayDate, endDate: todayDate });
+  const { data: monthlyTrends } = trpc.crm.getMonthlyTrends.useQuery({ months: 6 }, { staleTime: 5 * 60 * 1000 });
+  const { data: categoryCounts } = trpc.crm.getCategoryCounts.useQuery(undefined, { staleTime: 60 * 1000 });
+  const { data: lienRightsJobs } = trpc.crm.getLienRightsJobs.useQuery(undefined, { staleTime: 2 * 60 * 1000 });
   const { data: categoryLeads } = trpc.crm.getLeadsByCategory.useQuery(
-    { category: activeTab as "prospect" | "completed" | "invoiced" | "closed_deal" },
+    { category: activeTab as any },
     { enabled: activeTab !== "all" }
   );
 
-  // Calculate pipeline counts from stats
-  const getPipelineCount = (stage: string) => {
-    if (!stats) return 0;
-    const stageMap: Record<string, number> = {
-      lead: stats.leadCount || 0,
-      appointment_set: stats.appointmentSetCount || 0,
-      prospect: stats.prospectCount || 0,
-      approved: stats.approvedCount || 0,
-      project_scheduled: stats.projectScheduledCount || 0,
-      completed: stats.completedCount || 0,
-      invoiced: stats.invoicedCount || 0,
-      lien_legal: stats.lienLegalCount || 0,
-      closed_deal: stats.closedDealCount || 0,
-    };
-    return stageMap[stage] || 0;
-  };
-
-  // Get action item counts
   const getActionCount = (key: string) => {
     if (!stats) return 0;
     switch (key) {
-      case "unassigned":
-        return stats.leadCount || 0;
-      case "pending_inspection":
-        return stats.appointmentSetCount || 0;
-      case "lien_warning":
-        return stats.lienWarningCount || 0;
-      case "lien_critical":
-        return stats.lienCriticalCount || 0;
-      default:
-        return 0;
+      case "unassigned": return stats.leadCount || 0;
+      case "pending_inspection": return stats.appointmentSetCount || 0;
+      case "lien_warning": return stats.lienWarningCount || 0;
+      case "lien_critical": return stats.lienCriticalCount || 0;
+      default: return 0;
     }
   };
 
   if (statsLoading) {
     return (
       <CRMLayout>
-        <div className="flex items-center justify-center h-96 bg-slate-900">
+        <div className="flex items-center justify-center h-96 bg-[#0f111a]">
           <div className="animate-spin w-8 h-8 border-2 border-[#00d4aa] border-t-transparent rounded-full" />
         </div>
       </CRMLayout>
@@ -214,13 +171,14 @@ export default function CRMDashboard() {
 
   return (
     <CRMLayout>
-      <div className="p-6 bg-slate-900 min-h-screen">
-        {/* Page Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <div className="flex items-center gap-3">
+      <div className="p-6 bg-[#0f111a] min-h-screen font-sans text-gray-100">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
+          <div className="flex items-center gap-4">
             <Link href="/crm/leads?new=true">
-              <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold">
+              <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-bold shadow-lg shadow-teal-900/20 transition-all border-none">
                 <Plus className="w-4 h-4 mr-2" />
                 New Job
               </Button>
@@ -228,78 +186,86 @@ export default function CRMDashboard() {
           </div>
         </div>
 
-        {/* Lien Rights Alert Banner */}
+        {/* Alerts */}
         {lienRightsJobs && lienRightsJobs.filter((j: any) => j.urgencyLevel === "critical").length > 0 && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-red-900/50 to-orange-900/50 border border-red-500/50 rounded-lg animate-pulse">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-6 h-6 text-red-400" />
+          <div className="mb-8 p-1 rounded-xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30">
+            <div className="bg-[#151720] rounded-lg p-4 flex items-center gap-4">
+              <div className="p-2 bg-red-500/10 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-red-500 animate-pulse" />
+              </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-white">Lien Rights Critical Alert!</h3>
-                <p className="text-sm text-slate-300">
-                  {lienRightsJobs.filter((j: any) => j.urgencyLevel === "critical").length} jobs have less than 14 days remaining on lien rights. 
-                  <Link href="/crm/pipeline" className="text-[#00d4aa] ml-1 hover:underline">View Pipeline →</Link>
+                <h3 className="font-semibold text-white text-lg">Lien Rights Critical Alert!</h3>
+                <p className="text-sm text-gray-400">
+                  {lienRightsJobs.filter((j: any) => j.urgencyLevel === "critical").length} jobs have less than <span className="text-red-400 font-bold">14 days</span> remaining.
+                  <Link href="/crm/pipeline" className="text-[#00d4aa] ml-2 hover:text-[#00b894] font-medium hover:underline">
+                    View Pipeline →
+                  </Link>
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* KPI Cards Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-4">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+          {/* Card 1: Leads */}
+          <Card className="bg-[#1e293b] border-gray-800 shadow-sm hover:border-gray-700 transition-colors">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-400">Total Leads</p>
-                  <p className="text-2xl font-bold text-white">{stats?.totalLeads || 0}</p>
+                  <p className="text-sm font-medium text-gray-400">Total Leads</p>
+                  <p className="text-3xl font-bold text-white mt-1">{stats?.totalLeads || 0}</p>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-[#00d4aa]/20 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-[#00d4aa]/10 flex items-center justify-center border border-[#00d4aa]/20">
                   <Users className="w-6 h-6 text-[#00d4aa]" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-4">
+
+          {/* Card 2: Revenue */}
+          <Card className="bg-[#1e293b] border-gray-800 shadow-sm hover:border-gray-700 transition-colors">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-400">Revenue</p>
-                  <p className="text-2xl font-bold text-white">${(stats?.totalRevenue || 0).toLocaleString()}</p>
+                  <p className="text-sm font-medium text-gray-400">Revenue</p>
+                  <p className="text-3xl font-bold text-white mt-1">${(stats?.totalRevenue || 0).toLocaleString()}</p>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center border border-green-500/20">
                   <DollarSign className="w-6 h-6 text-green-500" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-4">
+
+          {/* Card 3: Conversion Rate */}
+          <Card className="bg-[#1e293b] border-gray-800 shadow-sm hover:border-gray-700 transition-colors">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-400">Conversion Rate</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-sm font-medium text-gray-400">Conversion Rate</p>
+                  <p className="text-3xl font-bold text-white mt-1">
                     {stats?.totalLeads ? ((stats.closedDealCount / stats.totalLeads) * 100).toFixed(1) : 0}%
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
                   <Target className="w-6 h-6 text-purple-500" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-4">
+
+          {/* Card 4: Avg Deal Value */}
+          <Card className="bg-[#1e293b] border-gray-800 shadow-sm hover:border-gray-700 transition-colors">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-400">Avg. Deal Value</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-sm font-medium text-gray-400">Avg. Deal Value</p>
+                  <p className="text-3xl font-bold text-white mt-1">
                     ${stats?.closedDealCount ? ((stats.totalRevenue || 0) / stats.closedDealCount).toFixed(0) : 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
                   <BarChart3 className="w-6 h-6 text-blue-500" />
                 </div>
               </div>
@@ -307,45 +273,39 @@ export default function CRMDashboard() {
           </Card>
         </div>
 
-        {/* Deal Type Summary - Clickable */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        {/* Deal Types Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Link href="/crm/leads?filter=insurance">
-            <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-blue-500 cursor-pointer hover:bg-slate-750 transition-all">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-3">
-                  <Shield className="w-8 h-8 text-blue-400" />
-                  <div>
-                    <p className="text-sm text-slate-400">Insurance Deals</p>
-                    <p className="text-xl font-bold text-white">{stats?.insuranceCount || 0}</p>
-                  </div>
+            <Card className="bg-[#1e293b] border-gray-800 hover:bg-[#253045] cursor-pointer transition-all group border-l-4 border-l-blue-500">
+              <CardContent className="p-5 flex items-center gap-4">
+                <Shield className="w-8 h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+                <div>
+                  <p className="text-sm text-gray-400">Insurance Deals</p>
+                  <p className="text-xl font-bold text-white">{stats?.insuranceCount || 0}</p>
                 </div>
               </CardContent>
             </Card>
           </Link>
           
           <Link href="/crm/leads?filter=cash">
-            <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-green-500 cursor-pointer hover:bg-slate-750 transition-all">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-3">
-                  <Banknote className="w-8 h-8 text-green-400" />
-                  <div>
-                    <p className="text-sm text-slate-400">Cash Deals</p>
-                    <p className="text-xl font-bold text-white">{stats?.cashCount || 0}</p>
-                  </div>
+            <Card className="bg-[#1e293b] border-gray-800 hover:bg-[#253045] cursor-pointer transition-all group border-l-4 border-l-green-500">
+              <CardContent className="p-5 flex items-center gap-4">
+                <Banknote className="w-8 h-8 text-green-500 group-hover:scale-110 transition-transform" />
+                <div>
+                  <p className="text-sm text-gray-400">Cash Deals</p>
+                  <p className="text-xl font-bold text-white">{stats?.cashCount || 0}</p>
                 </div>
               </CardContent>
             </Card>
           </Link>
           
           <Link href="/crm/leads?filter=financed">
-            <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-purple-500 cursor-pointer hover:bg-slate-750 transition-all">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-3">
-                  <CreditCard className="w-8 h-8 text-purple-400" />
-                  <div>
-                    <p className="text-sm text-slate-400">Financed Deals</p>
-                    <p className="text-xl font-bold text-white">{stats?.financedCount || 0}</p>
-                  </div>
+            <Card className="bg-[#1e293b] border-gray-800 hover:bg-[#253045] cursor-pointer transition-all group border-l-4 border-l-purple-500">
+              <CardContent className="p-5 flex items-center gap-4">
+                <CreditCard className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
+                <div>
+                  <p className="text-sm text-gray-400">Financed Deals</p>
+                  <p className="text-xl font-bold text-white">{stats?.financedCount || 0}</p>
                 </div>
               </CardContent>
             </Card>
@@ -353,52 +313,32 @@ export default function CRMDashboard() {
         </div>
 
         {/* Pipeline Tracker */}
-        <Card className="bg-slate-800 border-slate-700 mb-6">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-300">Pipeline Overview</h3>
+        <Card className="bg-[#1e293b] border-gray-800 mb-8 overflow-hidden">
+          <CardHeader className="border-b border-gray-800/50 pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-semibold text-white">Pipeline Overview</CardTitle>
               <Link href="/crm/pipeline">
-                <Button variant="ghost" size="sm" className="text-[#00d4aa] hover:text-[#00b894]">
+                <Button variant="ghost" size="sm" className="text-[#00d4aa] hover:text-[#00b894] hover:bg-[#00d4aa]/10">
                   View Full Pipeline <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
             </div>
+          </CardHeader>
+          <CardContent className="pt-6">
             <PipelineOverview stats={stats} />
           </CardContent>
         </Card>
 
-        {/* Category Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          <Button
-            variant={activeTab === "all" ? "default" : "outline"}
-            className={activeTab === "all" 
-              ? "bg-[#00d4aa] text-black hover:bg-[#00b894]" 
-              : "border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"}
-            onClick={() => setActiveTab("all")}
-          >
-            All Jobs ({stats?.totalLeads || 0})
-          </Button>
-          {categoryTabs.map((tab) => (
-            <Button
-              key={tab.key}
-              variant={activeTab === tab.key ? "default" : "outline"}
-              className={activeTab === tab.key 
-                ? `${tab.color} text-white hover:opacity-90` 
-                : "border-slate-600 text-slate-300 hover:bg-slate-700 bg-transparent"}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label} ({categoryCounts?.[tab.key as keyof typeof categoryCounts] || 0})
-            </Button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content - 2 columns */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Analytics Charts Row */}
+        {/* Main 2-Column Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* LEFT COLUMN (Charts & Actions) */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Charts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Lead Trends Chart */}
-              <Card className="bg-slate-800 border-slate-700">
+              {/* Lead Trends */}
+              <Card className="bg-[#1e293b] border-gray-800">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-[#00d4aa]" />
@@ -411,7 +351,7 @@ export default function CRMDashboard() {
               </Card>
 
               {/* Conversion Funnel */}
-              <Card className="bg-slate-800 border-slate-700">
+              <Card className="bg-[#1e293b] border-gray-800">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                     <Target className="w-5 h-5 text-purple-500" />
@@ -425,26 +365,26 @@ export default function CRMDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader className="pb-2">
+            <Card className="bg-[#1e293b] border-gray-800">
+              <CardHeader className="pb-4 border-b border-gray-800/50">
                 <CardTitle className="text-lg font-semibold text-white">Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <div className="flex flex-wrap gap-3">
                   <Link href="/crm/leads?new=true">
-                    <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black">
+                    <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold border-none">
                       <Plus className="w-4 h-4 mr-2" />
                       Add New Job
                     </Button>
                   </Link>
                   <Link href="/crm/reports">
-                    <Button variant="outline" className="border-purple-400 text-purple-400 hover:bg-purple-400/10 bg-transparent">
+                    <Button variant="outline" className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 bg-transparent">
                       <FileText className="w-4 h-4 mr-2" />
                       Generate Report
                     </Button>
                   </Link>
                   <Link href="/crm/calendar">
-                    <Button variant="outline" className="border-blue-400 text-blue-400 hover:bg-blue-400/10 bg-transparent">
+                    <Button variant="outline" className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 bg-transparent">
                       <Calendar className="w-4 h-4 mr-2" />
                       Schedule Inspection
                     </Button>
@@ -455,23 +395,25 @@ export default function CRMDashboard() {
             </Card>
 
             {/* Action Items Grid */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold text-white">
-                  Action Items
-                </CardTitle>
+            <Card className="bg-[#1e293b] border-gray-800">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold text-white">Action Items</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {actionItems.map((item) => {
                     const count = getActionCount(item.key);
                     return (
                       <Link key={item.key} href={`/crm/leads?filter=${item.key}`}>
-                        <div className={`flex items-center gap-3 p-3 rounded-lg border border-slate-600 hover:bg-slate-700 cursor-pointer transition-colors ${item.key.includes('lien') && count > 0 ? 'border-red-500/50 animate-pulse' : ''}`}>
+                        <div className={`
+                          flex items-center gap-3 p-4 rounded-xl border border-gray-800 
+                          hover:bg-[#253045] hover:border-gray-700 cursor-pointer transition-all
+                          ${item.key.includes('lien') && count > 0 ? 'border-red-500/40 bg-red-500/5' : 'bg-[#151720]'}
+                        `}>
                           <item.icon className={`w-5 h-5 ${item.color}`} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-slate-300 truncate">{item.label}</p>
-                            <p className="text-lg font-bold text-white">{count}</p>
+                            <p className="text-xs text-gray-400 truncate uppercase tracking-wider mb-1">{item.label}</p>
+                            <p className="text-xl font-bold text-white">{count}</p>
                           </div>
                         </div>
                       </Link>
@@ -482,130 +424,115 @@ export default function CRMDashboard() {
             </Card>
           </div>
 
-          {/* Right Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
+          {/* RIGHT COLUMN (Sidebar) */}
+          <div className="lg:col-span-1 space-y-8">
+            
             {/* Lien Rights Summary */}
-            {lienRightsJobs && lienRightsJobs.length > 0 && (
-              <Card className="bg-slate-800 border-slate-700">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-                    <Gavel className="w-5 h-5 text-red-400" />
-                    Lien Rights (90 Days)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-2 rounded bg-green-500/10 border border-green-500/30">
-                      <span className="text-green-400 text-sm">Active (60+ days)</span>
-                      <span className="font-bold text-white">{lienRightsJobs.filter((j: any) => j.urgencyLevel === "active").length}</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
-                      <span className="text-yellow-400 text-sm">Warning (15-30 days)</span>
-                      <span className="font-bold text-white">{lienRightsJobs.filter((j: any) => j.urgencyLevel === "warning").length}</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-red-500/10 border border-red-500/30 animate-pulse">
-                      <span className="text-red-400 text-sm">Critical (&lt;14 days)</span>
-                      <span className="font-bold text-white">{lienRightsJobs.filter((j: any) => j.urgencyLevel === "critical").length}</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-slate-600/30 border border-slate-600">
-                      <span className="text-slate-400 text-sm">Expired</span>
-                      <span className="font-bold text-white">{lienRightsJobs.filter((j: any) => j.urgencyLevel === "expired").length}</span>
-                    </div>
+            <Card className="bg-[#1e293b] border-gray-800">
+              <CardHeader className="pb-4 border-b border-gray-800/50">
+                <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Gavel className="w-5 h-5 text-red-400" />
+                  Lien Rights (90 Days)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                    <span className="text-green-400 text-sm font-medium">Active</span>
+                    <span className="font-bold text-white bg-green-500/20 px-2 py-0.5 rounded text-sm">
+                      {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "active").length || 0}
+                    </span>
                   </div>
-                  <Link href="/crm/pipeline">
-                    <Button variant="ghost" size="sm" className="w-full mt-3 text-[#00d4aa] hover:text-[#00b894]">
-                      View All in Pipeline <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
+                    <span className="text-yellow-400 text-sm font-medium">Warning</span>
+                    <span className="font-bold text-white bg-yellow-500/20 px-2 py-0.5 rounded text-sm">
+                      {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "warning").length || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                    <span className="text-red-400 text-sm font-medium">Critical</span>
+                    <span className="font-bold text-white bg-red-500/20 px-2 py-0.5 rounded text-sm">
+                      {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "critical").length || 0}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Today's Schedule */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader className="pb-2">
+            <Card className="bg-[#1e293b] border-gray-800">
+              <CardHeader className="pb-4 border-b border-gray-800/50">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-[#00d4aa]" />
                     Today
                   </CardTitle>
                   <Link href="/crm/calendar">
-                    <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-700">
-                      View Calendar
-                      <ChevronRight className="w-4 h-4 ml-1" />
+                    <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-gray-700 h-8">
+                      View All
                     </Button>
                   </Link>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {appointments && appointments.length > 0 ? (
                   <div className="space-y-3">
                     {appointments.slice(0, 5).map((apt: any) => (
                       <Link key={apt.id} href={`/crm/job/${apt.id}`}>
-                        <div className="flex items-center gap-3 p-3 rounded-lg border-l-4 border-l-[#00d4aa] bg-slate-700/50 hover:bg-slate-700 cursor-pointer transition-colors">
-                          <div className="w-10 h-10 rounded-full bg-[#00d4aa]/20 flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-[#00d4aa]" />
-                          </div>
+                        <div className="flex items-center gap-3 p-3 rounded-lg border-l-2 border-l-[#00d4aa] bg-[#151720] hover:bg-[#253045] cursor-pointer transition-colors group">
                           <div className="flex-1">
-                            <p className="font-medium text-white">{apt.fullName}</p>
-                            <p className="text-sm text-slate-400">
-                              {new Date(apt.scheduledDate).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                            <p className="font-medium text-white group-hover:text-[#00d4aa] transition-colors">{apt.fullName}</p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                              <Clock className="w-3 h-3" />
+                              {new Date(apt.scheduledDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-slate-500" />
+                          <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-white" />
                         </div>
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-400">
-                    <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No appointments scheduled for today</p>
-                    <Link href="/crm/calendar">
-                      <Button variant="link" className="mt-2 text-[#00d4aa]">
-                        Schedule an inspection
-                      </Button>
-                    </Link>
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 text-sm">No appointments today</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Activity Feed */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader className="pb-2">
+            {/* Recent Activity */}
+            <Card className="bg-[#1e293b] border-gray-800">
+              <CardHeader className="pb-4 border-b border-gray-800/50">
                 <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                   <Clock className="w-5 h-5 text-blue-400" />
                   Recent Activity
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+              <CardContent className="pt-6">
+                <div className="space-y-1">
                   {categoryLeads && categoryLeads.length > 0 ? (
                     categoryLeads.slice(0, 5).map((lead: any) => (
                       <Link key={lead.id} href={`/crm/job/${lead.id}`}>
-                        <div className="flex items-center gap-3 p-2 rounded hover:bg-slate-700 cursor-pointer transition-colors">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center">
-                            <span className="text-black font-semibold text-xs">
+                        <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#253045] cursor-pointer transition-colors group">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#009688] flex items-center justify-center shadow-lg shadow-teal-900/20">
+                            <span className="text-black font-bold text-xs">
                               {lead.fullName?.charAt(0) || "?"}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{lead.fullName}</p>
-                            <p className="text-xs text-slate-400">{lead.status}</p>
+                            <p className="text-sm font-medium text-gray-200 group-hover:text-white truncate">{lead.fullName}</p>
+                            <p className="text-xs text-gray-500">{lead.status}</p>
                           </div>
                         </div>
                       </Link>
                     ))
                   ) : (
-                    <p className="text-center text-slate-400 py-4">No recent activity</p>
+                    <p className="text-center text-gray-500 py-4 text-sm">No recent activity</p>
                   )}
                 </div>
               </CardContent>
             </Card>
+
           </div>
         </div>
       </div>
