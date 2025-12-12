@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { OwnerRoute } from "./components/OwnerRoute";
+import { GlobalChatWidget } from "./components/GlobalChatWidget";
 
 // Auth pages
 import Login from "./pages/auth/Login";
@@ -155,6 +156,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <GlobalChatWidget />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
