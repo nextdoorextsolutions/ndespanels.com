@@ -42,12 +42,17 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 
 export const GlobalChatWidget: React.FC = () => {
   const { isOpen, isMinimized, setOpen, setMinimized } = useChatStore();
-  const { user: authUser } = useAuth();
+  const { user: authUser, isAuthenticated } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState('general-announcements');
   const [isAIOpen, setIsAIOpen] = useState(false);
+
+  // Don't render chat widget if user is not authenticated
+  if (!isAuthenticated || !authUser) {
+    return null;
+  }
 
   // Build current user from auth
   const currentUser: PresenceUser = {
