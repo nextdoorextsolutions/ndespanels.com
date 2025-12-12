@@ -32,7 +32,7 @@ const GEMINI_BOT_NAME = 'Zerox AI';
 const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: 'm1',
-    content: "Welcome to the global operations chat! I'm Zerox AI, your CRM assistant. Ask me about jobs, customers, or anything else. 🚀",
+    content: "Welcome to NextDoor Operations Chat! I'm Zerox AI, your roofing & solar CRM assistant. Ask me about leads, active installs, material orders, or anything else. 🏠⚡",
     senderId: GEMINI_BOT_ID,
     senderName: GEMINI_BOT_NAME,
     createdAt: new Date(Date.now() - 86400000),
@@ -46,16 +46,27 @@ export const GlobalChatWidget: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [activeChannelId, setActiveChannelId] = useState('general');
+  const [activeChannelId, setActiveChannelId] = useState('general-announcements');
   const [isAIOpen, setIsAIOpen] = useState(false);
 
   // Build current user from auth
   const currentUser: PresenceUser = {
     id: authUser?.id?.toString() || 'guest',
     name: authUser?.name || authUser?.email || 'Guest User',
-    avatarUrl: undefined, // TODO: Add avatar URL from user profile
+    avatarUrl: undefined, // TODO: Add avatar support to user schema
     role: authUser?.role || 'user',
   };
+
+  // Verify real user data is flowing
+  useEffect(() => {
+    if (authUser && isOpen) {
+      console.log('Chat initializing for:', authUser.email || authUser.name, {
+        id: authUser.id,
+        name: authUser.name,
+        role: authUser.role,
+      });
+    }
+  }, [authUser, isOpen]);
 
   const { connectionStatus, isConnected } = usePresence({
     threadId: 'global',
@@ -200,13 +211,7 @@ export const GlobalChatWidget: React.FC = () => {
   };
 
   const getChannelName = () => {
-    const channelMap: Record<string, string> = {
-      general: 'general',
-      marketing: 'marketing',
-      dev: 'dev',
-      ux: 'ux',
-    };
-    return channelMap[activeChannelId] || activeChannelId.replace('dm-', '');
+    return activeChannelId.replace('dm-', '');
   };
 
   if (!isOpen) {
@@ -230,8 +235,8 @@ export const GlobalChatWidget: React.FC = () => {
     <div 
       className={`fixed right-4 z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl
         ${isMinimized 
-          ? 'bottom-0 w-72 h-14 rounded-b-none'
-          : 'bottom-6 w-[90vw] h-[85vh] max-w-[1600px]'
+          ? 'bottom-0 w-80 h-14 rounded-b-none'
+          : 'bottom-6 w-[500px] h-[650px]'
         }
       `}
     >
@@ -250,7 +255,7 @@ export const GlobalChatWidget: React.FC = () => {
             )}
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">Global Operations Chat</h3>
+            <h3 className="text-sm font-semibold text-white">NextDoor Operations</h3>
             {!isMinimized && (
               <p className="text-xs text-slate-400">
                 {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
@@ -287,22 +292,8 @@ export const GlobalChatWidget: React.FC = () => {
       </div>
 
       {!isMinimized && (
-        <div 
-          className={`grid h-[calc(100%-60px)] transition-all duration-300 ${
-            isAIOpen 
-              ? 'md:grid-cols-[260px_1fr_300px]' 
-              : 'md:grid-cols-[260px_1fr]'
-          }`}
-        >
-          {/* Left: Channel Sidebar - Hidden on mobile */}
-          <div className="hidden md:block">
-            <ChannelSidebar
-              activeChannelId={activeChannelId}
-              onChannelSelect={setActiveChannelId}
-            />
-          </div>
-
-          {/* Middle: Chat Area - Full width on mobile */}
+        <div className="h-[calc(100%-60px)]">
+          {/* Chat Area - Full width */}
           <ChatArea
             channelName={getChannelName()}
             messages={messages}
@@ -318,15 +309,6 @@ export const GlobalChatWidget: React.FC = () => {
             isAIOpen={isAIOpen}
           />
 
-          {/* Right: AI Sidebar - Hidden on mobile */}
-          {isAIOpen && (
-            <div className="hidden md:block">
-              <AISidebar
-                onClose={() => setIsAIOpen(false)}
-                onGenerateDraft={handleGenerateDraft}
-              />
-            </div>
-          )}
         </div>
       )}
     </div>
