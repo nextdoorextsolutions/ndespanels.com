@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Bell, BellOff } from "lucide-react";
 import { Link } from "wouter";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -137,6 +137,16 @@ export default function JobDetail() {
   });
 
   const utils = trpc.useUtils();
+  
+  const toggleFollowUp = trpc.crm.toggleFollowUp.useMutation({
+    onSuccess: () => {
+      toast.success("Follow-up status updated");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update follow-up status");
+    },
+  });
   
   const deleteJob = trpc.crm.deleteLead.useMutation({
     onSuccess: () => {
@@ -312,8 +322,34 @@ export default function JobDetail() {
                   <p className="text-slate-400 text-sm">{job.address}</p>
                 </div>
               </div>
-              {canDelete && (
-                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <div className="flex items-center gap-2">
+                {canEdit && (
+                  <Button
+                    variant="outline"
+                    onClick={() => toggleFollowUp.mutate({ 
+                      jobId, 
+                      needsFollowUp: !job.needsFollowUp 
+                    })}
+                    className={job.needsFollowUp 
+                      ? "bg-[#00d4aa]/20 border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/30"
+                      : "border-slate-600 text-slate-300 hover:bg-slate-700"
+                    }
+                  >
+                    {job.needsFollowUp ? (
+                      <>
+                        <BellOff className="w-4 h-4 mr-2" />
+                        Clear Follow Up
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="w-4 h-4 mr-2" />
+                        Request Follow Up
+                      </>
+                    )}
+                  </Button>
+                )}
+                {canDelete && (
+                  <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                   <AlertDialogTrigger asChild>
                     <Button 
                       variant="outline"
@@ -353,7 +389,8 @@ export default function JobDetail() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Tabs */}
