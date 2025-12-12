@@ -19,6 +19,15 @@ import {
 import { Sidebar } from '@/components/finance/Sidebar';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 type InvoiceStatus = 'paid' | 'sent' | 'overdue' | 'draft' | 'cancelled';
 
@@ -27,6 +36,11 @@ const Invoices: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editStatus, setEditStatus] = useState<InvoiceStatus>('draft');
+  const [editNotes, setEditNotes] = useState<string>('');
 
   // Fetch invoices and stats from database
   const { data: invoices = [], isLoading, refetch } = trpc.invoices.getAll.useQuery({
@@ -35,6 +49,27 @@ const Invoices: React.FC = () => {
   });
 
   const { data: stats } = trpc.invoices.getStats.useQuery();
+
+  const updateInvoice = trpc.invoices.update.useMutation({
+    onSuccess: () => {
+      toast.success('Invoice updated');
+      setEditOpen(false);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update invoice');
+    },
+  });
+
+  const createInvoice = trpc.invoices.create.useMutation({
+    onSuccess: () => {
+      toast.success('Invoice duplicated');
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to duplicate invoice');
+    },
+  });
 
   // Delete mutation
   const deleteInvoice = trpc.invoices.delete.useMutation({
@@ -59,32 +94,75 @@ const Invoices: React.FC = () => {
       toast.error('No email address on file for this client');
       return;
     }
-    // TODO: Implement email sending via backend
-    toast.success(`Invoice ${invoice.invoiceNumber} sent to ${invoice.clientEmail}`);
+    const subject = encodeURIComponent(`Invoice ${invoice.invoiceNumber}`);
+    const lines = [
+      `Hi ${invoice.clientName || ''},`,
+      '',
+      `Please find your invoice ${invoice.invoiceNumber} attached/linked.`,
+      `Total: ${formatCurrency(invoice.totalAmount)}`,
+      `Due Date: ${formatDate(invoice.dueDate || null)}`,
+      '',
+      'Thank you,',
+    ];
+    const body = encodeURIComponent(lines.join('\n'));
+    window.location.href = `mailto:${invoice.clientEmail}?subject=${subject}&body=${body}`;
     setOpenDropdown(null);
   };
 
   const handleDownload = (invoice: any) => {
-    // TODO: Implement PDF download
-    toast.success(`Downloading invoice ${invoice.invoiceNumber}...`);
+    try {
+      const payload = {
+        ...invoice,
+        invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString() : null,
+        dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString() : null,
+        paidDate: invoice.paidDate ? new Date(invoice.paidDate).toISOString() : null,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${invoice.invoiceNumber || 'invoice'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${invoice.invoiceNumber}`);
+    } catch {
+      toast.error('Failed to download invoice');
+    }
     setOpenDropdown(null);
   };
 
   const handleView = (invoice: any) => {
-    // TODO: Navigate to invoice detail page
-    toast.info(`Opening invoice ${invoice.invoiceNumber}...`);
+    setSelectedInvoice(invoice);
+    setViewOpen(true);
     setOpenDropdown(null);
   };
 
   const handleEdit = (invoice: any) => {
-    // TODO: Navigate to invoice edit page
-    toast.info(`Editing invoice ${invoice.invoiceNumber}...`);
+    setSelectedInvoice(invoice);
+    setEditStatus(invoice.status as InvoiceStatus);
+    setEditNotes(invoice.notes || '');
+    setEditOpen(true);
     setOpenDropdown(null);
   };
 
   const handleDuplicate = (invoice: any) => {
-    // TODO: Implement duplicate functionality
-    toast.success(`Duplicating invoice ${invoice.invoiceNumber}...`);
+    const ts = new Date();
+    const suffix = `${ts.getFullYear()}${String(ts.getMonth() + 1).padStart(2, '0')}${String(ts.getDate()).padStart(2, '0')}${String(ts.getHours()).padStart(2, '0')}${String(ts.getMinutes()).padStart(2, '0')}`;
+    const newInvoiceNumber = `${invoice.invoiceNumber}-COPY-${suffix}`;
+    createInvoice.mutate({
+      invoiceNumber: newInvoiceNumber,
+      reportRequestId: invoice.reportRequestId || undefined,
+      clientName: invoice.clientName || 'Unknown',
+      clientEmail: invoice.clientEmail || undefined,
+      amount: String(invoice.amount ?? invoice.totalAmount ?? '0.00'),
+      taxAmount: String(invoice.taxAmount ?? '0.00'),
+      totalAmount: String(invoice.totalAmount ?? '0.00'),
+      invoiceDate: new Date().toISOString(),
+      dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString() : new Date().toISOString(),
+      notes: invoice.notes || undefined,
+    });
     setOpenDropdown(null);
   };
 
@@ -340,6 +418,73 @@ const Invoices: React.FC = () => {
               </div>
             )}
           </div>
+
+          <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Invoice Details</DialogTitle>
+              </DialogHeader>
+              {selectedInvoice && (
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between"><span className="text-slate-400">Invoice</span><span className="text-white font-medium">{selectedInvoice.invoiceNumber}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Client</span><span className="text-white">{selectedInvoice.clientName || 'N/A'}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Email</span><span className="text-white">{selectedInvoice.clientEmail || 'N/A'}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Job Address</span><span className="text-white">{selectedInvoice.jobAddress || 'N/A'}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Status</span><span className="text-white">{String(selectedInvoice.status || '').toUpperCase()}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Invoice Date</span><span className="text-white">{formatDate(selectedInvoice.invoiceDate || null)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Due Date</span><span className="text-white">{formatDate(selectedInvoice.dueDate || null)}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">Total</span><span className="text-white font-semibold">{formatCurrency(selectedInvoice.totalAmount)}</span></div>
+                  <div>
+                    <div className="text-slate-400 mb-1">Notes</div>
+                    <div className="text-white whitespace-pre-wrap">{selectedInvoice.notes || '—'}</div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setViewOpen(false)}>Close</Button>
+                    <Button onClick={() => handleEmail(selectedInvoice)}>Email</Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Edit Invoice</DialogTitle>
+              </DialogHeader>
+              {selectedInvoice && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="text-sm text-slate-400">Status</div>
+                    <div className="flex flex-wrap gap-2">
+                      {(['draft','sent','paid','overdue','cancelled'] as InvoiceStatus[]).map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setEditStatus(s)}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${editStatus === s ? 'border-cyan-500 text-cyan-400 bg-cyan-500/10' : 'border-gray-700 text-gray-300 hover:bg-gray-800'}`}
+                        >
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm text-slate-400">Notes</div>
+                    <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+                    <Button
+                      onClick={() => updateInvoice.mutate({ id: selectedInvoice.id, status: editStatus, notes: editNotes })}
+                      disabled={updateInvoice.isPending}
+                    >
+                      {updateInvoice.isPending ? 'Saving…' : 'Save'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
         </div>
       </main>
