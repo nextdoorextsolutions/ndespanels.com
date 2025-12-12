@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "npm run check && npm run build:server && npm run build:client",
-    "build:server": "esbuild server/_core/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:@aws-sdk/* --external:@supabase/* --external:drizzle-orm --external:postgres --external:express --external:cors --external:cookie --external:jose --external:nanoid --external:zod --external:superjson --external:@trpc/* --external:axios --external:dotenv --external:exif-parser --external:stripe --external:twilio --external:class-variance-authority --external:clsx --external:date-fns --external:streamdown --external:tailwind-merge --external:vite --external:@vitejs/* --external:@tailwindcss/* --external:lightningcss --external:@babel/* --external:http --external:pdfkit --external:pdf-lib",
+    "build:server": "esbuild server/_core/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm --external:@aws-sdk/* --external:@supabase/* --external:drizzle-orm --external:postgres --external:express --external:cors --external:cookie --external:jose --external:nanoid --external:zod --external:superjson --external:@trpc/* --external:axios --external:dotenv --external:exif-parser --external:stripe --external:twilio --external:class-variance-authority --external:clsx --external:date-fns --external:streamdown --external:tailwind-merge --external:vite --external:@vitejs/* --external:@tailwindcss/* --external:lightningcss --external:@babel/* --external:http --external:pdfkit --external:pdf-lib --external:nodemailer",
     "build:client": "vite build",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
