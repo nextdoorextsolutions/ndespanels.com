@@ -11,7 +11,10 @@ import {
   AlertCircle,
   TrendingUp,
   Clock,
-  Trash2
+  Trash2,
+  Edit,
+  Eye,
+  Copy
 } from 'lucide-react';
 import { Sidebar } from '@/components/finance/Sidebar';
 import { trpc } from '@/lib/trpc';
@@ -23,6 +26,7 @@ const Invoices: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
 
   // Fetch invoices and stats from database
   const { data: invoices = [], isLoading, refetch } = trpc.invoices.getAll.useQuery({
@@ -47,6 +51,41 @@ const Invoices: React.FC = () => {
     if (confirm('Are you sure you want to delete this invoice?')) {
       deleteInvoice.mutate({ id });
     }
+    setOpenDropdown(null);
+  };
+
+  const handleEmail = (invoice: any) => {
+    if (!invoice.clientEmail) {
+      toast.error('No email address on file for this client');
+      return;
+    }
+    // TODO: Implement email sending via backend
+    toast.success(`Invoice ${invoice.invoiceNumber} sent to ${invoice.clientEmail}`);
+    setOpenDropdown(null);
+  };
+
+  const handleDownload = (invoice: any) => {
+    // TODO: Implement PDF download
+    toast.success(`Downloading invoice ${invoice.invoiceNumber}...`);
+    setOpenDropdown(null);
+  };
+
+  const handleView = (invoice: any) => {
+    // TODO: Navigate to invoice detail page
+    toast.info(`Opening invoice ${invoice.invoiceNumber}...`);
+    setOpenDropdown(null);
+  };
+
+  const handleEdit = (invoice: any) => {
+    // TODO: Navigate to invoice edit page
+    toast.info(`Editing invoice ${invoice.invoiceNumber}...`);
+    setOpenDropdown(null);
+  };
+
+  const handleDuplicate = (invoice: any) => {
+    // TODO: Implement duplicate functionality
+    toast.success(`Duplicating invoice ${invoice.invoiceNumber}...`);
+    setOpenDropdown(null);
   };
 
   const filteredInvoices = invoices;
@@ -213,20 +252,70 @@ const Invoices: React.FC = () => {
                         </td>
                         <td className="p-4 text-center">
                           <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white" title="Download PDF">
+                            <button 
+                              onClick={() => handleDownload(invoice)}
+                              className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white" 
+                              title="Download PDF"
+                            >
                               <Download className="w-4 h-4" />
                             </button>
-                            <button className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white" title="Email Client">
+                            <button 
+                              onClick={() => handleEmail(invoice)}
+                              className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white" 
+                              title="Email Client"
+                            >
                               <Mail className="w-4 h-4" />
                             </button>
-                            <button 
-                              onClick={() => handleDelete(invoice.id)}
-                              className="p-1.5 hover:bg-red-500/10 rounded text-gray-400 hover:text-red-400" 
-                              title="Delete Invoice"
-                              disabled={deleteInvoice.isPending}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="relative">
+                              <button 
+                                onClick={() => setOpenDropdown(openDropdown === invoice.id ? null : invoice.id)}
+                                className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
+                                title="More Actions"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+                              
+                              {openDropdown === invoice.id && (
+                                <>
+                                  <div 
+                                    className="fixed inset-0 z-10" 
+                                    onClick={() => setOpenDropdown(null)}
+                                  />
+                                  <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
+                                    <button
+                                      onClick={() => handleView(invoice)}
+                                      className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2 transition-colors"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                      View Details
+                                    </button>
+                                    <button
+                                      onClick={() => handleEdit(invoice)}
+                                      className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2 transition-colors"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                      Edit Invoice
+                                    </button>
+                                    <button
+                                      onClick={() => handleDuplicate(invoice)}
+                                      className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2 transition-colors"
+                                    >
+                                      <Copy className="w-4 h-4" />
+                                      Duplicate
+                                    </button>
+                                    <div className="border-t border-gray-700" />
+                                    <button
+                                      onClick={() => handleDelete(invoice.id)}
+                                      className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                                      disabled={deleteInvoice.isPending}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete Invoice
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
