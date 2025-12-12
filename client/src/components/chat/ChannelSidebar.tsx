@@ -1,6 +1,7 @@
 import React from 'react';
 import { Hash, MessageSquare, Users, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { usePresence, PresenceUser } from '@/hooks/usePresence';
 import { useAuth } from '@/_core/hooks/useAuth';
 
@@ -123,9 +124,12 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect }: ChannelSide
               >
                 <div className="flex items-center gap-2">
                   <div className="relative">
-                    <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white">
-                      {dm.name.charAt(0)}
-                    </div>
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={undefined} alt={dm.name} />
+                      <AvatarFallback className="bg-slate-700 text-xs text-white">
+                        {dm.name.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     {isUserOnline(dm.id) && (
                       <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-slate-950 rounded-full"></div>
                     )}
@@ -146,9 +150,12 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect }: ChannelSide
       {/* User Profile Footer */}
       <div className="p-3 border-t border-slate-800">
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-800/50 cursor-pointer transition-colors">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#00b894] flex items-center justify-center">
-            <span className="text-slate-900 font-bold text-sm">A</span>
-          </div>
+          <Avatar className="w-8 h-8">
+            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+            <AvatarFallback className="bg-gradient-to-br from-[#00d4aa] to-[#00b894] text-slate-900 font-semibold">
+              {currentUser.name.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">Alex Developer</p>
             <p className="text-xs text-slate-500 truncate">Online</p>

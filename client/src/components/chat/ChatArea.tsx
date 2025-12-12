@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Hash, Users, Pin, Search, Sparkles, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { usePresence, PresenceUser } from '@/hooks/usePresence';
@@ -94,21 +95,24 @@ export function ChatArea({
     }
   };
 
-  const Avatar = ({ name, isSystem = false }: { name: string; isSystem?: boolean }) => {
-    const initial = name.charAt(0).toUpperCase();
-
+  const MessageAvatar = ({ name, avatarUrl, isSystem = false }: { name: string; avatarUrl?: string; isSystem?: boolean }) => {
     if (isSystem) {
       return (
-        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-[#00d4aa] to-[#00b894] shadow-md">
-          <Sparkles className="w-4 h-4 text-slate-900" />
-        </div>
+        <Avatar className="w-8 h-8 flex-shrink-0">
+          <AvatarFallback className="bg-gradient-to-br from-[#00d4aa] to-[#00b894] shadow-md">
+            <Sparkles className="w-4 h-4 text-slate-900" />
+          </AvatarFallback>
+        </Avatar>
       );
     }
 
     return (
-      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-slate-600 to-slate-700 border border-slate-500 text-white shadow-sm">
-        <span className="font-semibold text-xs">{initial}</span>
-      </div>
+      <Avatar className="w-8 h-8 flex-shrink-0">
+        <AvatarImage src={avatarUrl} alt={name} />
+        <AvatarFallback className="bg-gradient-to-br from-slate-600 to-slate-700 border border-slate-500 text-white shadow-sm text-xs font-semibold">
+          {name.substring(0, 2).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
     );
   };
 
@@ -125,16 +129,13 @@ export function ChatArea({
             <div className="flex items-center gap-1">
               <div className="flex -space-x-2">
                 {onlineUsers.slice(0, 3).map((user) => (
-                  <div
-                    key={user.id}
-                    className="relative w-6 h-6 rounded-full bg-slate-700 border-2 border-slate-900 flex items-center justify-center text-xs text-white"
-                    title={user.name}
-                  >
-                    {user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt={user.name} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      user.name.charAt(0).toUpperCase()
-                    )}
+                  <div key={user.id} className="relative" title={user.name}>
+                    <Avatar className="w-6 h-6 border-2 border-slate-900">
+                      <AvatarImage src={user.avatarUrl} alt={user.name} />
+                      <AvatarFallback className="bg-slate-700 text-xs text-white">
+                        {user.name.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 border border-slate-900 rounded-full"></div>
                   </div>
                 ))}
@@ -177,7 +178,7 @@ export function ChatArea({
 
           return (
             <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-              {!isMe && <Avatar name={msg.senderName} isSystem={isSystem} />}
+              {!isMe && <MessageAvatar name={msg.senderName} avatarUrl={undefined} isSystem={isSystem} />}
 
               <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
                 <div className="flex items-center gap-2 mb-1">
@@ -208,7 +209,7 @@ export function ChatArea({
 
         {isTyping && (
           <div className="flex gap-3">
-            <Avatar name={geminiName} isSystem />
+            <MessageAvatar name={geminiName} avatarUrl={undefined} isSystem />
             <div className="flex flex-col items-start">
               <span className="text-xs font-medium text-slate-400 mb-1">{geminiName}</span>
               <div className="bg-slate-800/80 border border-slate-700 px-4 py-3 rounded-2xl rounded-tl-none">
