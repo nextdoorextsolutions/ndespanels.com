@@ -181,6 +181,11 @@ export const reportRequests = pgTable("report_requests", {
   priority: priorityEnum("priority").default("medium").notNull(),
   internalNotes: text("internal_notes"),
   
+  // Follow-up tracking
+  needsFollowUp: boolean("needs_follow_up").default(false).notNull(),
+  followUpRequestedAt: timestamp("follow_up_requested_at"),
+  followUpRequestedBy: integer("follow_up_requested_by"),
+  
   // Customer-facing status message
   customerStatusMessage: text("customer_status_message"),
   
