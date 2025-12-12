@@ -207,7 +207,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [syncToCRM]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     // Check if authentication service is configured

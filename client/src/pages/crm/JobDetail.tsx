@@ -136,9 +136,18 @@ export default function JobDetail() {
     },
   });
 
+  const utils = trpc.useUtils();
+  
   const deleteJob = trpc.crm.deleteLead.useMutation({
     onSuccess: () => {
       toast.success("Job deleted successfully");
+      // Invalidate all queries that might show this job
+      utils.crm.getLeads.invalidate();
+      utils.crm.getStats.invalidate();
+      utils.crm.getMonthlyTrends.invalidate();
+      utils.crm.getCategoryCounts.invalidate();
+      utils.crm.getLienRightsJobs.invalidate();
+      utils.crm.getLeadsByCategory.invalidate();
       setLocation("/crm");
     },
     onError: (error) => {
