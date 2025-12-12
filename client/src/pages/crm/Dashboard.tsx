@@ -128,6 +128,7 @@ export default function CRMDashboard() {
     if (!stats) return 0;
     switch (key) {
       case "unassigned": return stats.leadCount || 0;
+      case "follow_up": return stats.followUpCount || 0;
       case "pending_inspection": return stats.appointmentSetCount || 0;
       case "lien_warning": return stats.lienWarningCount || 0;
       case "lien_critical": return stats.lienCriticalCount || 0;

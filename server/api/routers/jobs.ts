@@ -95,6 +95,8 @@ export const jobsRouter = router({
         lienWarningCount: sql<number>`COUNT(CASE WHEN ${reportRequests.lienRightsStatus} = 'warning' THEN 1 END)`,
         lienCriticalCount: sql<number>`COUNT(CASE WHEN ${reportRequests.lienRightsStatus} = 'critical' THEN 1 END)`,
         lienExpiredCount: sql<number>`COUNT(CASE WHEN ${reportRequests.lienRightsStatus} = 'expired' THEN 1 END)`,
+        // Follow-up count
+        followUpCount: sql<number>`COUNT(CASE WHEN ${reportRequests.needsFollowUp} = true THEN 1 END)`,
         // Total revenue
         totalRevenue: sql<number>`COALESCE(SUM(${reportRequests.amountPaid}), 0)`,
       })
@@ -123,6 +125,8 @@ export const jobsRouter = router({
         lienWarningCount: stats?.lienWarningCount || 0,
         lienCriticalCount: stats?.lienCriticalCount || 0,
         lienExpiredCount: stats?.lienExpiredCount || 0,
+        // Follow-up
+        followUpCount: stats?.followUpCount || 0,
         // Revenue
         totalRevenue: (stats?.totalRevenue || 0) / 100,
       };
