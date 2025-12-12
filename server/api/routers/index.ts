@@ -30,6 +30,7 @@ export { documentsRouter } from "./documents";
 export { portalRouter } from "./portal";
 export { productsRouter } from "./products";
 export { aiRouter } from "./ai";
+export { invoicesRouter } from "./invoices";
 
 // Re-export the main router (assembled in server/routers.ts)
 // The 'jobs' router is exposed as 'crm' for frontend compatibility

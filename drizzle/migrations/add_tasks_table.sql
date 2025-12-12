@@ -1,5 +1,9 @@
--- Create task_status enum
-CREATE TYPE task_status AS ENUM ('pending', 'in_progress', 'completed', 'cancelled');
+-- Create task_status enum (only if it doesn't exist)
+DO $$ BEGIN
+    CREATE TYPE task_status AS ENUM ('pending', 'in_progress', 'completed', 'cancelled');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Create tasks table
 CREATE TABLE tasks (

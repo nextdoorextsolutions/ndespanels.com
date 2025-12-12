@@ -10,77 +10,65 @@ import {
   CheckCircle, 
   AlertCircle,
   TrendingUp,
-  Clock
+  Clock,
+  Trash2
 } from 'lucide-react';
 import { Sidebar } from '@/components/finance/Sidebar';
+import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
 
-type InvoiceStatus = 'Paid' | 'Pending' | 'Overdue' | 'Draft';
-
-interface Invoice {
-  id: string;
-  clientName: string;
-  jobAddress: string;
-  dateSent: string;
-  amount: string;
-  status: InvoiceStatus;
-}
+type InvoiceStatus = 'paid' | 'sent' | 'overdue' | 'draft' | 'cancelled';
 
 const Invoices: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>('All');
+  const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const invoices: Invoice[] = [
-    {
-      id: 'INV-2024-001',
-      clientName: 'Michael Anderson',
-      jobAddress: '124 Maple Ave (Full Replacement)',
-      dateSent: 'Oct 24, 2023',
-      amount: '$14,250.00',
-      status: 'Paid',
-    },
-    {
-      id: 'INV-2024-002',
-      clientName: 'Sarah Jenkins',
-      jobAddress: '882 Oak Lane (Gutter Repair)',
-      dateSent: 'Nov 02, 2023',
-      amount: '$1,200.00',
-      status: 'Overdue',
-    },
-    {
-      id: 'INV-2024-003',
-      clientName: 'Highland Estates HOA',
-      jobAddress: 'Building B - Flat Roof Seal',
-      dateSent: 'Nov 10, 2023',
-      amount: '$8,500.00',
-      status: 'Pending',
-    },
-    {
-      id: 'INV-2024-004',
-      clientName: 'Robert Vance',
-      jobAddress: '402 Pine St (Shingle Repair)',
-      dateSent: '-',
-      amount: '$450.00',
-      status: 'Draft',
-    },
-  ];
-
-  const filteredInvoices = invoices.filter((inv) => {
-    const matchesTab = activeTab === 'All' || inv.status === activeTab;
-    const matchesSearch = 
-      inv.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      inv.jobAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.id.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
+  // Fetch invoices and stats from database
+  const { data: invoices = [], isLoading, refetch } = trpc.invoices.getAll.useQuery({
+    status: activeTab !== 'all' ? activeTab as InvoiceStatus : undefined,
+    search: searchQuery || undefined,
   });
+
+  const { data: stats } = trpc.invoices.getStats.useQuery();
+
+  // Delete mutation
+  const deleteInvoice = trpc.invoices.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Invoice deleted successfully');
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete invoice');
+    },
+  });
+
+  const handleDelete = (id: number) => {
+    if (confirm('Are you sure you want to delete this invoice?')) {
+      deleteInvoice.mutate({ id });
+    }
+  };
+
+  const filteredInvoices = invoices;
 
   const getStatusStyle = (status: InvoiceStatus) => {
     switch (status) {
-      case 'Paid': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'Overdue': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-      case 'Pending': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'paid': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'overdue': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      case 'sent': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'draft': return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
       default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
     }
+  };
+
+  const formatCurrency = (amount: string | number) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+  };
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return '-';
+    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -118,26 +106,29 @@ const Invoices: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#151a21] p-6 rounded-2xl border border-gray-800 shadow-lg">
-              <div className="flex justify-between items-start mb-4">
+            <div className="bg-[#151a21] rounded-2xl border border-gray-800 p-6 shadow-lg">
+              <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-rose-500/10 rounded-lg">
-                  <AlertCircle className="w-6 h-6 text-rose-500" />
+                  <AlertCircle className="w-5 h-5 text-rose-400" />
                 </div>
-                <span className="text-xs font-medium text-rose-400 bg-rose-500/10 px-2 py-1 rounded">+2 this week</span>
+                <div className="flex items-center gap-2">
+                  <p className="text-gray-400 text-sm">Total Overdue</p>
+                </div>
               </div>
-              <p className="text-gray-400 text-sm mb-1">Total Overdue</p>
-              <h3 className="text-2xl font-bold text-white">$1,200.00</h3>
+              <h3 className="text-2xl font-bold text-white">{formatCurrency(stats?.totalOverdue || 0)}</h3>
             </div>
 
-            <div className="bg-[#151a21] p-6 rounded-2xl border border-gray-800 shadow-lg">
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-gray-500/10 rounded-lg">
-                  <FileText className="w-6 h-6 text-gray-400" />
+            <div className="bg-[#151a21] rounded-2xl border border-gray-800 p-6 shadow-lg">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-cyan-500/10 rounded-lg">
+                  <FileText className="w-5 h-5 text-cyan-400" />
                 </div>
-                <span className="text-xs font-medium text-gray-400 bg-gray-500/10 px-2 py-1 rounded">3 Active</span>
+                <p className="text-gray-400 text-sm">Draft Invoices</p>
               </div>
-              <p className="text-gray-400 text-sm mb-1">Drafts Value</p>
-              <h3 className="text-2xl font-bold text-white">$4,650.00</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-2xl font-bold text-white">{stats?.totalDrafts || 0}</h3>
+                <span className="text-cyan-400 text-sm font-medium">{stats?.activeCount || 0} Active</span>
+              </div>
             </div>
 
             <div className="bg-[#151a21] p-6 rounded-2xl border border-gray-800 shadow-lg">
@@ -148,14 +139,14 @@ const Invoices: React.FC = () => {
                 <span className="text-xs font-medium text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded">+12% YTD</span>
               </div>
               <p className="text-gray-400 text-sm mb-1">Avg. Ticket Size</p>
-              <h3 className="text-2xl font-bold text-white">$8,400.00</h3>
+              <h3 className="text-2xl font-bold text-white">{formatCurrency(stats?.avgTicketSize || 0)}</h3>
             </div>
           </div>
 
           <div className="bg-[#151a21] rounded-2xl border border-gray-800 shadow-lg overflow-hidden">
             
             <div className="p-4 border-b border-gray-800 flex items-center gap-2 overflow-x-auto">
-              {['All', 'Draft', 'Pending', 'Overdue', 'Paid'].map((tab) => (
+              {['all', 'draft', 'sent', 'overdue', 'paid'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -165,7 +156,7 @@ const Invoices: React.FC = () => {
                       : 'text-gray-400 hover:text-white hover:bg-gray-800'
                   }`}
                 >
-                  {tab}
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
               <div className="ml-auto">
@@ -175,7 +166,11 @@ const Invoices: React.FC = () => {
               </div>
             </div>
 
-            {filteredInvoices.length > 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full" />
+              </div>
+            ) : filteredInvoices.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -193,28 +188,28 @@ const Invoices: React.FC = () => {
                     {filteredInvoices.map((invoice) => (
                       <tr key={invoice.id} className="hover:bg-gray-800/50 transition-colors group">
                         <td className="p-4 text-sm font-medium text-cyan-400 cursor-pointer hover:underline">
-                          {invoice.id}
+                          {invoice.invoiceNumber}
                         </td>
                         <td className="p-4 text-sm text-gray-200">
                           {invoice.clientName}
                         </td>
-                        <td className="p-4 text-sm text-gray-400 truncate max-w-[200px]" title={invoice.jobAddress}>
-                          {invoice.jobAddress}
+                        <td className="p-4 text-sm text-gray-400 truncate max-w-[200px]" title={invoice.jobAddress || 'N/A'}>
+                          {invoice.jobAddress || 'N/A'}
                         </td>
                         <td className="p-4 text-sm text-gray-400">
-                          {invoice.dateSent}
+                          {formatDate(invoice.invoiceDate)}
                         </td>
                         <td className="p-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusStyle(invoice.status)}`}>
-                            {invoice.status === 'Paid' && <CheckCircle className="w-3 h-3" />}
-                            {invoice.status === 'Overdue' && <AlertCircle className="w-3 h-3" />}
-                            {invoice.status === 'Pending' && <Clock className="w-3 h-3" />}
-                            {invoice.status === 'Draft' && <FileText className="w-3 h-3" />}
-                            {invoice.status}
+                            {invoice.status === 'paid' && <CheckCircle className="w-3 h-3" />}
+                            {invoice.status === 'overdue' && <AlertCircle className="w-3 h-3" />}
+                            {invoice.status === 'sent' && <Clock className="w-3 h-3" />}
+                            {invoice.status === 'draft' && <FileText className="w-3 h-3" />}
+                            {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </span>
                         </td>
                         <td className="p-4 text-sm font-semibold text-right text-gray-100">
-                          {invoice.amount}
+                          {formatCurrency(invoice.totalAmount)}
                         </td>
                         <td className="p-4 text-center">
                           <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -224,8 +219,13 @@ const Invoices: React.FC = () => {
                             <button className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white" title="Email Client">
                               <Mail className="w-4 h-4" />
                             </button>
-                            <button className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white">
-                              <MoreVertical className="w-4 h-4" />
+                            <button 
+                              onClick={() => handleDelete(invoice.id)}
+                              className="p-1.5 hover:bg-red-500/10 rounded text-gray-400 hover:text-red-400" 
+                              title="Delete Invoice"
+                              disabled={deleteInvoice.isPending}
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -241,8 +241,8 @@ const Invoices: React.FC = () => {
                 </div>
                 <h3 className="text-lg font-medium text-white mb-1">No invoices found</h3>
                 <p className="text-gray-400 text-sm text-center max-w-sm mb-6">
-                  {activeTab !== 'All' 
-                    ? `There are no ${activeTab.toLowerCase()} invoices at the moment.` 
+                  {activeTab !== 'all' 
+                    ? `There are no ${activeTab} invoices at the moment.` 
                     : "Get started by creating your first invoice for a roofing job."}
                 </p>
                 <button className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white py-2 px-4 rounded-lg text-sm transition-all">

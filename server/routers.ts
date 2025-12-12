@@ -31,6 +31,7 @@ import { jobsRouter } from "./api/routers/jobs";
 import { portalRouter } from "./api/routers/portal";
 import { productsRouter } from "./api/routers/products";
 import { aiRouter } from "./api/routers/ai";
+import { invoicesRouter } from "./api/routers/invoices";
 import { getDb } from "./db";
 import { reportRequests, users, activities, documents, editHistory, jobAttachments, jobMessageReads, notifications, materialOrders, materialKits } from "../drizzle/schema";
 import { PRODUCTS, validatePromoCode } from "./products";
@@ -179,6 +180,7 @@ export const appRouter = router({
   documents: documentsRouter, // Refactored to server/api/routers/documents.ts
   products: productsRouter, // Refactored to server/api/routers/products.ts
   ai: aiRouter, // Refactored to server/api/routers/ai.ts
+  invoices: invoicesRouter, // Refactored to server/api/routers/invoices.ts
   
   // CRM router - core job/lead operations, analytics, scheduling
   // (Semantically this is "jobs" but kept as "crm" for frontend compatibility)
