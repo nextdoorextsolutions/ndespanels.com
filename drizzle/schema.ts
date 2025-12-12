@@ -94,6 +94,7 @@ export const users = pgTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 50 }),
+  image: text("image"),
   loginMethod: varchar("login_method", { length: 64 }),
   role: roleEnum("role").default("user").notNull(),
   repCode: varchar("rep_code", { length: 20 }),

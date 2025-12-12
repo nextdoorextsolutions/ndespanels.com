@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Palette, Upload, Image as ImageIcon, Tag } from "lucide-react";
+import { Palette, Upload, Image as ImageIcon, Tag, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 interface BrandingCardProps {
   user: {
@@ -16,11 +18,23 @@ interface BrandingCardProps {
 }
 
 export default function BrandingCard({ user, onUpdate }: BrandingCardProps) {
+  const { user: authUser } = useAuth();
   const [calendarColor, setCalendarColor] = useState("#00d4aa");
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(authUser?.image || null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // TODO: Add profile photo upload mutation when available
+  const updateAvatarMutation = trpc.users.updateAvatar.useMutation({
+    onSuccess: (data) => {
+      toast.success("Profile photo updated successfully!");
+      setProfilePhoto(null);
+      onUpdate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to update photo: ${error.message}`);
+      setIsUploading(false);
+    },
+  });
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,9 +68,49 @@ export default function BrandingCard({ user, onUpdate }: BrandingCardProps) {
       return;
     }
 
-    // TODO: Implement photo upload via tRPC
-    // For now, show a placeholder message
-    toast.info("Photo upload feature coming soon!");
+    if (!supabase) {
+      toast.error("Storage service not available");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Generate unique filename
+      const fileExt = profilePhoto.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('CRM files')
+        .upload(filePath, profilePhoto, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('CRM files')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Update user avatar via TRPC
+      await updateAvatarMutation.mutateAsync({ avatarUrl: publicUrl });
+      
+      // Update preview to show new image
+      setPhotoPreview(publicUrl);
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || "Failed to upload photo");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const colorPresets = [
@@ -112,10 +166,20 @@ export default function BrandingCard({ user, onUpdate }: BrandingCardProps) {
             <Button
               onClick={handleUploadPhoto}
               size="sm"
-              className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
+              disabled={isUploading}
+              className="bg-[#00d4aa] hover:bg-[#00b894] text-black disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Photo
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Photo
+                </>
+              )}
             </Button>
           )}
         </div>
@@ -144,18 +208,16 @@ export default function BrandingCard({ user, onUpdate }: BrandingCardProps) {
             ))}
           </div>
           <div className="flex items-center gap-2">
+            <div 
+              className="w-12 h-12 rounded-lg border-2 border-slate-600"
+              style={{ backgroundColor: calendarColor }}
+              title={calendarColor}
+            />
             <Input
               type="color"
               value={calendarColor}
               onChange={(e) => setCalendarColor(e.target.value)}
               className="w-20 h-10 bg-slate-800 border-slate-600 cursor-pointer"
-            />
-            <Input
-              type="text"
-              value={calendarColor}
-              onChange={(e) => setCalendarColor(e.target.value)}
-              placeholder="#00d4aa"
-              className="flex-1 bg-slate-800 border-slate-600 text-white font-mono"
             />
           </div>
         </div>

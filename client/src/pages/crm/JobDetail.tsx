@@ -59,11 +59,16 @@ const ACTIVITY_ICONS: Record<string, any> = {
 };
 
 export default function JobDetail() {
+  // ============================================================================
+  // ALL HOOKS MUST BE AT THE TOP - DO NOT ADD CONDITIONAL RETURNS BEFORE THIS
+  // ============================================================================
+  
+  // Router hooks
   const { id } = useParams();
   const [, setLocation] = useLocation();
   const jobId = parseInt(id || "0");
 
-  // State
+  // State hooks
   const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
@@ -71,20 +76,12 @@ export default function JobDetail() {
   const [selectedTags, setSelectedTags] = useState<ActivityTag[]>([]);
   const [filterTag, setFilterTag] = useState<ActivityTag | "all">("all");
 
-  // Data fetching
+  // Data fetching hooks
   const { data: job, isLoading, error, refetch } = trpc.crm.getLead.useQuery({ id: jobId });
   const { data: permissions } = trpc.users.getMyPermissions.useQuery();
   const { data: editHistory } = trpc.crm.getEditHistory.useQuery({ jobId });
 
-  // Handle URL parameter changes (e.g., navigating from one job to another via chat widget)
-  useEffect(() => {
-    // Reset active tab when job ID changes
-    setActiveTab("overview");
-    // Refetch data for the new job
-    refetch();
-  }, [jobId, refetch]);
-
-  // Mutations
+  // Mutation hooks
   const updateLead = trpc.crm.updateLead.useMutation({
     onSuccess: () => {
       toast.success("Job updated successfully");
@@ -166,10 +163,22 @@ export default function JobDetail() {
     },
   });
 
+  // Effect hooks
+  useEffect(() => {
+    // Reset active tab when job ID changes
+    setActiveTab("overview");
+    // Refetch data for the new job
+    refetch();
+  }, [jobId, refetch]);
+
   // Realtime updates
   // useRealtimeJob(jobId, refetch); // TODO: Fix hook signature
 
-  // Permissions
+  // ============================================================================
+  // END OF HOOKS - Conditional logic and handlers can go below
+  // ============================================================================
+
+  // Permissions (derived state, not hooks)
   const canEdit = permissions?.role === "owner" || permissions?.role === "team_lead" || permissions?.role === "sales_rep";
   const canDelete = permissions?.role === "owner";
   const canViewHistory = permissions?.role === "owner" || permissions?.role === "admin";
@@ -225,7 +234,7 @@ export default function JobDetail() {
     }
   };
 
-  // Loading & Error states
+  // Loading & Error states - NOW AFTER ALL HOOKS
   if (isLoading) {
     return (
       <CRMLayout>

@@ -491,4 +491,32 @@ export const usersRouter = router({
         message: `User ${userToDelete.name} deleted successfully`,
       };
     }),
+
+  // Update user avatar/profile photo
+  updateAvatar: protectedProcedure
+    .input(z.object({
+      avatarUrl: z.string().url(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const userId = ctx.user!.id;
+
+      // Update user's image field
+      await db.update(users)
+        .set({ 
+          image: input.avatarUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+
+      console.log(`[UpdateAvatar] User ${ctx.user?.name} (${userId}) updated avatar to: ${input.avatarUrl}`);
+
+      return { 
+        success: true, 
+        message: "Profile photo updated successfully",
+        avatarUrl: input.avatarUrl,
+      };
+    }),
 });
