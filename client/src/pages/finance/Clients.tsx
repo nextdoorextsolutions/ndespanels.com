@@ -92,12 +92,8 @@ const Clients: React.FC = () => {
 
   // Calculate map center from clients with coordinates
   const getMapCenter = () => {
-    const clientsWithCoords = clients.filter(c => c.latitude && c.longitude);
-    if (clientsWithCoords.length === 0) return { lat: 39.8, lng: -89.65 }; // Default to Springfield, IL
-    
-    const avgLat = clientsWithCoords.reduce((sum, c) => sum + (c.latitude || 0), 0) / clientsWithCoords.length;
-    const avgLng = clientsWithCoords.reduce((sum, c) => sum + (c.longitude || 0), 0) / clientsWithCoords.length;
-    return { lat: avgLat, lng: avgLng };
+    // Default center - jobs don't have lat/lng yet, will need geocoding in future
+    return { lat: 39.8, lng: -89.65 }; // Default to Springfield, IL
   };
 
   // Helper: Get time since last contact
@@ -297,49 +293,8 @@ const Clients: React.FC = () => {
                   gestureHandling="greedy"
                   className="w-full h-full"
                 >
-                  {filteredClients.map((client) => {
-                    // Skip clients without coordinates - we'll need to geocode addresses in the future
-                    // For now, only show clients that have lat/lng data
-                    if (!client.latitude || !client.longitude) return null;
-                    
-                    return (
-                      <AdvancedMarker
-                        key={client.id}
-                        position={{ lat: client.latitude, lng: client.longitude }}
-                        onClick={() => setSelectedClient(client.id)}
-                      >
-                        <div className="relative group">
-                          {/* Custom Pin */}
-                          <div className={`
-                            relative flex items-center justify-center w-8 h-8 rounded-full 
-                            ${selectedClient === client.id ? 'bg-white scale-125' : 'bg-cyan-500'}
-                            border-2 border-white
-                            transition-all duration-300 shadow-lg cursor-pointer
-                          `}>
-                            <div className={`w-3 h-3 rounded-full ${selectedClient === client.id ? 'bg-cyan-500' : 'bg-white'}`}></div>
-                            
-                            {/* Pulse animation */}
-                            {selectedClient === client.id && (
-                              <div className="absolute inset-0 rounded-full border-2 border-cyan-500 animate-ping opacity-75"></div>
-                            )}
-                          </div>
-
-                          {/* Tooltip */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                            <div className="bg-[#1e293b] border border-gray-700 rounded-lg shadow-xl p-3 text-left relative">
-                              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#1e293b] border-b border-r border-gray-700 rotate-45"></div>
-                              
-                              <h4 className="font-bold text-white text-sm truncate">{client.fullName}</h4>
-                              <div className="text-xs text-gray-400 mt-1">
-                                <span className={`${getStatusColor(client.status)} px-1.5 py-0.5 rounded text-[10px]`}>{getStatusLabel(client.status)}</span>
-                              </div>
-                              <div className="text-[10px] text-gray-500 mt-1 truncate">{client.address}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </AdvancedMarker>
-                    );
-                  })}
+                  {/* TODO: Add geocoding to get lat/lng from addresses, then render markers */}
+                  {/* Jobs don't have latitude/longitude fields yet - will need geocoding service */}
                 </Map>
               </APIProvider>
 
