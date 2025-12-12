@@ -7,100 +7,41 @@ import {
   Clock, 
   Filter,
   Columns,
-  List
+  List,
+  Loader2
 } from 'lucide-react';
 import { Sidebar } from '@/components/finance/Sidebar';
+import { trpc } from '@/lib/trpc';
+import { Link } from 'wouter';
 
-type JobStage = 'Lead' | 'Estimate Sent' | 'Approved' | 'Material Ordered' | 'In Progress' | 'Completed';
-type RoofType = 'Shingle' | 'Metal' | 'Flat/TPO' | 'Tile';
+// Match the 10-stage pipeline from main CRM
+type JobStage = 'lead' | 'appointment_set' | 'prospect' | 'approved' | 'project_scheduled' | 'completed' | 'invoiced' | 'lien_legal' | 'closed_deal' | 'closed_lost';
 
-interface Job {
-  id: string;
-  clientName: string;
-  address: string;
-  type: RoofType;
-  value: string;
-  stage: JobStage;
-  daysInStage: number;
-  assignedTo?: string;
-}
-
-const initialJobs: Job[] = [
-  {
-    id: 'J-101',
-    clientName: 'Davison Residence',
-    address: '12 Maple Dr',
-    type: 'Shingle',
-    value: '$12,500',
-    stage: 'Lead',
-    daysInStage: 2,
-  },
-  {
-    id: 'J-102',
-    clientName: 'Oakwood Apts',
-    address: '8800 Main St',
-    type: 'Flat/TPO',
-    value: '$45,000',
-    stage: 'Estimate Sent',
-    daysInStage: 5,
-  },
-  {
-    id: 'J-103',
-    clientName: 'Sarah Miller',
-    address: '404 Pine Ln',
-    type: 'Metal',
-    value: '$28,200',
-    stage: 'Approved',
-    daysInStage: 1,
-  },
-  {
-    id: 'J-104',
-    clientName: 'West Warehouse',
-    address: 'Industrial Pkwy B4',
-    type: 'Flat/TPO',
-    value: '$18,900',
-    stage: 'Material Ordered',
-    daysInStage: 12,
-  },
-  {
-    id: 'J-105',
-    clientName: 'The Hendersons',
-    address: '902 Beverly Rd',
-    type: 'Shingle',
-    value: '$15,800',
-    stage: 'In Progress',
-    daysInStage: 3,
-  },
-  {
-    id: 'J-106',
-    clientName: 'Vance Refrigeration',
-    address: 'Business Park Dr',
-    type: 'Metal',
-    value: '$32,000',
-    stage: 'Lead',
-    daysInStage: 1,
-  },
-];
-
-const STAGES: JobStage[] = [
-  'Lead', 
-  'Estimate Sent', 
-  'Approved', 
-  'Material Ordered', 
-  'In Progress', 
-  'Completed'
+const STAGES: { value: JobStage; label: string }[] = [
+  { value: 'lead', label: 'Lead' },
+  { value: 'appointment_set', label: 'Appointment Set' },
+  { value: 'prospect', label: 'Prospect' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'project_scheduled', label: 'Project Scheduled' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'invoiced', label: 'Invoiced' },
+  { value: 'lien_legal', label: 'Lien Legal' },
+  { value: 'closed_deal', label: 'Closed Deal' },
+  { value: 'closed_lost', label: 'Closed Lost' },
 ];
 
 const Jobs: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Fetch real jobs data from main database
+  const { data: jobs, isLoading } = trpc.crm.getLeads.useQuery({});
 
-  const getTagColor = (type: RoofType) => {
-    switch (type) {
-      case 'Shingle': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'Metal': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
-      case 'Flat/TPO': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-      case 'Tile': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+  const getTagColor = (dealType: string) => {
+    switch (dealType) {
+      case 'insurance': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'cash': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'financed': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       default: return 'bg-gray-500/10 text-gray-400';
     }
   };
@@ -110,6 +51,17 @@ const Jobs: React.FC = () => {
     if (days > 5) return 'text-amber-400';
     return 'text-gray-400';
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-[#0B0C10] items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mx-auto mb-4" />
+          <p className="text-gray-400">Loading jobs...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#0B0C10] text-gray-100 font-sans selection:bg-cyan-500/30">
@@ -162,13 +114,13 @@ const Jobs: React.FC = () => {
           <div className="h-full flex p-6 gap-6 min-w-max">
             
             {STAGES.map((stage) => {
-              const jobsInStage = initialJobs.filter(j => j.stage === stage);
+              const jobsInStage = (jobs || []).filter(j => j.status === stage.value);
               
               return (
-                <div key={stage} className="flex flex-col w-80 h-full">
+                <div key={stage.value} className="flex flex-col w-80 h-full">
                   <div className="flex justify-between items-center mb-4 px-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-200 text-sm">{stage}</h3>
+                      <h3 className="font-semibold text-gray-200 text-sm">{stage.label}</h3>
                       <span className="bg-gray-900 text-gray-400 text-xs px-2 py-0.5 rounded-full border border-gray-700">
                         {jobsInStage.length}
                       </span>
@@ -179,44 +131,47 @@ const Jobs: React.FC = () => {
                   </div>
 
                   <div className="flex-1 bg-gray-900/30 rounded-xl p-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent border border-dashed border-gray-800/50">
-                    {jobsInStage.map((job) => (
+                    {jobsInStage.map((job) => {
+                      const daysInStage = Math.floor((new Date().getTime() - new Date(job.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
                       
-                      <div 
-                        key={job.id} 
-                        className="bg-[#151a21] p-4 rounded-lg border border-gray-800 shadow-sm mb-3 cursor-grab hover:shadow-lg hover:border-cyan-500/30 hover:-translate-y-1 transition-all group relative"
-                        draggable
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${getTagColor(job.type)}`}>
-                            {job.type}
-                          </span>
-                          <button className="text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </div>
+                      return (
+                        <Link key={job.id} href={`/crm/job/${job.id}`}>
+                          <div 
+                            className="bg-[#151a21] p-4 rounded-lg border border-gray-800 shadow-sm mb-3 cursor-pointer hover:shadow-lg hover:border-cyan-500/30 hover:-translate-y-1 transition-all group relative"
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${getTagColor(job.dealType || 'cash')}`}>
+                                {job.dealType?.toUpperCase() || 'CASH'}
+                              </span>
+                              <button className="text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                            </div>
 
-                        <h4 className="font-semibold text-white text-sm mb-1">{job.clientName}</h4>
-                        <div className="flex items-center gap-1 text-gray-400 text-xs mb-3">
-                          <MapPin className="w-3 h-3 text-gray-500" />
-                          <span className="truncate">{job.address}</span>
-                        </div>
+                            <h4 className="font-semibold text-white text-sm mb-1">{job.fullName}</h4>
+                            <div className="flex items-center gap-1 text-gray-400 text-xs mb-3">
+                              <MapPin className="w-3 h-3 text-gray-500" />
+                              <span className="truncate">{job.address}</span>
+                            </div>
 
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-800/80">
-                          <div className={`flex items-center gap-1.5 text-xs font-medium ${getDaysStyle(job.daysInStage)}`} title="Days in current stage">
-                            <Clock className="w-3 h-3" />
-                            {job.daysInStage}d
+                            <div className="flex justify-between items-center pt-3 border-t border-gray-800/80">
+                              <div className={`flex items-center gap-1.5 text-xs font-medium ${getDaysStyle(daysInStage)}`} title="Days in current stage">
+                                <Clock className="w-3 h-3" />
+                                {daysInStage}d
+                              </div>
+
+                              <div className="text-gray-200 text-sm font-semibold tracking-wide">
+                                ${((job.amountPaid || 0) / 100).toLocaleString()}
+                              </div>
+                            </div>
                           </div>
-
-                          <div className="text-gray-200 text-sm font-semibold tracking-wide">
-                            {job.value}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                        </Link>
+                      );
+                    })}
 
                     {jobsInStage.length === 0 && (
                       <div className="h-24 border-2 border-dashed border-gray-800 rounded-lg flex items-center justify-center text-gray-600 text-xs">
-                        Drop here
+                        No jobs
                       </div>
                     )}
                   </div>

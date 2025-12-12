@@ -10,76 +10,28 @@ import {
   Map as MapIcon,
   Navigation,
   Mail,
-  MoreVertical
+  MoreVertical,
+  Loader2
 } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { Sidebar } from '@/components/finance/Sidebar';
+import { trpc } from '@/lib/trpc';
+import { Link } from 'wouter';
 
-type ClientStatus = 'Lead' | 'Customer' | 'Active Lead' | 'Past Customer' | 'Warranty' | 'Estimate';
-
-interface Client {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  address: string;
-  latitude: number | null;
-  longitude: number | null;
-  status: string;
-  notes: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// Client stages that should appear in the Clients page
+const CLIENT_STAGES = ['approved', 'project_scheduled', 'completed', 'invoiced'];
 
 const Clients: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<number | null>(null);
 
-  // TODO: Replace with actual Supabase query
-  // const { data: clients, isLoading } = useQuery(['clients'], fetchClients);
-  const clients: Client[] = [
-    {
-      id: '1',
-      name: 'Michael Anderson',
-      email: 'michael.anderson@email.com',
-      phone: '(555) 123-4567',
-      address: '124 Maple Ave, Springfield, IL 62701',
-      latitude: 39.7817,
-      longitude: -89.6501,
-      status: 'Customer',
-      notes: 'Full roof replacement completed Oct 2023.',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: '2',
-      name: 'Sarah Jenkins',
-      email: 'sarah.j@email.com',
-      phone: '(555) 234-5678',
-      address: '882 Oak Lane, Springfield, IL 62702',
-      latitude: 39.7990,
-      longitude: -89.6440,
-      status: 'Customer',
-      notes: 'Gutter repair completed Nov 2023.',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: '3',
-      name: 'Robert Vance',
-      email: 'rvance@email.com',
-      phone: '(555) 456-7890',
-      address: '402 Pine St, Springfield, IL 62704',
-      latitude: 39.7700,
-      longitude: -89.6600,
-      status: 'Lead',
-      notes: 'Requested estimate for shingle repair.',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ];
+  // Fetch real jobs data and filter to client stages only
+  const { data: allJobs, isLoading } = trpc.crm.getLeads.useQuery({});
+  
+  // Filter to only show jobs in client stages (Approved, Project Scheduled, Completed, Invoiced)
+  const clients = (allJobs || []).filter(job => CLIENT_STAGES.includes(job.status));
 
   // Dark theme map style for Google Maps
   const darkMapStyle = [
@@ -160,7 +112,7 @@ const Clients: React.FC = () => {
 
   const filteredClients = clients.filter((client) => {
     const matchesSearch = 
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.phone?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
@@ -168,15 +120,34 @@ const Clients: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Active Lead':
-      case 'Lead': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
-      case 'Past Customer': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'Customer': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'Warranty': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-      case 'Estimate': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'approved': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'project_scheduled': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'completed': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'invoiced': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
     }
   };
+  
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'approved': return 'Approved';
+      case 'project_scheduled': return 'Scheduled';
+      case 'completed': return 'Completed';
+      case 'invoiced': return 'Invoiced';
+      default: return status;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-[#0B0C10] items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mx-auto mb-4" />
+          <p className="text-gray-400">Loading clients...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#0B0C10] text-gray-100 font-sans selection:bg-cyan-500/30">
@@ -249,57 +220,64 @@ const Clients: React.FC = () => {
             {/* Scrollable List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
               {filteredClients.map((client) => (
-                <div 
-                  key={client.id}
-                  onClick={() => setSelectedClient(client.id)}
-                  className={`
-                    bg-[#1e293b] p-4 rounded-xl border transition-all cursor-pointer group relative
-                    ${selectedClient === client.id 
-                      ? 'border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.1)]' 
-                      : 'border-gray-800 hover:border-gray-600 hover:bg-[#232d3f]'}
-                  `}
-                >
-                  {/* Card Top: Name & Status */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-bold text-white text-base">{client.name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${getStatusColor(client.status)}`}>
-                              {client.status}
-                          </span>
+                <Link key={client.id} href={`/crm/job/${client.id}`}>
+                  <div 
+                    onClick={() => setSelectedClient(client.id)}
+                    className={`
+                      bg-[#1e293b] p-4 rounded-xl border transition-all cursor-pointer group relative
+                      ${selectedClient === client.id 
+                        ? 'border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.1)]' 
+                        : 'border-gray-800 hover:border-gray-600 hover:bg-[#232d3f]'}
+                    `}
+                  >
+                    {/* Card Top: Name & Status */}
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-bold text-white text-base">{client.fullName}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${getStatusColor(client.status)}`}>
+                                {getStatusLabel(client.status)}
+                            </span>
+                        </div>
+                      </div>
+                      <button className="text-gray-500 hover:text-white p-1 rounded-full hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Card Middle: Details */}
+                    <div className="space-y-2 text-sm text-gray-400">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-3.5 h-3.5 mt-0.5 text-gray-500" />
+                        <span className="flex-1 leading-snug">{client.address}</span>
+                      </div>
+                      {client.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-gray-500" />
+                          <span>{client.phone}</span>
+                        </div>
+                      )}
+                      {client.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3.5 h-3.5 text-gray-500" />
+                          <span className="truncate">{client.email}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Bottom: Footer */}
+                    <div className="mt-4 pt-3 border-t border-gray-700/50 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-gray-500">
+                        <Calendar className="w-3 h-3" />
+                        <span>Created: <span className="text-gray-300">{getLastContact(client.createdAt)}</span></span>
+                      </div>
+                      
+                      <div className="flex items-center text-cyan-500 font-medium opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
+                        View Job <ChevronRight className="w-3 h-3 ml-0.5" />
                       </div>
                     </div>
-                    <button className="text-gray-500 hover:text-white p-1 rounded-full hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
                   </div>
-
-                  {/* Card Middle: Details */}
-                  <div className="space-y-2 text-sm text-gray-400">
-                    <div className="flex items-start gap-2">
-                      <MapPin className="w-3.5 h-3.5 mt-0.5 text-gray-500" />
-                      <span className="flex-1 leading-snug">{client.address}</span>
-                    </div>
-                    {client.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3.5 h-3.5 text-gray-500" />
-                        <span>{client.phone}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card Bottom: Footer */}
-                  <div className="mt-4 pt-3 border-t border-gray-700/50 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5 text-gray-500">
-                      <Calendar className="w-3 h-3" />
-                      <span>Contacted: <span className="text-gray-300">{getLastContact(client.createdAt)}</span></span>
-                    </div>
-                    
-                    <div className="flex items-center text-cyan-500 font-medium opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
-                      View Profile <ChevronRight className="w-3 h-3 ml-0.5" />
-                    </div>
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -320,7 +298,8 @@ const Clients: React.FC = () => {
                   className="w-full h-full"
                 >
                   {filteredClients.map((client) => {
-                    // Only render markers for clients with valid coordinates
+                    // Skip clients without coordinates - we'll need to geocode addresses in the future
+                    // For now, only show clients that have lat/lng data
                     if (!client.latitude || !client.longitude) return null;
                     
                     return (
@@ -350,9 +329,9 @@ const Clients: React.FC = () => {
                             <div className="bg-[#1e293b] border border-gray-700 rounded-lg shadow-xl p-3 text-left relative">
                               <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#1e293b] border-b border-r border-gray-700 rotate-45"></div>
                               
-                              <h4 className="font-bold text-white text-sm truncate">{client.name}</h4>
+                              <h4 className="font-bold text-white text-sm truncate">{client.fullName}</h4>
                               <div className="text-xs text-gray-400 mt-1">
-                                <span className={`${getStatusColor(client.status)} px-1.5 py-0.5 rounded text-[10px]`}>{client.status}</span>
+                                <span className={`${getStatusColor(client.status)} px-1.5 py-0.5 rounded text-[10px]`}>{getStatusLabel(client.status)}</span>
                               </div>
                               <div className="text-[10px] text-gray-500 mt-1 truncate">{client.address}</div>
                             </div>

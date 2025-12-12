@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
   const [location] = useLocation();
 
   const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/finance' },
+    { icon: LayoutDashboard, label: 'Dashboard', href: '/crm' },
     { icon: FileText, label: 'Invoices', href: '/invoices' },
     { icon: Briefcase, label: 'Jobs', href: '/jobs' },
     { icon: Users, label: 'Clients', href: '/clients' },
