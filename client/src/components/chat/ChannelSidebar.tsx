@@ -1,6 +1,8 @@
 import React from 'react';
 import { Hash, MessageSquare, Users, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { usePresence, PresenceUser } from '@/hooks/usePresence';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 interface Channel {
   id: string;
@@ -28,6 +30,27 @@ const DIRECT_MESSAGES: Channel[] = [
 ];
 
 export function ChannelSidebar({ activeChannelId, onChannelSelect }: ChannelSidebarProps) {
+  const { user: authUser } = useAuth();
+  
+  // Track presence for the global channel list
+  const currentUser: PresenceUser = {
+    id: authUser?.id?.toString() || 'guest',
+    name: authUser?.name || authUser?.email || 'Guest User',
+    avatarUrl: undefined,
+    role: authUser?.role || 'user',
+  };
+
+  const { onlineUsers } = usePresence({
+    threadId: 'global',
+    user: currentUser,
+    enabled: !!authUser,
+  });
+
+  // Helper to check if a user is online
+  const isUserOnline = (userId: string) => {
+    return onlineUsers.some(u => u.id === userId);
+  };
+
   return (
     <div className="bg-slate-950/50 border-r border-slate-800 flex flex-col h-full">
       {/* Workspace Header */}
@@ -99,8 +122,13 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect }: ChannelSide
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white">
-                    {dm.name.charAt(0)}
+                  <div className="relative">
+                    <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white">
+                      {dm.name.charAt(0)}
+                    </div>
+                    {isUserOnline(dm.id) && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-slate-950 rounded-full"></div>
+                    )}
                   </div>
                   <span className="truncate">{dm.name}</span>
                 </div>

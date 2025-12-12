@@ -3,6 +3,7 @@ import { Hash, Users, Pin, Search, Sparkles, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { usePresence, PresenceUser } from '@/hooks/usePresence';
 
 interface ChatMessage {
   id: string;
@@ -49,6 +50,19 @@ export function ChatArea({
   // Magic Bar state
   const [isMagicWorking, setMagicWorking] = useState(false);
   const draftMutation = trpc.globalChat.generateDraft.useMutation();
+
+  // Presence tracking with custom auth
+  const currentUser: PresenceUser = {
+    id: currentUserId,
+    name: 'Current User', // TODO: Get from auth context
+    avatarUrl: undefined,
+    role: 'user',
+  };
+
+  const { onlineUsers, typingUsers, broadcastTyping } = usePresence({
+    threadId: channelName,
+    user: currentUser,
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,10 +119,36 @@ export function ChatArea({
         <div className="flex items-center gap-3">
           <Hash className="w-5 h-5 text-slate-400" />
           <h2 className="text-lg font-semibold text-white">{channelName}</h2>
-          <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-            <Users className="w-3 h-3 inline mr-1" />
-            8 members
-          </span>
+          
+          {/* Facepile of online users */}
+          {onlineUsers.length > 0 && (
+            <div className="flex items-center gap-1">
+              <div className="flex -space-x-2">
+                {onlineUsers.slice(0, 3).map((user) => (
+                  <div
+                    key={user.id}
+                    className="relative w-6 h-6 rounded-full bg-slate-700 border-2 border-slate-900 flex items-center justify-center text-xs text-white"
+                    title={user.name}
+                  >
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      user.name.charAt(0).toUpperCase()
+                    )}
+                    <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 border border-slate-900 rounded-full"></div>
+                  </div>
+                ))}
+                {onlineUsers.length > 3 && (
+                  <div className="w-6 h-6 rounded-full bg-slate-700 border-2 border-slate-900 flex items-center justify-center text-[10px] text-slate-400">
+                    +{onlineUsers.length - 3}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs text-slate-500 ml-1">
+                {onlineUsers.length} online
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -187,6 +227,34 @@ export function ChatArea({
 
       {/* Reply Input */}
       <div className="p-4 border-t border-slate-800/50 bg-slate-900/30 backdrop-blur-sm">
+        {/* Typing Indicator */}
+        {typingUsers.length > 0 && (
+          <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
+            {typingUsers.length === 1 ? (
+              <>
+                {typingUsers[0].name === geminiName ? (
+                  // AI typing animation
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3 h-3 text-[#00d4aa] animate-pulse" />
+                    <span className="italic text-[#00d4aa]">{geminiName} is thinking...</span>
+                    <div className="flex gap-1">
+                      <span className="w-1 h-1 bg-[#00d4aa] rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="w-1 h-1 bg-[#00d4aa] rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="w-1 h-1 bg-[#00d4aa] rounded-full animate-bounce"></span>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="italic">{typingUsers[0].name} is typing...</span>
+                )}
+              </>
+            ) : typingUsers.length === 2 ? (
+              <span className="italic">{typingUsers[0].name} and {typingUsers[1].name} are typing...</span>
+            ) : (
+              <span className="italic">{typingUsers.length} people are typing...</span>
+            )}
+          </div>
+        )}
+        
         <div className="relative">
           {/* Magic Bar - Only visible when text exists */}
           {inputText.length > 5 && (
@@ -212,7 +280,13 @@ export function ChatArea({
           <textarea
             ref={inputRef}
             value={inputText}
-            onChange={(e) => onInputChange(e.target.value)}
+            onChange={(e) => {
+              onInputChange(e.target.value);
+              // Broadcast typing event
+              if (e.target.value.length > 0) {
+                broadcastTyping();
+              }
+            }}
             onKeyDown={onKeyDown}
             disabled={isMagicWorking}
             placeholder={`Message #${channelName}... (Type @gemini to ask AI)`}

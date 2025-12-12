@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, X, Maximize2, Minus } from 'lucide-react';
+import { MessageSquare, X, Maximize2, Minus, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChatStore } from '@/stores/useChatStore';
 import { trpc } from '@/lib/trpc';
@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { ChannelSidebar } from './chat/ChannelSidebar';
 import { ChatArea } from './chat/ChatArea';
 import { AISidebar } from './chat/AISidebar';
+import { usePresence, PresenceUser } from '@/hooks/usePresence';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 interface ChatMessage {
   id: string;
@@ -24,12 +26,6 @@ interface User {
   email?: string;
 }
 
-const CURRENT_USER: User = {
-  id: 'u1',
-  name: 'Alex Developer',
-  email: 'alex@company.com'
-};
-
 const GEMINI_BOT_ID = 'gemini-bot';
 const GEMINI_BOT_NAME = 'Zerox AI';
 
@@ -46,11 +42,26 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 
 export const GlobalChatWidget: React.FC = () => {
   const { isOpen, isMinimized, setOpen, setMinimized } = useChatStore();
+  const { user: authUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState('general');
   const [isAIOpen, setIsAIOpen] = useState(false);
+
+  // Build current user from auth
+  const currentUser: PresenceUser = {
+    id: authUser?.id?.toString() || 'guest',
+    name: authUser?.name || authUser?.email || 'Guest User',
+    avatarUrl: undefined, // TODO: Add avatar URL from user profile
+    role: authUser?.role || 'user',
+  };
+
+  const { connectionStatus, isConnected } = usePresence({
+    threadId: 'global',
+    user: currentUser,
+    enabled: isOpen && !isMinimized && !!authUser, // Only track when chat is open and user is authenticated
+  });
 
   // tRPC mutations and subscriptions - must be called at component level
   const sendMessageMutation = trpc.globalChat.sendMessage.useMutation();
@@ -111,8 +122,8 @@ export const GlobalChatWidget: React.FC = () => {
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       content: inputText,
-      senderId: CURRENT_USER.id,
-      senderName: CURRENT_USER.name,
+      senderId: currentUser.id,
+      senderName: currentUser.name,
       createdAt: new Date(),
     };
 
@@ -128,9 +139,9 @@ export const GlobalChatWidget: React.FC = () => {
     if (shouldUseGemini) {
       // Build chat history for context (before adding new messages)
       const history = messages
-        .filter(m => m.senderId === CURRENT_USER.id || m.senderId === GEMINI_BOT_ID)
+        .filter(m => m.senderId === currentUser.id || m.senderId === GEMINI_BOT_ID)
         .map(m => ({
-          role: m.senderId === CURRENT_USER.id ? 'user' as const : 'model' as const,
+          role: m.senderId === currentUser.id ? 'user' as const : 'model' as const,
           parts: m.content,
         }));
 
@@ -229,12 +240,22 @@ export const GlobalChatWidget: React.FC = () => {
         onClick={() => !isMinimized && setMinimized(true)}
       >
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#00d4aa] animate-pulse"></div>
+          <div className="relative" title={`Connection: ${connectionStatus}`}>
+            {isConnected ? (
+              <Wifi className="w-4 h-4 text-[#00d4aa]" />
+            ) : connectionStatus === 'connecting' ? (
+              <Wifi className="w-4 h-4 text-yellow-500 animate-pulse" />
+            ) : (
+              <WifiOff className="w-4 h-4 text-red-500" />
+            )}
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">Global Operations Chat</h3>
-            {!isMinimized && <p className="text-xs text-slate-400">Team Communication Hub</p>}
+            {!isMinimized && (
+              <p className="text-xs text-slate-400">
+                {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+              </p>
+            )}
           </div>
         </div>
 
@@ -290,7 +311,7 @@ export const GlobalChatWidget: React.FC = () => {
             onSendMessage={handleSendMessage}
             onKeyDown={handleKeyDown}
             isTyping={isTyping}
-            currentUserId={CURRENT_USER.id}
+            currentUserId={currentUser.id}
             geminiId={GEMINI_BOT_ID}
             geminiName={GEMINI_BOT_NAME}
             onToggleAI={() => setIsAIOpen(!isAIOpen)}
