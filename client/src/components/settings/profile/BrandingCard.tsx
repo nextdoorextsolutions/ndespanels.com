@@ -21,15 +21,6 @@ export default function BrandingCard({ user, onUpdate }: BrandingCardProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // TODO: Add profile photo upload mutation when available
-  // const uploadDocument = trpc.documents.uploadDocument.useMutation({
-  //   onSuccess: () => {
-  //     toast.success("Profile photo uploaded successfully!");
-  //     onUpdate();
-  //   },
-  //   onError: (error: any) => {
-  //     toast.error(error.message || "Failed to upload photo");
-  //   },
-  // });
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

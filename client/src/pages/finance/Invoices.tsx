@@ -41,10 +41,6 @@ const Invoices: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editStatus, setEditStatus] = useState<InvoiceStatus>('draft');
   const [editNotes, setEditNotes] = useState<string>('');
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [emailTo, setEmailTo] = useState('');
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailMessage, setEmailMessage] = useState('');
 
   // Fetch invoices and stats from database
   const { data: invoices = [], isLoading, refetch } = trpc.invoices.getAll.useQuery({
@@ -53,17 +49,6 @@ const Invoices: React.FC = () => {
   });
 
   const { data: stats } = trpc.invoices.getStats.useQuery();
-
-  const sendEmail = trpc.invoices.sendEmail.useMutation({
-    onSuccess: () => {
-      toast.success('Invoice email sent');
-      setEmailOpen(false);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(error.message || 'Failed to send invoice email');
-    },
-  });
 
   const updateInvoice = trpc.invoices.update.useMutation({
     onSuccess: () => {
@@ -109,22 +94,18 @@ const Invoices: React.FC = () => {
       toast.error('No email address on file for this client');
       return;
     }
-
-    setSelectedInvoice(invoice);
-    setEmailTo(invoice.clientEmail);
-    setEmailSubject(`Invoice ${invoice.invoiceNumber}`);
-    setEmailMessage(
-      [
-        `Hi ${invoice.clientName || ''},`,
-        '',
-        `Please find your invoice ${invoice.invoiceNumber}.`,
-        `Total: ${formatCurrency(invoice.totalAmount)}`,
-        `Due Date: ${formatDate(invoice.dueDate || null)}`,
-        '',
-        'Thank you,',
-      ].join('\n')
-    );
-    setEmailOpen(true);
+    const subject = encodeURIComponent(`Invoice ${invoice.invoiceNumber}`);
+    const lines = [
+      `Hi ${invoice.clientName || ''},`,
+      '',
+      `Please find your invoice ${invoice.invoiceNumber} attached/linked.`,
+      `Total: ${formatCurrency(invoice.totalAmount)}`,
+      `Due Date: ${formatDate(invoice.dueDate || null)}`,
+      '',
+      'Thank you,',
+    ];
+    const body = encodeURIComponent(lines.join('\n'));
+    window.location.href = `mailto:${invoice.clientEmail}?subject=${subject}&body=${body}`;
     setOpenDropdown(null);
   };
 
@@ -460,58 +441,6 @@ const Invoices: React.FC = () => {
                   <div className="flex justify-end gap-2 pt-2">
                     <Button variant="outline" onClick={() => setViewOpen(false)}>Close</Button>
                     <Button onClick={() => handleEmail(selectedInvoice)}>Email</Button>
-                  </div>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-            <DialogContent className="max-w-xl">
-              <DialogHeader>
-                <DialogTitle>Send Invoice Email</DialogTitle>
-              </DialogHeader>
-              {selectedInvoice && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="text-sm text-slate-400">To</div>
-                    <Input value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="customer@domain.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm text-slate-400">Subject</div>
-                    <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm text-slate-400">Message</div>
-                    <Textarea value={emailMessage} onChange={(e) => setEmailMessage(e.target.value)} className="min-h-[160px]" />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setEmailOpen(false)}>Cancel</Button>
-                    <Button
-                      onClick={() => {
-                        if (!emailTo) {
-                          toast.error('Recipient email is required');
-                          return;
-                        }
-                        if (!emailSubject.trim()) {
-                          toast.error('Subject is required');
-                          return;
-                        }
-                        if (!emailMessage.trim()) {
-                          toast.error('Message is required');
-                          return;
-                        }
-                        sendEmail.mutate({
-                          invoiceId: selectedInvoice.id,
-                          to: emailTo,
-                          subject: emailSubject,
-                          message: emailMessage,
-                        });
-                      }}
-                      disabled={sendEmail.isPending}
-                    >
-                      {sendEmail.isPending ? 'Sending…' : 'Send'}
-                    </Button>
                   </div>
                 </div>
               )}
