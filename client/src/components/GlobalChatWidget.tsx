@@ -41,6 +41,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 ];
 
 export const GlobalChatWidget: React.FC = () => {
+  // 1. ALL HOOKS MUST BE CALLED FIRST - Before any conditional returns
   const { isOpen, isMinimized, setOpen, setMinimized } = useChatStore();
   const { user: authUser, isAuthenticated } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
@@ -48,17 +49,15 @@ export const GlobalChatWidget: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState('general-announcements');
   const [isAIOpen, setIsAIOpen] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [streamingMessage, setStreamingMessage] = useState<string>('');
+  const [streamingHistory, setStreamingHistory] = useState<Array<{ role: 'user' | 'model'; parts: string }>>([]);
 
-  // Don't render chat widget if user is not authenticated
-  if (!isAuthenticated || !authUser) {
-    return null;
-  }
-
-  // Build current user from auth
+  // Build current user from auth (safe to do before conditional return)
   const currentUser: PresenceUser = {
     id: authUser?.id?.toString() || 'guest',
     name: authUser?.name || authUser?.email || 'Guest User',
-    avatarUrl: undefined, // TODO: Add avatar support to user schema
+    avatarUrl: undefined,
     role: authUser?.role || 'user',
   };
 
@@ -73,20 +72,16 @@ export const GlobalChatWidget: React.FC = () => {
     }
   }, [authUser, isOpen]);
 
+  // usePresence hook - always called, but enabled flag controls behavior
   const { connectionStatus, isConnected } = usePresence({
     threadId: 'global',
     user: currentUser,
-    enabled: isOpen && !isMinimized && !!authUser, // Only track when chat is open and user is authenticated
+    enabled: isOpen && !isMinimized && !!authUser,
   });
 
   // tRPC mutations and subscriptions - must be called at component level
   const sendMessageMutation = trpc.globalChat.sendMessage.useMutation();
   const generateDraftMutation = trpc.globalChat.generateDraft.useMutation();
-  
-  // Streaming subscription for real-time AI responses
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [streamingMessage, setStreamingMessage] = useState<string>('');
-  const [streamingHistory, setStreamingHistory] = useState<Array<{ role: 'user' | 'model'; parts: string }>>([]);
   
   trpc.globalChat.streamMessage.useSubscription(
     {
@@ -218,6 +213,11 @@ export const GlobalChatWidget: React.FC = () => {
   const getChannelName = () => {
     return activeChannelId.replace('dm-', '');
   };
+
+  // 2. NOW conditional returns are safe (after all hooks)
+  if (!isAuthenticated || !authUser) {
+    return null;
+  }
 
   if (!isOpen) {
     return (
