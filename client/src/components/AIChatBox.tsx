@@ -126,6 +126,7 @@ export function AIChatBox({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputAreaRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Filter out system messages
   const displayMessages = messages.filter((msg) => msg.role !== "system");
@@ -152,19 +153,13 @@ export function AIChatBox({
 
   // Scroll to bottom helper function with smooth animation
   const scrollToBottom = () => {
-    const viewport = scrollAreaRef.current?.querySelector(
-      '[data-radix-scroll-area-viewport]'
-    ) as HTMLDivElement;
-
-    if (viewport) {
-      requestAnimationFrame(() => {
-        viewport.scrollTo({
-          top: viewport.scrollHeight,
-          behavior: 'smooth'
-        });
-      });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  // Auto-scroll when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,6 +293,9 @@ export function AIChatBox({
                   </div>
                 </div>
               )}
+              
+              {/* Invisible div for auto-scroll */}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
         )}

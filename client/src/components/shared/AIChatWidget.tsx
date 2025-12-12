@@ -24,13 +24,11 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   // AI Assistant mutation
@@ -141,7 +139,7 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          <div className="flex-1 overflow-y-auto p-4 max-h-[calc(600px-180px)]">
             <div className="space-y-4">
               {messages.length === 0 && (
                 <div className="text-center text-slate-500 text-sm py-8">
@@ -207,8 +205,11 @@ export function AIChatWidget({ jobContext, className }: AIChatWidgetProps) {
                   </div>
                 </div>
               )}
+              
+              {/* Invisible div for auto-scroll */}
+              <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Input */}
           <div className="p-4 border-t border-slate-700">
