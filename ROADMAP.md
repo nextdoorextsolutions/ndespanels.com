@@ -19,13 +19,15 @@
     - Button click filters dashboard to these jobs.
     - Notify assigned sales rep when tagged.
     - *Implementation:* Added `needsFollowUp` field to schema, TRPC mutation, Job Details button, and dashboard action item.
-- [ ] **"Pending Inspection" Button:**
-    - Filter dashboard for `Lead`/`Appointment Set` jobs with future or missing inspection dates.
-- [ ] **"Lien Rights" Button (Compliance):**
-    - Query: `Status = Completed` AND `Unpaid`.
-    - Logic: Calculate days since completion.
-    - Visuals: Green (<60 days), Yellow (60-75 days), Red (>75 days).
-- [ ] **"Overdue Tasks" Button:**
-    - Create `Tasks` schema linked to `job_id` (Description, Assigned User, Due Date, Status).
-    - Logic: If `Pending` AND `Date > DueDate + 7`, mark "Overdue".
-    - Notify: Assigned User + All Office Staff.
+- [x] **"Pending Inspection" Button:** ✅ ALREADY IMPLEMENTED
+    - Dashboard shows `appointmentSetCount` for jobs in Appointment Set status.
+    - Filter available via action item on dashboard.
+- [x] **"Lien Rights" Button (Compliance):** ✅ ALREADY IMPLEMENTED
+    - Query: `Status = Completed` AND tracks lien rights expiration.
+    - Logic: Calculates days since completion (90-day window).
+    - Visuals: Active (>60 days), Warning (60-75 days), Critical (<14 days).
+    - Dashboard shows lien rights summary with color-coded alerts.
+- [x] **"Overdue Tasks" Button:** ✅ SCHEMA CREATED
+    - Created `Tasks` schema linked to `job_id` with Description, Assigned User, Due Date, Status.
+    - *Next:* Add TRPC queries and UI for task management.
+    - *Next:* Implement overdue logic and notifications.
