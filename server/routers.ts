@@ -33,6 +33,7 @@ import { productsRouter } from "./api/routers/products";
 import { aiRouter } from "./api/routers/ai";
 import { invoicesRouter } from "./api/routers/invoices";
 import { globalChatRouter } from "./api/routers/globalChat";
+import { estimatesRouter } from "./api/routers/estimates";
 import { getDb } from "./db";
 import { reportRequests, users, activities, documents, editHistory, jobAttachments, jobMessageReads, notifications, materialOrders, materialKits } from "../drizzle/schema";
 import { PRODUCTS, validatePromoCode } from "./products";
@@ -183,6 +184,7 @@ export const appRouter = router({
   ai: aiRouter, // Refactored to server/api/routers/ai.ts
   invoices: invoicesRouter, // Refactored to server/api/routers/invoices.ts
   globalChat: globalChatRouter, // Refactored to server/api/routers/globalChat.ts
+  estimates: estimatesRouter, // Refactored to server/api/routers/estimates.ts
   
   // CRM router - core job/lead operations, analytics, scheduling
   // (Semantically this is "jobs" but kept as "crm" for frontend compatibility)

@@ -19,6 +19,7 @@ import { JobPhotosTab } from "@/components/crm/job-detail/JobPhotosTab";
 import { JobMessagesTab } from "@/components/crm/job-detail/JobMessagesTab";
 import { JobTimelineTab } from "@/components/crm/job-detail/JobTimelineTab";
 import { JobEditHistoryTab } from "@/components/crm/job-detail/JobEditHistoryTab";
+import EstimatorTool from "@/components/estimator/EstimatorTool";
 
 // Threaded Timeline Support
 import { buildActivityTree } from "@/lib/activityTree";
@@ -403,6 +404,7 @@ export default function JobDetail() {
                 { id: "messages", label: "Messages" },
                 { id: "timeline", label: "Timeline" },
                 { id: "proposal", label: "Proposal" },
+                { id: "estimator", label: "Estimator" },
                 { id: "edit_history", label: "Edit History" },
               ].map((tab) => (
                 <button
@@ -515,6 +517,10 @@ export default function JobDetail() {
               userRole={permissions?.role || "user"}
               onUpdate={() => refetch()}
             />
+          )}
+
+          {activeTab === "estimator" && (
+            <EstimatorTool />
           )}
 
           {activeTab === "edit_history" && canViewHistory && (
