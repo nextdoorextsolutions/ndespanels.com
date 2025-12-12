@@ -338,6 +338,33 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
 
 /**
+ * Tasks - job-related tasks with due dates and assignments
+ */
+export const taskStatusEnum = pgEnum("task_status", ["pending", "in_progress", "completed", "cancelled"]);
+
+export const tasks = pgTable("tasks", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").notNull(), // Link to report_requests
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  assignedTo: integer("assigned_to"), // User ID
+  createdBy: integer("created_by").notNull(), // User ID
+  
+  status: taskStatusEnum("status").default("pending").notNull(),
+  priority: priorityEnum("priority").default("medium").notNull(),
+  
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = typeof tasks.$inferInsert;
+
+/**
  * Material Kits - Product coverage rules for material calculations
  */
 export const materialKits = pgTable("material_kits", {
