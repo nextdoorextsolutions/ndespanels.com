@@ -32,15 +32,16 @@ export function OwnerRoute({ children }: OwnerRouteProps) {
     return null;
   }
 
-  // Check if user has owner role
-  if (crmUser?.role !== "owner") {
+  // Check if user has owner or office/admin role
+  const allowedRoles = ["owner", "admin", "office"];
+  if (!allowedRoles.includes(crmUser?.role || "")) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-8">
           <ShieldAlert className="h-16 w-16 text-rose-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
           <p className="text-slate-400 mb-6">
-            This page is restricted to owner accounts only. You don't have permission to view financial data.
+            This page is restricted to owner and office staff accounts only. You don't have permission to view financial data.
           </p>
           <button
             onClick={() => setLocation("/crm")}

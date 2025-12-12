@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 interface AddressAutocompleteProps {
   onPlaceSelected: (data: {
@@ -20,6 +21,7 @@ export function AddressAutocomplete({
   className = ""
 }: AddressAutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -34,7 +36,20 @@ export function AddressAutocomplete({
       types: ['address'],
     },
     debounce: 300,
+    callbackName: '__googleMapsCallback',
   });
+
+  // Check for Google Maps API availability
+  useEffect(() => {
+    if (!ready && value) {
+      // Check if there's an API error
+      if (!window.google?.maps?.places) {
+        setApiError('Address search unavailable. Please refresh the page.');
+      }
+    } else if (ready) {
+      setApiError(null);
+    }
+  }, [ready, value]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -57,6 +72,7 @@ export function AddressAutocomplete({
     setValue(description, false);
     clearSuggestions();
     setIsOpen(false);
+    setApiError(null);
 
     try {
       // Get geocode results
@@ -65,6 +81,7 @@ export function AddressAutocomplete({
 
       if (!results || results.length === 0) {
         console.error('[AddressAutocomplete] No geocode results');
+        setApiError('Could not find location details for this address.');
         return;
       }
 
@@ -119,8 +136,17 @@ export function AddressAutocomplete({
         latitude: lat,
         longitude: lng,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[AddressAutocomplete] Error:', error);
+      if (error.message?.includes('ZERO_RESULTS')) {
+        setApiError('No results found for this address.');
+      } else if (error.message?.includes('OVER_QUERY_LIMIT')) {
+        setApiError('Too many requests. Please try again in a moment.');
+      } else if (error.message?.includes('REQUEST_DENIED')) {
+        setApiError('Address search is currently unavailable.');
+      } else {
+        setApiError('Failed to process address. Please try again.');
+      }
     }
   };
 
@@ -165,12 +191,29 @@ export function AddressAutocomplete({
         </ul>
       )}
 
+      {/* API Error */}
+      {apiError && (
+        <div className="absolute z-[100005] w-full mt-1 bg-red-900/20 border border-red-500/30 rounded-md shadow-lg px-4 py-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <span className="text-red-400 text-sm">{apiError}</span>
+          </div>
+        </div>
+      )}
+
       {/* No Results / Loading */}
-      {isOpen && value && status !== 'OK' && (
+      {isOpen && value && status !== 'OK' && !apiError && (
         <div className="absolute z-[100005] w-full mt-1 bg-slate-800 border border-slate-600 rounded-md shadow-lg px-4 py-3">
-          <span className="text-slate-400 text-sm">
-            {status === 'ZERO_RESULTS' ? 'No results found' : 'Searching...'}
-          </span>
+          <div className="flex items-center gap-2">
+            {status === 'ZERO_RESULTS' ? (
+              <span className="text-slate-400 text-sm">No results found</span>
+            ) : (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-[#00d4aa]" />
+                <span className="text-slate-400 text-sm">Searching...</span>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
