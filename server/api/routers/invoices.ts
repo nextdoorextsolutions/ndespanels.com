@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { getDb } from "../../db";
-import { invoices, reportRequests } from "../../../drizzle/schema";
+import { invoices, reportRequests, activities } from "../../../drizzle/schema";
 import { protectedProcedure, router } from "../../_core/trpc";
+import { sendInvoiceEmail } from "../../mail";
 
 export const invoicesRouter = router({
   // Get all invoices with optional filtering
@@ -30,6 +31,7 @@ export const invoicesRouter = router({
           invoiceDate: invoices.invoiceDate,
           dueDate: invoices.dueDate,
           paidDate: invoices.paidDate,
+          notes: invoices.notes,
           createdAt: invoices.createdAt,
         })
         .from(invoices)
@@ -55,6 +57,69 @@ export const invoicesRouter = router({
       }
 
       return filtered;
+    }),
+
+  // Send invoice email via Zoho SMTP
+  sendEmail: protectedProcedure
+    .input(z.object({
+      invoiceId: z.union([z.number(), z.string()]).transform((v) => typeof v === "string" ? Number(v) : v),
+      to: z.string().email(),
+      subject: z.string().min(1),
+      message: z.string().min(1),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [invoice] = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.id, input.invoiceId));
+
+      if (!invoice) throw new Error("Invoice not found");
+
+      const safe = (s: string) =>
+        s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;");
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
+          <p>${safe(input.message).replace(/\n/g, "<br/>")}</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
+          <p style="margin: 0;"><strong>Invoice:</strong> ${safe(invoice.invoiceNumber)}</p>
+          <p style="margin: 0;"><strong>Client:</strong> ${safe(invoice.clientName)}</p>
+          <p style="margin: 0;"><strong>Total:</strong> $${safe(String(invoice.totalAmount))}</p>
+        </div>
+      `.trim();
+
+      await sendInvoiceEmail({
+        to: input.to,
+        subject: input.subject,
+        html,
+      });
+
+      // Log activity to job timeline when invoice is associated with a job
+      if (invoice.reportRequestId) {
+        await db.insert(activities).values({
+          reportRequestId: invoice.reportRequestId,
+          userId: ctx.user?.id,
+          activityType: "email_sent",
+          description: `Invoice ${invoice.invoiceNumber} emailed to ${input.to}`,
+          metadata: JSON.stringify({ invoiceId: invoice.id, to: input.to, subject: input.subject }),
+        });
+      }
+
+      // Mark invoice as sent if it was still a draft
+      if (invoice.status === "draft") {
+        await db.update(invoices)
+          .set({ status: "sent", updatedAt: new Date() })
+          .where(eq(invoices.id, invoice.id));
+      }
+
+      return { success: true };
     }),
 
   // Get invoice by ID
