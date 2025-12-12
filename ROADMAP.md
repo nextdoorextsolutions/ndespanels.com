@@ -14,10 +14,11 @@
     - *Note:* Finance/Invoices pages currently use mock data - backend integration needed separately.
 
 ### Phase C: Dashboard Quick Actions (Logic Implementation)
-- [ ] **"Needs Follow Up" Button:**
+- [x] **"Needs Follow Up" Button:** ✅ COMPLETE
     - Create a "Request Follow Up" action inside Job Details.
     - Button click filters dashboard to these jobs.
     - Notify assigned sales rep when tagged.
+    - *Implementation:* Added `needsFollowUp` field to schema, TRPC mutation, Job Details button, and dashboard action item.
 - [ ] **"Pending Inspection" Button:**
     - Filter dashboard for `Lead`/`Appointment Set` jobs with future or missing inspection dates.
 - [ ] **"Lien Rights" Button (Compliance):**
