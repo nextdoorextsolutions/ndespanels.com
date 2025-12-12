@@ -791,6 +791,62 @@ export const jobsRouter = router({
         }
       }),
 
+    // Toggle follow-up status on a job
+    toggleFollowUp: protectedProcedure
+      .input(z.object({ 
+        jobId: z.number(),
+        needsFollowUp: z.boolean()
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Get job data
+        const [job] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.jobId));
+        if (!job) throw new Error("Job not found");
+
+        // Check permission
+        const user = ctx.user;
+        const teamMemberIds = user && isTeamLead(user) ? await getTeamMemberIds(db, user.id) : [];
+        if (!canEditJob(user, job, teamMemberIds)) {
+          throw new Error("You don't have permission to edit this job");
+        }
+
+        // Update follow-up status
+        await db.update(reportRequests)
+          .set({ 
+            needsFollowUp: input.needsFollowUp,
+            followUpRequestedAt: input.needsFollowUp ? new Date() : null,
+            followUpRequestedBy: input.needsFollowUp ? user!.id : null,
+            updatedAt: new Date()
+          })
+          .where(eq(reportRequests.id, input.jobId));
+
+        // Log activity
+        await db.insert(activities).values({
+          reportRequestId: input.jobId,
+          userId: user?.id,
+          activityType: "note_added",
+          description: input.needsFollowUp 
+            ? `Follow-up requested by ${user?.name || user?.email}`
+            : `Follow-up cleared by ${user?.name || user?.email}`,
+        });
+
+        // If follow-up is requested and job has an assigned sales rep, create notification
+        if (input.needsFollowUp && job.assignedTo && job.assignedTo !== user?.id) {
+          await db.insert(notifications).values({
+            userId: job.assignedTo,
+            createdBy: user?.id,
+            resourceId: input.jobId,
+            type: "assignment",
+            content: `${user?.name || user?.email} requested follow-up on: ${job.fullName} - ${job.address}`,
+            isRead: false,
+          });
+        }
+
+        return { success: true };
+      }),
+
     // Delete lead (Owner only)
     deleteLead: protectedProcedure
       .input(z.object({ id: z.number() }))
