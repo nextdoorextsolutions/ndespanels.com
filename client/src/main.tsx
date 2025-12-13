@@ -84,6 +84,20 @@ queryClient.getQueryCache().subscribe(event => {
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
+    
+    // CRITICAL: Do NOT logout on syncSupabaseUser errors
+    // The sync failure should not kill the user's session
+    const mutationKey = event.mutation.options.mutationKey;
+    const isSyncMutation = mutationKey && 
+      Array.isArray(mutationKey) && 
+      mutationKey.some(key => typeof key === 'string' && key.includes('syncSupabaseUser'));
+    
+    if (isSyncMutation) {
+      console.warn("[Auth] CRM Sync failed, continuing in offline mode");
+      console.error("[API Mutation Error - Non-fatal]", error);
+      return; // Don't call handleUnauthorizedError for sync failures
+    }
+    
     handleUnauthorizedError(error);
     console.error("[API Mutation Error]", error);
   }

@@ -75,6 +75,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   const isSyncingRef = useRef(false);
   const syncedUserIdRef = useRef<string | null>(null);
   const syncAttemptedRef = useRef<Set<string>>(new Set()); // Track all sync attempts per session
+  const hasSyncedThisPageLoad = useRef(false); // Prevent infinite retry loop on page load
 
   // Function to sync Supabase user to CRM and store session token
   const syncToCRM = useCallback(async (supabaseUser: User) => {
@@ -166,6 +167,11 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     }
 
     const checkSession = async () => {
+      // ONE-TIME SYNC: Prevent retry loop on page load
+      if (hasSyncedThisPageLoad.current) {
+        console.log('[Auth] Sync already attempted this page load, skipping');
+        return;
+      }
       // Safety valve: Force show login form after 500ms if no response
       const sessionTimeout = setTimeout(() => {
         if (mounted) {
@@ -202,6 +208,9 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
             loading: false,
             error: error ?? null,
           }));
+          
+          // Mark that we've attempted sync for this page load
+          hasSyncedThisPageLoad.current = true;
           
           // Sync to backend - WAIT for it to complete so crmUser is available
           await syncToCRM(session.user);

@@ -23,6 +23,11 @@ export const authRouter = router({
       email: z.string(),
       name: z.string().optional(),
       role: z.string().optional(),
+      phone: z.string().optional().nullable().transform(v => {
+        // Convert empty strings to null for database
+        if (!v || v.trim() === '') return null;
+        return v;
+      }),
       repCode: z.string().optional().nullable().transform(v => {
         // Convert empty strings to null for database
         if (!v || v.trim() === '') return null;
@@ -67,17 +72,22 @@ export const authRouter = router({
           // 3. UPSERT using openId as conflict target (openId is the Supabase Auth unique identifier)
           console.log('[Sync] Performing upsert...');
           
-          // Convert empty strings to null for repCode
-          const cleanRepCode = input.repCode && input.repCode.trim() !== '' ? input.repCode : null;
+          // Sanitize inputs: Convert empty strings to null for Postgres
+          // This prevents unique constraint issues (Postgres allows multiple NULLs but not empty strings)
+          const sanitizeString = (val: string | null | undefined): string | null => {
+            if (!val || val.trim() === '') return null;
+            return val.trim();
+          };
           
           const insertValues = {
             openId: input.supabaseUserId,
             email: input.email,
-            name: input.name || input.email.split('@')[0],
+            name: sanitizeString(input.name) || input.email.split('@')[0],
+            phone: sanitizeString(input.phone),
             role: targetRole as any,
             isActive: true,
             lastSignedIn: new Date(),
-            repCode: cleanRepCode,
+            repCode: sanitizeString(input.repCode),
           };
           
           console.log('[Sync] Insert values:', JSON.stringify(insertValues, null, 2));
@@ -97,15 +107,28 @@ export const authRouter = router({
               .returning();
           } catch (dbError: any) {
             // Log detailed postgres error information
-            console.error('[Sync] Database error details:');
-            console.error('  - Postgres Code:', dbError.code); // e.g., 23505 = unique_violation
-            console.error('  - Message:', dbError.message);
-            console.error('  - Detail:', dbError.detail);
-            console.error('  - Constraint:', dbError.constraint);
-            console.error('  - Table:', dbError.table);
-            console.error('  - Column:', dbError.column);
-            console.error('  - Schema:', dbError.schema);
-            console.error('  - Insert values:', JSON.stringify(insertValues, null, 2));
+            console.error('❌ [Sync] DATABASE INSERT FAILED - Death Loop Prevention');
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('Postgres Error Code:', dbError.code); // 23505 = unique_violation, 23502 = not_null_violation
+            console.error('Error Message:', dbError.message);
+            console.error('Detail:', dbError.detail);
+            console.error('Constraint Name:', dbError.constraint);
+            console.error('Table:', dbError.table);
+            console.error('Column:', dbError.column);
+            console.error('Schema:', dbError.schema);
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('Insert Values:', JSON.stringify(insertValues, null, 2));
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
+            // Provide actionable error message based on error code
+            if (dbError.code === '23505') {
+              console.error('⚠️  UNIQUE CONSTRAINT VIOLATION - Check for duplicate values in:', dbError.constraint);
+            } else if (dbError.code === '23502') {
+              console.error('⚠️  NOT NULL VIOLATION - Missing required field:', dbError.column);
+            } else if (dbError.code === '23503') {
+              console.error('⚠️  FOREIGN KEY VIOLATION - Referenced record does not exist');
+            }
+            
             throw dbError; // Re-throw to be caught by outer catch
           }
           
