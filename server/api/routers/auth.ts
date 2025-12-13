@@ -23,7 +23,11 @@ export const authRouter = router({
       email: z.string(),
       name: z.string().optional(),
       role: z.string().optional(),
-      repCode: z.string().optional().nullable().transform(v => v || null),
+      repCode: z.string().optional().nullable().transform(v => {
+        // Convert empty strings to null for database
+        if (!v || v.trim() === '') return null;
+        return v;
+      }),
     }))
     .mutation(async ({ ctx, input }) => {
       const startTime = Date.now();
@@ -51,10 +55,20 @@ export const authRouter = router({
           // 2. Determine Role
           let targetRole = input.role || 'user';
           if (isFirstUser) targetRole = 'owner';
+          
+          // Validate role against enum
+          const validRoles = ['user', 'admin', 'owner', 'office', 'sales_rep', 'project_manager', 'team_lead', 'field_crew'];
+          if (!validRoles.includes(targetRole)) {
+            console.warn(`[Sync] Invalid role "${targetRole}", defaulting to "user"`);
+            targetRole = 'user';
+          }
           console.log(`[Sync] Target role: ${targetRole}`);
           
           // 3. UPSERT using openId as conflict target (openId is the Supabase Auth unique identifier)
           console.log('[Sync] Performing upsert...');
+          
+          // Convert empty strings to null for repCode
+          const cleanRepCode = input.repCode && input.repCode.trim() !== '' ? input.repCode : null;
           
           const insertValues = {
             openId: input.supabaseUserId,
@@ -63,22 +77,37 @@ export const authRouter = router({
             role: targetRole as any,
             isActive: true,
             lastSignedIn: new Date(),
-            repCode: input.repCode || null,
+            repCode: cleanRepCode,
           };
           
           console.log('[Sync] Insert values:', JSON.stringify(insertValues, null, 2));
           
-          const [result] = await db
-            .insert(users)
-            .values(insertValues)
-            .onConflictDoUpdate({
-              target: users.openId, // Changed from users.email to users.openId
-              set: {
-                email: input.email, // Update email in case it changed in Supabase
-                lastSignedIn: new Date(),
-              },
-            })
-            .returning();
+          let result;
+          try {
+            [result] = await db
+              .insert(users)
+              .values(insertValues)
+              .onConflictDoUpdate({
+                target: users.openId, // Unique constraint on open_id
+                set: {
+                  email: input.email, // Update email in case it changed in Supabase
+                  lastSignedIn: new Date(),
+                },
+              })
+              .returning();
+          } catch (dbError: any) {
+            // Log detailed postgres error information
+            console.error('[Sync] Database error details:');
+            console.error('  - Postgres Code:', dbError.code); // e.g., 23505 = unique_violation
+            console.error('  - Message:', dbError.message);
+            console.error('  - Detail:', dbError.detail);
+            console.error('  - Constraint:', dbError.constraint);
+            console.error('  - Table:', dbError.table);
+            console.error('  - Column:', dbError.column);
+            console.error('  - Schema:', dbError.schema);
+            console.error('  - Insert values:', JSON.stringify(insertValues, null, 2));
+            throw dbError; // Re-throw to be caught by outer catch
+          }
           
           if (!result) {
             throw new Error('Upsert returned no result');

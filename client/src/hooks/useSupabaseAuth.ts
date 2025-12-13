@@ -11,6 +11,7 @@ export interface AuthState {
   error: AuthError | null;
   crmUser: { id: number; name: string | null; role: string | null; email: string | null } | null;
   crmUserLoading: boolean;
+  syncError: Error | null; // Sync error state - doesn't logout user
 }
 
 export interface UseSupabaseAuthReturn extends AuthState {
@@ -67,11 +68,13 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     error: null,
     crmUser: null,
     crmUserLoading: false,
+    syncError: null,
   });
 
   const syncUserMutation = trpc.auth.syncSupabaseUser.useMutation();
   const isSyncingRef = useRef(false);
   const syncedUserIdRef = useRef<string | null>(null);
+  const syncAttemptedRef = useRef<Set<string>>(new Set()); // Track all sync attempts per session
 
   // Function to sync Supabase user to CRM and store session token
   const syncToCRM = useCallback(async (supabaseUser: User) => {
@@ -81,15 +84,16 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       return null;
     }
     
-    // Guard clause: prevent syncing the same user twice
-    if (syncedUserIdRef.current === supabaseUser.id) {
-      console.log('[Auth] User already synced in this session, skipping:', supabaseUser.email);
+    // Guard clause: ONE-TIME ATTEMPT - prevent syncing the same user twice per session
+    if (syncAttemptedRef.current.has(supabaseUser.id)) {
+      console.log('[Auth] User sync already attempted in this session, skipping:', supabaseUser.email);
       return null;
     }
     
     console.log('[Auth] Starting CRM sync for:', supabaseUser.email);
     isSyncingRef.current = true;
-    setState(prev => ({ ...prev, crmUserLoading: true }));
+    syncAttemptedRef.current.add(supabaseUser.id); // Mark as attempted immediately
+    setState(prev => ({ ...prev, crmUserLoading: true, syncError: null }));
     
     try {
       const result = await syncUserMutation.mutateAsync({
@@ -105,11 +109,12 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         }
         
         console.log('[Auth] CRM sync complete. User role:', result.user.role);
-        syncedUserIdRef.current = supabaseUser.id; // Mark user as synced
+        syncedUserIdRef.current = supabaseUser.id; // Mark user as successfully synced
         setState(prev => ({
           ...prev,
           crmUser: result.user,
           crmUserLoading: false,
+          syncError: null,
         }));
       } else {
         console.error('[Auth] Sync succeeded but no user data returned');
@@ -117,9 +122,33 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       }
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error("[Auth] Failed to sync user to CRM:", error);
-      setState(prev => ({ ...prev, crmUserLoading: false }));
+      
+      // CRITICAL: DO NOT logout user on sync failure
+      // Set error state and show toast, but keep user authenticated
+      const syncError = new Error(
+        error?.message || "Connection issue - working in offline mode"
+      );
+      
+      setState(prev => ({ 
+        ...prev, 
+        crmUserLoading: false,
+        syncError, // Set error state without clearing session
+      }));
+      
+      // Show user-friendly toast notification
+      if (typeof window !== 'undefined') {
+        // Dynamic import to avoid circular dependencies
+        import('sonner').then(({ toast }) => {
+          toast.error("Connection Issue", {
+            description: "Working in offline mode. Some features may be limited.",
+          });
+        }).catch(err => {
+          console.warn('[Auth] Could not show toast:', err);
+        });
+      }
+      
       return null;
     } finally {
       isSyncingRef.current = false; // Always reset syncing flag
@@ -218,9 +247,10 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         }
         
         if (_event === "SIGNED_OUT") {
-          // Clear session token and reset sync tracking
+          // Clear session token and reset ALL sync tracking
           clearSessionToken();
           syncedUserIdRef.current = null;
+          syncAttemptedRef.current.clear(); // Clear attempt tracking on logout
         }
         
         setState(prev => ({
@@ -317,6 +347,11 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     clearSessionToken();
     
     await supabase.auth.signOut();
+    
+    // Reset sync tracking on manual logout
+    syncedUserIdRef.current = null;
+    syncAttemptedRef.current.clear();
+    
     setState({
       user: null,
       session: null,
@@ -324,6 +359,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       error: null,
       crmUser: null,
       crmUserLoading: false,
+      syncError: null,
     });
   }, []);
 
