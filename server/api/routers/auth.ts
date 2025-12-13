@@ -44,13 +44,64 @@ export const authRouter = router({
             throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
           }
           
-          // 1. Check if it's the very first user (Owner logic)
-          console.log('[Sync] Checking for existing users...');
+          // LOOKUP FIRST STRATEGY - Avoids UPSERT conflicts and RLS issues
+          
+          // Step 1: Find existing user by open_id (Supabase Auth ID)
+          console.log('[Sync] Step 1: Looking up user by open_id:', input.supabaseUserId);
+          const [existingUser] = await db
+            .select()
+            .from(users)
+            .where(eq(users.openId, input.supabaseUserId))
+            .limit(1);
+          
+          // Step 2: Handle Match (The Happy Path)
+          if (existingUser) {
+            console.log('[Sync] ✅ User found by open_id. Updating last_signed_in and email...');
+            const [updatedUser] = await db
+              .update(users)
+              .set({
+                email: input.email,
+                lastSignedIn: new Date(),
+              })
+              .where(eq(users.id, existingUser.id))
+              .returning();
+            
+            console.log(`[Sync] Successfully updated user: ${updatedUser.email} (Role: ${updatedUser.role})`);
+            return updatedUser;
+          }
+          
+          // Step 3: Handle Email Link (The "Zombie" Fix)
+          console.log('[Sync] Step 3: User not found by open_id. Looking up by email:', input.email);
+          const [userByEmail] = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, input.email))
+            .limit(1);
+          
+          if (userByEmail) {
+            console.log('[Sync] ✅ User found by email. Linking open_id to existing account...');
+            const [linkedUser] = await db
+              .update(users)
+              .set({
+                openId: input.supabaseUserId,
+                lastSignedIn: new Date(),
+              })
+              .where(eq(users.id, userByEmail.id))
+              .returning();
+            
+            console.log(`[Sync] Successfully linked account: ${linkedUser.email} (Role: ${linkedUser.role})`);
+            return linkedUser;
+          }
+          
+          // Step 4: Create New (Fallback)
+          console.log('[Sync] Step 4: User not found. Creating new user...');
+          
+          // Check if it's the very first user (Owner logic)
           const allUsers = await db.select({ id: users.id }).from(users).limit(1);
           const isFirstUser = allUsers.length === 0;
           console.log(`[Sync] Is first user: ${isFirstUser}`);
           
-          // 2. Determine Role
+          // Determine Role
           let targetRole = input.role || 'user';
           if (isFirstUser) targetRole = 'owner';
           
@@ -61,9 +112,6 @@ export const authRouter = router({
             targetRole = 'user';
           }
           console.log(`[Sync] Target role: ${targetRole}`);
-          
-          // 3. UPSERT using openId as conflict target (openId is the Supabase Auth unique identifier)
-          console.log('[Sync] Performing upsert...');
           
           // Input values are already sanitized by Zod transforms (empty strings → null)
           const insertValues = {
@@ -85,13 +133,6 @@ export const authRouter = router({
             [result] = await db
               .insert(users)
               .values(insertValues)
-              .onConflictDoUpdate({
-                target: users.openId, // Unique constraint on open_id
-                set: {
-                  email: input.email, // Update email in case it changed in Supabase
-                  lastSignedIn: new Date(),
-                },
-              })
               .returning();
           } catch (dbError: any) {
             // Log detailed postgres error information
@@ -121,7 +162,7 @@ export const authRouter = router({
           }
           
           if (!result) {
-            throw new Error('Upsert returned no result');
+            throw new Error('Insert returned no result');
           }
           
           console.log(`[Sync] Successfully synced user: ${result.email} (Role: ${result.role}) in ${Date.now() - startTime}ms`);
