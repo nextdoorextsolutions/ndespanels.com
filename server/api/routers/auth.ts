@@ -23,7 +23,7 @@ export const authRouter = router({
       email: z.string(),
       name: z.string().optional(),
       role: z.string().optional(),
-      repCode: z.string().transform(v => v || null).optional(),
+      repCode: z.string().optional().nullable().transform(v => v || null),
     }))
     .mutation(async ({ ctx, input }) => {
       const startTime = Date.now();
@@ -55,17 +55,22 @@ export const authRouter = router({
           
           // 3. UPSERT using openId as conflict target (openId is the Supabase Auth unique identifier)
           console.log('[Sync] Performing upsert...');
+          
+          const insertValues = {
+            openId: input.supabaseUserId,
+            email: input.email,
+            name: input.name || input.email.split('@')[0],
+            role: targetRole as any,
+            isActive: true,
+            lastSignedIn: new Date(),
+            repCode: input.repCode || null,
+          };
+          
+          console.log('[Sync] Insert values:', JSON.stringify(insertValues, null, 2));
+          
           const [result] = await db
             .insert(users)
-            .values({
-              openId: input.supabaseUserId,
-              email: input.email,
-              name: input.name || input.email.split('@')[0],
-              role: targetRole as any,
-              isActive: true,
-              lastSignedIn: new Date(),
-              repCode: input.repCode || null,
-            })
+            .values(insertValues)
             .onConflictDoUpdate({
               target: users.openId, // Changed from users.email to users.openId
               set: {
