@@ -49,7 +49,15 @@ export const authRouter = router({
           // Step 1: Find existing user by open_id (Supabase Auth ID)
           console.log('[Sync] Step 1: Looking up user by open_id:', input.supabaseUserId);
           const [existingUser] = await db
-            .select()
+            .select({
+              id: users.id,
+              openId: users.openId,
+              email: users.email,
+              name: users.name,
+              role: users.role,
+              isActive: users.isActive,
+              // Safe selection - avoid problematic columns
+            })
             .from(users)
             .where(eq(users.openId, input.supabaseUserId))
             .limit(1);
@@ -73,7 +81,15 @@ export const authRouter = router({
           // Step 3: Handle Email Link (The "Zombie" Fix)
           console.log('[Sync] Step 3: User not found by open_id. Looking up by email:', input.email);
           const [userByEmail] = await db
-            .select()
+            .select({
+              id: users.id,
+              openId: users.openId,
+              email: users.email,
+              name: users.name,
+              role: users.role,
+              isActive: users.isActive,
+              // Safe selection - avoid problematic columns
+            })
             .from(users)
             .where(eq(users.email, input.email))
             .limit(1);
