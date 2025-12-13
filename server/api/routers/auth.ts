@@ -21,18 +21,11 @@ export const authRouter = router({
     .input(z.object({
       supabaseUserId: z.string(),
       email: z.string(),
-      name: z.string().optional(),
-      role: z.string().optional(),
-      phone: z.string().optional().nullable().transform(v => {
-        // Convert empty strings to null for database
-        if (!v || v.trim() === '') return null;
-        return v;
-      }),
-      repCode: z.string().optional().nullable().transform(v => {
-        // Convert empty strings to null for database
-        if (!v || v.trim() === '') return null;
-        return v;
-      }),
+      name: z.string().nullish().transform(val => val === "" ? null : val),
+      role: z.string().nullish().transform(val => val === "" ? null : val),
+      phone: z.string().nullish().transform(val => val === "" ? null : val),
+      repCode: z.string().nullish().transform(val => val === "" ? null : val),
+      image: z.string().nullish().transform(val => val === "" ? null : val),
     }))
     .mutation(async ({ ctx, input }) => {
       const startTime = Date.now();
@@ -72,22 +65,17 @@ export const authRouter = router({
           // 3. UPSERT using openId as conflict target (openId is the Supabase Auth unique identifier)
           console.log('[Sync] Performing upsert...');
           
-          // Sanitize inputs: Convert empty strings to null for Postgres
-          // This prevents unique constraint issues (Postgres allows multiple NULLs but not empty strings)
-          const sanitizeString = (val: string | null | undefined): string | null => {
-            if (!val || val.trim() === '') return null;
-            return val.trim();
-          };
-          
+          // Input values are already sanitized by Zod transforms (empty strings → null)
           const insertValues = {
             openId: input.supabaseUserId,
             email: input.email,
-            name: sanitizeString(input.name) || input.email.split('@')[0],
-            phone: sanitizeString(input.phone),
+            name: input.name || input.email.split('@')[0],
+            phone: input.phone,
+            image: input.image,
             role: targetRole as any,
             isActive: true,
             lastSignedIn: new Date(),
-            repCode: sanitizeString(input.repCode),
+            repCode: input.repCode,
           };
           
           console.log('[Sync] Insert values:', JSON.stringify(insertValues, null, 2));
