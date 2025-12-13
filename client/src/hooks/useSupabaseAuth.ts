@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { trpc } from "@/lib/trpc";
@@ -70,10 +70,25 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   });
 
   const syncUserMutation = trpc.auth.syncSupabaseUser.useMutation();
+  const isSyncingRef = useRef(false);
+  const syncedUserIdRef = useRef<string | null>(null);
 
   // Function to sync Supabase user to CRM and store session token
   const syncToCRM = useCallback(async (supabaseUser: User) => {
+    // Guard clause: prevent overlapping sync calls
+    if (isSyncingRef.current) {
+      console.log('[Auth] Sync already in progress, skipping duplicate call for:', supabaseUser.email);
+      return null;
+    }
+    
+    // Guard clause: prevent syncing the same user twice
+    if (syncedUserIdRef.current === supabaseUser.id) {
+      console.log('[Auth] User already synced in this session, skipping:', supabaseUser.email);
+      return null;
+    }
+    
     console.log('[Auth] Starting CRM sync for:', supabaseUser.email);
+    isSyncingRef.current = true;
     setState(prev => ({ ...prev, crmUserLoading: true }));
     
     try {
@@ -90,6 +105,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         }
         
         console.log('[Auth] CRM sync complete. User role:', result.user.role);
+        syncedUserIdRef.current = supabaseUser.id; // Mark user as synced
         setState(prev => ({
           ...prev,
           crmUser: result.user,
@@ -105,6 +121,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       console.error("[Auth] Failed to sync user to CRM:", error);
       setState(prev => ({ ...prev, crmUserLoading: false }));
       return null;
+    } finally {
+      isSyncingRef.current = false; // Always reset syncing flag
     }
   }, [syncUserMutation]);
 
@@ -193,13 +211,16 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user && _event === "SIGNED_IN") {
-          // Sync to CRM when user signs in
-          await syncToCRM(session.user);
+          // Only sync if not already synced (prevents double sync on mount)
+          if (syncedUserIdRef.current !== session.user.id) {
+            await syncToCRM(session.user);
+          }
         }
         
         if (_event === "SIGNED_OUT") {
-          // Clear session token on sign out
+          // Clear session token and reset sync tracking
           clearSessionToken();
+          syncedUserIdRef.current = null;
         }
         
         setState(prev => ({
