@@ -176,13 +176,22 @@ export const jobsRouter = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
+        console.log('[getLead] User accessing job:', ctx.user?.email, 'Role:', ctx.user?.role, 'Job ID:', input.id);
+
         const [lead] = await db.select().from(reportRequests).where(eq(reportRequests.id, input.id));
-        if (!lead) throw new Error("Lead not found");
+        if (!lead) {
+          console.error('[getLead] Lead not found:', input.id);
+          throw new Error("Lead not found");
+        }
 
         // Check permission
         const user = ctx.user;
         const teamMemberIds = user && isTeamLead(user) ? await getTeamMemberIds(db, user.id) : [];
-        if (!canViewJob(user, lead, teamMemberIds)) {
+        const hasPermission = canViewJob(user, lead, teamMemberIds);
+        
+        console.log('[getLead] Permission check - User:', user?.email, 'Role:', user?.role, 'Can view:', hasPermission);
+        
+        if (!hasPermission) {
           throw new Error("You don't have permission to view this job");
         }
 

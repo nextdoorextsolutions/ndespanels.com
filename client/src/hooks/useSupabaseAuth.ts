@@ -10,6 +10,7 @@ export interface AuthState {
   loading: boolean;
   error: AuthError | null;
   crmUser: { id: number; name: string | null; role: string | null; email: string | null } | null;
+  crmUserLoading: boolean;
 }
 
 export interface UseSupabaseAuthReturn extends AuthState {
@@ -65,12 +66,16 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     loading: true,
     error: null,
     crmUser: null,
+    crmUserLoading: false,
   });
 
   const syncUserMutation = trpc.auth.syncSupabaseUser.useMutation();
 
   // Function to sync Supabase user to CRM and store session token
   const syncToCRM = useCallback(async (supabaseUser: User) => {
+    console.log('[Auth] Starting CRM sync for:', supabaseUser.email);
+    setState(prev => ({ ...prev, crmUserLoading: true }));
+    
     try {
       const result = await syncUserMutation.mutateAsync({
         supabaseUserId: supabaseUser.id,
@@ -84,15 +89,21 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           setSessionToken((result as any).sessionToken);
         }
         
+        console.log('[Auth] CRM sync complete. User role:', result.user.role);
         setState(prev => ({
           ...prev,
           crmUser: result.user,
+          crmUserLoading: false,
         }));
+      } else {
+        console.error('[Auth] Sync succeeded but no user data returned');
+        setState(prev => ({ ...prev, crmUserLoading: false }));
       }
       
       return result;
     } catch (error) {
       console.error("[Auth] Failed to sync user to CRM:", error);
+      setState(prev => ({ ...prev, crmUserLoading: false }));
       return null;
     }
   }, [syncUserMutation]);
@@ -145,10 +156,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
             error: error ?? null,
           }));
           
-          // Sync to backend AFTER showing the app (non-blocking)
-          syncToCRM(session.user).catch(err => {
-            console.error("[Auth] Background sync failed:", err);
-          });
+          // Sync to backend - WAIT for it to complete so crmUser is available
+          await syncToCRM(session.user);
         } else {
           // No session - show login form immediately
           setState(prev => ({
@@ -246,8 +255,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         return { error: readableError };
       }
 
+      // Sync to CRM after successful login and wait for it
       if (data.user) {
-        // Sync to CRM after successful login
         await syncToCRM(data.user);
       }
 
@@ -293,6 +302,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       loading: false,
       error: null,
       crmUser: null,
+      crmUserLoading: false,
     });
   }, []);
 

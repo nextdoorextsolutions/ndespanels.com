@@ -19,8 +19,12 @@ export async function createContext(
 
   try {
     user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
+    if (user) {
+      console.log('[Context] Authenticated user:', user.email, 'Role:', user.role, 'ID:', user.id);
+    }
+  } catch (error: any) {
     // Authentication is optional for public procedures.
+    console.warn('[Context] Authentication failed:', error.message);
     user = null;
   }
 
@@ -28,7 +32,7 @@ export async function createContext(
   logger.request(
     opts.req.method || 'UNKNOWN',
     opts.req.path || opts.req.url || '/',
-    { requestId, userId: user?.id }
+    { requestId, userId: user?.id, userRole: user?.role }
   );
 
   return {

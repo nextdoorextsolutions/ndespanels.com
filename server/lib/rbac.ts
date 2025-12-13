@@ -249,8 +249,10 @@ export async function filterLeadsByRole(db: any, user: any, leads: any[]): Promi
   
   const role = normalizeRole(user.role || "user");
   
-  // Owners and Admins see everything
-  if (role === "owner" || role === "admin" || role === "office") {
+  console.log('[RBAC] filterLeadsByRole - User:', user.email, 'Raw role:', user.role, 'Normalized role:', role);
+  
+  // Owners and Admins (including office staff) see everything
+  if (role === "owner" || role === "admin") {
     return leads;
   }
   
