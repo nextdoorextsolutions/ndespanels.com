@@ -73,10 +73,11 @@ export const GlobalChatWidget: React.FC = () => {
   }, [authUser, isOpen]);
 
   // usePresence hook - always called, but enabled flag controls behavior
+  // Keep connection active even when minimized so notifications work
   const { connectionStatus, isConnected } = usePresence({
     threadId: 'global',
     user: currentUser,
-    enabled: isOpen && !isMinimized && !!authUser,
+    enabled: isOpen && !!authUser, // Removed !isMinimized to keep connection when minimized
   });
 
   // tRPC mutations and subscriptions - must be called at component level
@@ -241,7 +242,7 @@ export const GlobalChatWidget: React.FC = () => {
       className={`fixed right-4 z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl
         ${isMinimized 
           ? 'bottom-0 w-80 h-14 rounded-b-none'
-          : 'bottom-6 w-[500px] h-[650px]'
+          : 'bottom-6 w-[900px] h-[650px]'
         }
       `}
     >
@@ -297,23 +298,39 @@ export const GlobalChatWidget: React.FC = () => {
       </div>
 
       {!isMinimized && (
-        <div className="h-[calc(100%-60px)]">
-          {/* Chat Area - Full width */}
-          <ChatArea
-            channelName={getChannelName()}
-            messages={messages}
-            inputText={inputText}
-            onInputChange={setInputText}
-            onSendMessage={handleSendMessage}
-            onKeyDown={handleKeyDown}
-            isTyping={isTyping}
+        <div className="h-[calc(100%-60px)] flex">
+          {/* Channel Sidebar */}
+          <ChannelSidebar
+            activeChannelId={activeChannelId}
+            onChannelSelect={setActiveChannelId}
             currentUserId={currentUser.id}
-            geminiId={GEMINI_BOT_ID}
-            geminiName={GEMINI_BOT_NAME}
-            onToggleAI={() => setIsAIOpen(!isAIOpen)}
-            isAIOpen={isAIOpen}
           />
+          
+          {/* Chat Area */}
+          <div className="flex-1">
+            <ChatArea
+              channelName={getChannelName()}
+              messages={messages}
+              inputText={inputText}
+              onInputChange={setInputText}
+              onSendMessage={handleSendMessage}
+              onKeyDown={handleKeyDown}
+              isTyping={isTyping}
+              currentUserId={currentUser.id}
+              geminiId={GEMINI_BOT_ID}
+              geminiName={GEMINI_BOT_NAME}
+              onToggleAI={() => setIsAIOpen(!isAIOpen)}
+              isAIOpen={isAIOpen}
+            />
+          </div>
 
+          {/* AI Sidebar - conditionally shown */}
+          {isAIOpen && (
+            <AISidebar
+              onGenerateDraft={handleGenerateDraft}
+              isGenerating={generateDraftMutation.isPending}
+            />
+          )}
         </div>
       )}
     </div>
