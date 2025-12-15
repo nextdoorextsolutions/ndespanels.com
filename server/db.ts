@@ -185,7 +185,22 @@ export async function getUserByOpenId(openId: string) {
       return undefined;
     }
 
-    const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+    const result = await db.select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+      image: users.image,
+      loginMethod: users.loginMethod,
+      role: users.role,
+      repCode: users.repCode,
+      teamLeadId: users.teamLeadId,
+      isActive: users.isActive,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      lastSignedIn: users.lastSignedIn,
+    }).from(users).where(eq(users.openId, openId)).limit(1);
     console.log("[Database] User lookup result:", result.length > 0 ? { id: result[0].id, name: result[0].name, role: result[0].role } : "not found");
     return result.length > 0 ? result[0] : undefined;
   });
@@ -201,7 +216,22 @@ export async function getUserByEmail(email: string) {
       return undefined;
     }
 
-    const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    const result = await db.select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+      image: users.image,
+      loginMethod: users.loginMethod,
+      role: users.role,
+      repCode: users.repCode,
+      teamLeadId: users.teamLeadId,
+      isActive: users.isActive,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      lastSignedIn: users.lastSignedIn,
+    }).from(users).where(eq(users.email, email)).limit(1);
     console.log("[Database] User lookup by email result:", result.length > 0 ? { id: result[0].id, name: result[0].name, role: result[0].role } : "not found");
     return result.length > 0 ? result[0] : undefined;
   });
