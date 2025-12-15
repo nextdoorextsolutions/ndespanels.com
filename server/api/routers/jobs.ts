@@ -622,14 +622,6 @@ export const jobsRouter = router({
           throw new Error("You don't have permission to edit this job");
         }
 
-        console.log('[updateInsuranceInfo] Input:', input);
-        console.log('[updateInsuranceInfo] Current job insurance:', {
-          insuranceCarrier: currentJob.insuranceCarrier,
-          policyNumber: currentJob.policyNumber,
-          claimNumber: currentJob.claimNumber,
-          deductible: currentJob.deductible,
-        });
-
         const updateData: Record<string, unknown> = {};
         const fieldsToCheck = [
           { key: "insuranceCarrier", current: currentJob.insuranceCarrier, new: input.insuranceCarrier },
@@ -639,13 +631,10 @@ export const jobsRouter = router({
 
         for (const field of fieldsToCheck) {
           if (field.new !== undefined && field.new !== field.current) {
-            console.log(`[updateInsuranceInfo] Updating ${field.key}: "${field.current}" -> "${field.new}"`);
             updateData[field.key] = field.new;
             await logEditHistory(db, input.id, user!.id, field.key, String(field.current || ""), String(field.new || ""), "update", ctx);
           }
         }
-
-        console.log('[updateInsuranceInfo] Update data:', updateData);
 
         // Handle deductible (numeric field)
         if (input.deductible !== undefined && input.deductible !== (currentJob.deductible ? parseFloat(currentJob.deductible) : null)) {

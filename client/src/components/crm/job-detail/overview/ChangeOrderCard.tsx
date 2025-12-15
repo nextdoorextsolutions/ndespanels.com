@@ -146,22 +146,17 @@ export function ChangeOrderCard({
               </div>
             )}
 
-            {approvedAmount && (
+            {(approvedAmount || extrasCharged) && (
               <div className="pt-3 border-t border-slate-700">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">Approved Amount</span>
-                  <span className="text-slate-300">${approvedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-slate-400">Extras</span>
-                  <span className="text-slate-300">${(extrasCharged || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex items-center justify-between font-semibold mt-2 pt-2 border-t border-slate-600">
+                <div className="flex items-center justify-between font-semibold">
                   <span className="text-white flex items-center gap-1">
                     <DollarSign className="w-4 h-4" />
                     Total Amount
                   </span>
                   <span className="text-green-400 text-lg">${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Approved: ${(approvedAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + Extras: ${(extrasCharged || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
             )}

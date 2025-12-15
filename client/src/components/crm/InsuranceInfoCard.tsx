@@ -47,12 +47,6 @@ export function InsuranceInfoCard({
   });
 
   const handleSave = () => {
-    console.log('[InsuranceInfo] Saving:', {
-      insuranceCarrier: formData.insuranceCarrier,
-      policyNumber: formData.policyNumber,
-      claimNumber: formData.claimNumber,
-      deductible: formData.deductible,
-    });
     updateInsurance.mutate({
       id: jobId,
       insuranceCarrier: formData.insuranceCarrier.trim() || null,
