@@ -3,9 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Edit2, Check, X, DollarSign } from "lucide-react";
+import { FileText, Edit2, Check, X, DollarSign, Plus, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+
+interface ChangeOrderItem {
+  id: string;
+  description: string;
+  amount: string;
+}
 
 interface ChangeOrderCardProps {
   jobId: number;
@@ -23,8 +29,19 @@ export function ChangeOrderCard({
   canEdit 
 }: ChangeOrderCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [extras, setExtras] = useState(extrasCharged?.toString() || "");
-  const [supplements, setSupplements] = useState(supplementNumbers || "");
+  const [changeOrders, setChangeOrders] = useState<ChangeOrderItem[]>(() => {
+    // Parse existing data if available
+    if (supplementNumbers) {
+      try {
+        const parsed = JSON.parse(supplementNumbers);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // If not JSON, treat as legacy single item
+        return [{ id: '1', description: supplementNumbers, amount: extrasCharged?.toString() || '0' }];
+      }
+    }
+    return extrasCharged ? [{ id: '1', description: 'Change Order', amount: extrasCharged.toString() }] : [];
+  });
   
   const utils = trpc.useUtils();
   const updateLead = trpc.crm.updateLead.useMutation({
@@ -39,25 +56,69 @@ export function ChangeOrderCard({
   });
 
   const handleSave = () => {
-    const numericExtras = extras ? parseFloat(extras) : null;
-    if (extras && isNaN(numericExtras!)) {
-      toast.error("Please enter a valid amount for extras");
-      return;
+    // Validate all amounts
+    for (const item of changeOrders) {
+      const amount = parseFloat(item.amount);
+      if (isNaN(amount)) {
+        toast.error(`Invalid amount for ${item.description}`);
+        return;
+      }
     }
+    
+    // Calculate total
+    const totalExtras = changeOrders.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    
+    // Store as JSON
+    const supplementData = changeOrders.length > 0 ? JSON.stringify(changeOrders) : null;
+    
     updateLead.mutate({ 
       id: jobId, 
-      extrasCharged: numericExtras,
-      supplementNumbers: supplements || null
+      extrasCharged: totalExtras,
+      supplementNumbers: supplementData
     });
   };
 
   const handleCancel = () => {
-    setExtras(extrasCharged?.toString() || "");
-    setSupplements(supplementNumbers || "");
+    // Reset to original data
+    if (supplementNumbers) {
+      try {
+        const parsed = JSON.parse(supplementNumbers);
+        if (Array.isArray(parsed)) {
+          setChangeOrders(parsed);
+        } else {
+          setChangeOrders(extrasCharged ? [{ id: '1', description: supplementNumbers, amount: extrasCharged.toString() }] : []);
+        }
+      } catch {
+        setChangeOrders(extrasCharged ? [{ id: '1', description: supplementNumbers, amount: extrasCharged.toString() }] : []);
+      }
+    } else {
+      setChangeOrders(extrasCharged ? [{ id: '1', description: 'Change Order', amount: extrasCharged.toString() }] : []);
+    }
     setIsEditing(false);
   };
 
-  const totalAmount = (approvedAmount || 0) + (extrasCharged || 0);
+  const addChangeOrder = () => {
+    setChangeOrders([...changeOrders, { id: Date.now().toString(), description: '', amount: '0' }]);
+  };
+
+  const removeChangeOrder = (id: string) => {
+    setChangeOrders(changeOrders.filter(item => item.id !== id));
+  };
+
+  const updateChangeOrder = (id: string, field: 'description' | 'amount', value: string) => {
+    setChangeOrders(changeOrders.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  // Ensure numeric addition by parsing to numbers
+  const approvedAmountNum = typeof approvedAmount === 'number' ? approvedAmount : parseFloat(String(approvedAmount || 0));
+  const extrasChargedNum = typeof extrasCharged === 'number' ? extrasCharged : parseFloat(String(extrasCharged || 0));
+  const totalAmount = approvedAmountNum + extrasChargedNum;
+
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   return (
     <Card className="bg-slate-800 border-slate-700">
@@ -70,30 +131,60 @@ export function ChangeOrderCard({
       <CardContent>
         {isEditing ? (
           <div className="space-y-3">
-            <div>
-              <label className="text-sm text-slate-400 mb-1 block">Additional Charges</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={extras}
-                  onChange={(e) => setExtras(e.target.value)}
-                  className="pl-8 bg-slate-700 border-slate-600 text-white"
-                  placeholder="0.00"
-                />
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-slate-400">Change Order Items</label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={addChangeOrder}
+                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Item
+              </Button>
+            </div>
+            
+            {changeOrders.map((item, index) => (
+              <div key={item.id} className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <Input
+                    value={item.description}
+                    onChange={(e) => updateChangeOrder(item.id, 'description', e.target.value)}
+                    placeholder="Description (e.g., Wood, Tarps, Supplement)"
+                    className="bg-slate-700 border-slate-600 text-white"
+                  />
+                </div>
+                <div className="w-32">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={item.amount}
+                      onChange={(e) => updateChangeOrder(item.id, 'amount', e.target.value)}
+                      placeholder="0.00"
+                      className="pl-8 bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                </div>
+                {changeOrders.length > 1 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => removeChangeOrder(item.id)}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
-            </div>
-            <div>
-              <label className="text-sm text-slate-400 mb-1 block">Supplement Numbers</label>
-              <Textarea
-                value={supplements}
-                onChange={(e) => setSupplements(e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white resize-none"
-                placeholder="Enter supplement numbers (e.g., SUP-001, SUP-002)"
-                rows={3}
-              />
-            </div>
+            ))}
+            
+            {changeOrders.length === 0 && (
+              <div className="text-center py-4 text-slate-500">
+                No change orders yet. Click "Add Item" to create one.
+              </div>
+            )}
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -119,12 +210,7 @@ export function ChangeOrderCard({
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-slate-400">Extras Charged</div>
-                <div className="text-xl font-semibold text-orange-400">
-                  {extrasCharged ? `$${extrasCharged.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "$0.00"}
-                </div>
-              </div>
+              <div className="text-sm text-slate-400">Change Order Items</div>
               {canEdit && (
                 <Button
                   size="sm"
@@ -137,12 +223,18 @@ export function ChangeOrderCard({
               )}
             </div>
             
-            {supplementNumbers && (
-              <div>
-                <div className="text-sm text-slate-400 mb-1">Supplement Numbers</div>
-                <div className="text-sm text-white bg-slate-700/50 p-2 rounded border border-slate-600">
-                  {supplementNumbers}
-                </div>
+            {changeOrders.length > 0 ? (
+              <div className="space-y-2">
+                {changeOrders.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between text-sm bg-slate-700/50 p-2 rounded border border-slate-600">
+                    <span className="text-white">{item.description || 'Change Order'}</span>
+                    <span className="text-orange-400 font-semibold">${formatCurrency(parseFloat(item.amount))}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-slate-500 text-center py-2">
+                No change orders
               </div>
             )}
 
@@ -153,10 +245,10 @@ export function ChangeOrderCard({
                     <DollarSign className="w-4 h-4" />
                     Total Amount
                   </span>
-                  <span className="text-green-400 text-lg">${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="text-green-400 text-lg">${formatCurrency(totalAmount)}</span>
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
-                  Approved: ${(approvedAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + Extras: ${(extrasCharged || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Approved: ${formatCurrency(approvedAmountNum)} + Extras: ${formatCurrency(extrasChargedNum)}
                 </div>
               </div>
             )}
