@@ -85,10 +85,22 @@ app.use(cors({
 }));
 
 // ============================================
+// File Upload Route (BEFORE body parsers)
+// ============================================
+// IMPORTANT: Upload route must be registered BEFORE body parsers
+// because it needs to handle raw multipart data
+try {
+  registerUploadRoute(app);
+  console.log("[Server] Upload route registered at /api/upload");
+} catch (err) {
+  console.error("[Server] Failed to register upload route:", err);
+}
+
+// ============================================
 // Body Parsers
 // ============================================
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ limit: "1mb", extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // ============================================
 // Health Check Endpoint
@@ -108,16 +120,6 @@ try {
   console.log("[Server] OAuth routes registered");
 } catch (err) {
   console.error("[Server] Failed to register OAuth routes:", err);
-}
-
-// ============================================
-// File Upload Route
-// ============================================
-try {
-  registerUploadRoute(app);
-  console.log("[Server] Upload route registered");
-} catch (err) {
-  console.error("[Server] Failed to register upload route:", err);
 }
 
 // ============================================
