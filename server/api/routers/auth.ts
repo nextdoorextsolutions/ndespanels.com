@@ -64,13 +64,21 @@ export const authRouter = router({
           
           // Step 2: Handle Match (The Happy Path)
           if (existingUser) {
-            console.log('[Sync] ✅ User found by open_id. Updating last_signed_in and email...');
+            console.log('[Sync] ✅ User found by open_id. Updating last_signed_in...');
+            
+            // Only update email if it has changed to avoid unique constraint violations
+            const updateData: any = {
+              lastSignedIn: new Date(),
+            };
+            
+            if (existingUser.email !== input.email) {
+              console.log(`[Sync] Email changed from ${existingUser.email} to ${input.email}`);
+              updateData.email = input.email;
+            }
+            
             const [updatedUser] = await db
               .update(users)
-              .set({
-                email: input.email,
-                lastSignedIn: new Date(),
-              })
+              .set(updateData)
               .where(eq(users.id, existingUser.id))
               .returning();
             

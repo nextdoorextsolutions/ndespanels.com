@@ -169,11 +169,11 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
         <div className="flex items-center justify-between px-4 h-14">
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <Link href="/crm" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center">
+            <Link href="/crm" className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center flex-shrink-0">
                 <span className="text-black font-bold text-sm">N</span>
               </div>
-              <span className="text-white font-semibold text-lg hidden sm:block">
+              <span className="text-white font-semibold text-lg hidden md:block whitespace-nowrap">
                 NEXTDOOR<span className="text-[#00d4aa]">CRM</span>
               </span>
             </Link>
