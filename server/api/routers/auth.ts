@@ -91,6 +91,17 @@ export const authRouter = router({
             
             console.log(`[Sync] Successfully updated user: ${updatedUser.email} (Role: ${updatedUser.role})`);
             
+            // Create session token for existing user
+            console.log('[Sync] Creating session token for existing user...');
+            const { sdk } = await import("../../_core/sdk");
+            const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+            const sessionToken = await sdk.createSessionToken(input.supabaseUserId, {
+              name: updatedUser.name || input.name || "",
+              expiresInMs: ONE_YEAR_MS,
+            });
+            const cookieOptions = getSessionCookieOptions(ctx.req as any);
+            ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+            
             // Return consistent structure matching new user creation
             return {
               success: true,
@@ -102,6 +113,7 @@ export const authRouter = router({
               },
               isNewUser: false,
               isOwner: updatedUser.role === 'owner',
+              sessionToken,
             };
           }
           
@@ -141,6 +153,17 @@ export const authRouter = router({
             
             console.log(`[Sync] Successfully linked account: ${linkedUser.email} (Role: ${linkedUser.role})`);
             
+            // Create session token for linked user
+            console.log('[Sync] Creating session token for linked user...');
+            const { sdk } = await import("../../_core/sdk");
+            const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+            const sessionToken = await sdk.createSessionToken(input.supabaseUserId, {
+              name: linkedUser.name || input.name || "",
+              expiresInMs: ONE_YEAR_MS,
+            });
+            const cookieOptions = getSessionCookieOptions(ctx.req as any);
+            ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+            
             // Return consistent structure matching new user creation
             return {
               success: true,
@@ -152,6 +175,7 @@ export const authRouter = router({
               },
               isNewUser: false,
               isOwner: linkedUser.role === 'owner',
+              sessionToken,
             };
           }
           
