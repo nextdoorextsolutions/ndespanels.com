@@ -31,7 +31,7 @@ const GEMINI_BOT_NAME = 'Zerox AI';
 export const GlobalChatWidget: React.FC = () => {
   // 1. ALL HOOKS MUST BE CALLED FIRST - Before any conditional returns
   const { isOpen, isMinimized, setOpen, setMinimized } = useChatStore();
-  const { user: authUser, isAuthenticated } = useAuth();
+  const { user: authUser, isAuthenticated, loading } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -302,7 +302,21 @@ export const GlobalChatWidget: React.FC = () => {
   };
 
   // 2. NOW conditional returns are safe (after all hooks)
-  if (!isAuthenticated || !authUser) {
+  // Don't show widget if:
+  // - Still loading authentication
+  // - User is not authenticated
+  // - User object is null
+  // - On login/auth/public pages
+  const isAuthPage = typeof window !== 'undefined' && (
+    window.location.pathname === '/login' ||
+    window.location.pathname === '/forgot-password' ||
+    window.location.pathname === '/reset-password' ||
+    window.location.pathname === '/' ||
+    window.location.pathname === '/portal' ||
+    window.location.pathname === '/upload'
+  );
+  
+  if (loading || !isAuthenticated || !authUser || isAuthPage) {
     return null;
   }
 
