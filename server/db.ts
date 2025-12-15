@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users } from "../drizzle/schema";
+import { users, reportRequests, type InsertUser, type SafeUser } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 // Singleton database connection
@@ -175,7 +175,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   });
 }
 
-export async function getUserByOpenId(openId: string) {
+export async function getUserByOpenId(openId: string): Promise<SafeUser | undefined> {
   console.log("[Database] Looking up user by openId:", openId);
   
   return withRetry(async () => {
@@ -206,7 +206,7 @@ export async function getUserByOpenId(openId: string) {
   });
 }
 
-export async function getUserByEmail(email: string) {
+export async function getUserByEmail(email: string): Promise<SafeUser | undefined> {
   console.log("[Database] Looking up user by email:", email);
   
   return withRetry(async () => {

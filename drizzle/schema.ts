@@ -110,6 +110,9 @@ export const users = pgTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// SafeUser type excludes sensitive fields (password, stripeCustomerId)
+export type SafeUser = Omit<User, 'password' | 'stripeCustomerId'>;
+
 /**
  * Report requests / Leads table - incoming storm documentation requests
  */

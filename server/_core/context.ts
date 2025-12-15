@@ -1,5 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import type { User } from "../../drizzle/schema";
+import type { SafeUser } from "../../drizzle/schema";
 import { nanoid } from "nanoid";
 import { sdk } from "./sdk";
 import { logger } from "../lib/logger";
@@ -7,7 +7,7 @@ import { logger } from "../lib/logger";
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
-  user: User | null;
+  user: SafeUser | null;
   requestId: string;
 };
 
@@ -15,7 +15,7 @@ export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
   const requestId = nanoid(10);
-  let user: User | null = null;
+  let user: SafeUser | null = null;
 
   try {
     user = await sdk.authenticateRequest(opts.req);
