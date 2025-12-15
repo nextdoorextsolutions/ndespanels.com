@@ -90,7 +90,19 @@ export const authRouter = router({
               });
             
             console.log(`[Sync] Successfully updated user: ${updatedUser.email} (Role: ${updatedUser.role})`);
-            return updatedUser;
+            
+            // Return consistent structure matching new user creation
+            return {
+              success: true,
+              user: {
+                id: updatedUser.id,
+                name: updatedUser.name,
+                role: updatedUser.role,
+                email: updatedUser.email,
+              },
+              isNewUser: false,
+              isOwner: updatedUser.role === 'owner',
+            };
           }
           
           // Step 3: Handle Email Link (The "Zombie" Fix)
@@ -128,7 +140,19 @@ export const authRouter = router({
               });
             
             console.log(`[Sync] Successfully linked account: ${linkedUser.email} (Role: ${linkedUser.role})`);
-            return linkedUser;
+            
+            // Return consistent structure matching new user creation
+            return {
+              success: true,
+              user: {
+                id: linkedUser.id,
+                name: linkedUser.name,
+                role: linkedUser.role,
+                email: linkedUser.email,
+              },
+              isNewUser: false,
+              isOwner: linkedUser.role === 'owner',
+            };
           }
           
           // Step 4: Create New (Fallback)
