@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Upload, FileText, Eye, Download, Trash2 } from "lucide-react";
@@ -32,9 +32,52 @@ export function JobDocumentsTab({
   onPreviewDocument,
 }: JobDocumentsTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (canEdit) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (!canEdit) return;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Create a synthetic event to pass to onFileUpload
+      const syntheticEvent = {
+        target: { files },
+      } as React.ChangeEvent<HTMLInputElement>;
+      onFileUpload(syntheticEvent);
+    }
+  };
 
   return (
-    <div>
+    <div
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`transition-all rounded-lg ${
+        isDragging ? 'ring-2 ring-[#00d4aa] ring-offset-2 ring-offset-slate-900' : ''
+      }`}
+    >
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-white">Documents ({documents.length})</h2>
         {canEdit && (
@@ -57,6 +100,12 @@ export function JobDocumentsTab({
           </div>
         )}
       </div>
+
+      {isDragging && documents.length > 0 && (
+        <div className="mb-4 p-4 border-2 border-dashed border-[#00d4aa] bg-[#00d4aa]/10 rounded-lg text-center">
+          <p className="text-[#00d4aa] font-semibold">Drop files here to upload</p>
+        </div>
+      )}
       
       {documents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -114,19 +163,42 @@ export function JobDocumentsTab({
           ))}
         </div>
       ) : (
-        <Card className="bg-slate-800 border-slate-700">
+        <Card 
+          className={`bg-slate-800 border-2 transition-all ${
+            isDragging 
+              ? 'border-[#00d4aa] bg-[#00d4aa]/10' 
+              : 'border-slate-700 border-dashed'
+          }`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <CardContent className="py-12 text-center">
-            <FileText className="w-12 h-12 mx-auto mb-3 text-slate-500" />
-            <p className="text-slate-400">No documents uploaded yet</p>
-            {canEdit && (
-              <Button 
-                variant="link" 
-                className="mt-2 text-[#00d4aa]"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Upload your first document
-              </Button>
-            )}
+            <div className={`transition-all ${
+              isDragging ? 'scale-110' : 'scale-100'
+            }`}>
+              <FileText className={`w-12 h-12 mx-auto mb-3 transition-colors ${
+                isDragging ? 'text-[#00d4aa]' : 'text-slate-500'
+              }`} />
+              <p className={`transition-colors ${
+                isDragging ? 'text-[#00d4aa] font-semibold' : 'text-slate-400'
+              }`}>
+                {isDragging ? 'Drop files here' : 'No documents uploaded yet'}
+              </p>
+              {canEdit && !isDragging && (
+                <>
+                  <Button 
+                    variant="link" 
+                    className="mt-2 text-[#00d4aa]"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Upload your first document
+                  </Button>
+                  <p className="text-xs text-slate-500 mt-2">or drag and drop files here</p>
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

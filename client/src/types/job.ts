@@ -212,6 +212,11 @@ export interface Job {
   counterPrice?: string | null; // numeric stored as string
   priceStatus?: PriceStatus | null;
   
+  // Approved amount and change orders
+  approvedAmount?: number | null; // Initial approved amount (visible after approval)
+  extrasCharged?: number | null; // Additional charges for extras/change orders (visible when completed)
+  supplementNumbers?: string | null; // Supplement numbers for insurance claims (visible when completed)
+  
   // Timestamps
   createdAt: Date | string;
   updatedAt: Date | string;

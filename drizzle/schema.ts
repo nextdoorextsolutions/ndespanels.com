@@ -204,6 +204,11 @@ export const reportRequests = pgTable("report_requests", {
   counterPrice: numeric("counter_price", { precision: 10, scale: 2 }),
   priceStatus: priceStatusEnum("price_status").default("draft"),
   
+  // Approved amount and change orders
+  approvedAmount: numeric("approved_amount", { precision: 10, scale: 2 }), // Initial approved amount (visible after approval)
+  extrasCharged: numeric("extras_charged", { precision: 10, scale: 2 }), // Additional charges for extras/change orders (visible when completed)
+  supplementNumbers: text("supplement_numbers"), // Supplement numbers for insurance claims (visible when completed)
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
