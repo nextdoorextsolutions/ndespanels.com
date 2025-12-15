@@ -42,7 +42,7 @@ export function JobOverviewTab({
       {showApprovedAmount && (
         <ApprovedAmountCard
           jobId={jobId}
-          approvedAmount={job.approvedAmount}
+          approvedAmount={job.approvedAmount ?? null}
           canEdit={canEdit}
         />
       )}
@@ -51,9 +51,9 @@ export function JobOverviewTab({
       {showChangeOrders && (
         <ChangeOrderCard
           jobId={jobId}
-          extrasCharged={job.extrasCharged}
-          supplementNumbers={job.supplementNumbers}
-          approvedAmount={job.approvedAmount}
+          extrasCharged={job.extrasCharged ?? null}
+          supplementNumbers={job.supplementNumbers ?? null}
+          approvedAmount={job.approvedAmount ?? null}
           canEdit={canEdit}
         />
       )}
