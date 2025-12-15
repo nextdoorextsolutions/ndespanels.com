@@ -69,8 +69,13 @@ const handleUnauthorizedError = (error: unknown) => {
   console.warn("[Auth] Unauthorized error - clearing session token");
   clearSessionToken();
   
-  // Redirect to login
-  window.location.href = getLoginUrl();
+  // Redirect to login (only if OAuth is configured)
+  const loginUrl = getLoginUrl();
+  if (loginUrl && loginUrl !== "#") {
+    window.location.href = loginUrl;
+  } else {
+    console.warn("[Auth] OAuth not configured, cannot redirect to login");
+  }
 };
 
 queryClient.getQueryCache().subscribe(event => {
