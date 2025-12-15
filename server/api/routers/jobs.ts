@@ -209,11 +209,25 @@ export const jobsRouter = router({
           .where(eq(activities.reportRequestId, input.id))
           .orderBy(desc(activities.createdAt));
 
+        // Enrich activities with user information
+        const userIds = Array.from(new Set(leadActivities.map(a => a.userId).filter((id): id is number => id !== null && id !== undefined)));
+        const activityUsers = userIds.length > 0
+          ? await db.select({ id: users.id, name: users.name, email: users.email })
+              .from(users)
+              .where(inArray(users.id, userIds))
+          : [];
+        
+        const userMap = new Map(activityUsers.map(u => [u.id, u]));
+        const enrichedActivities = leadActivities.map(activity => ({
+          ...activity,
+          user: activity.userId ? userMap.get(activity.userId) : null,
+        }));
+
         const leadDocuments = await db.select().from(documents)
           .where(eq(documents.reportRequestId, input.id))
           .orderBy(desc(documents.createdAt));
 
-        return { ...lead, activities: leadActivities, documents: leadDocuments };
+        return { ...lead, activities: enrichedActivities, documents: leadDocuments };
       }),
 
     // Create a new job/lead from CRM
@@ -338,6 +352,9 @@ export const jobsRouter = router({
         scheduledDate: z.string().optional(),
         customerStatusMessage: z.string().optional(),
         manualAreaSqFt: z.number().nullable().optional(), // Manual roof area override
+        approvedAmount: z.number().nullable().optional(), // Approved amount (visible after approval)
+        extrasCharged: z.number().nullable().optional(), // Additional charges for extras/change orders
+        supplementNumbers: z.string().nullable().optional(), // Supplement numbers for insurance claims
         attachments: z.array(z.object({
           fileName: z.string(),
           fileData: z.string(), // Base64 encoded file data
@@ -437,6 +454,18 @@ export const jobsRouter = router({
         if (input.manualAreaSqFt !== undefined && input.manualAreaSqFt !== currentLead.manualAreaSqFt) {
           updateData.manualAreaSqFt = input.manualAreaSqFt;
           await logEditHistory(db, input.id, user!.id, "manualAreaSqFt", String(currentLead.manualAreaSqFt || ""), String(input.manualAreaSqFt || ""), "update", ctx);
+        }
+        if (input.approvedAmount !== undefined && input.approvedAmount !== Number(currentLead.approvedAmount)) {
+          updateData.approvedAmount = input.approvedAmount;
+          await logEditHistory(db, input.id, user!.id, "approvedAmount", String(currentLead.approvedAmount || ""), String(input.approvedAmount || ""), "update", ctx);
+        }
+        if (input.extrasCharged !== undefined && input.extrasCharged !== Number(currentLead.extrasCharged)) {
+          updateData.extrasCharged = input.extrasCharged;
+          await logEditHistory(db, input.id, user!.id, "extrasCharged", String(currentLead.extrasCharged || ""), String(input.extrasCharged || ""), "update", ctx);
+        }
+        if (input.supplementNumbers !== undefined && input.supplementNumbers !== currentLead.supplementNumbers) {
+          updateData.supplementNumbers = input.supplementNumbers;
+          await logEditHistory(db, input.id, user!.id, "supplementNumbers", currentLead.supplementNumbers || "", input.supplementNumbers || "", "update", ctx);
         }
 
         if (Object.keys(updateData).length > 0) {
