@@ -389,6 +389,7 @@ export const GlobalChatWidget: React.FC = () => {
           <ChannelSidebar
             activeChannelId={activeChannelName}
             onChannelSelect={handleChannelSelect}
+            channels={channels || []}
           />
           
           {/* Chat Area */}

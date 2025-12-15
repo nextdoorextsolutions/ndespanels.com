@@ -21,6 +21,13 @@ interface ChannelCategory {
 interface ChannelSidebarProps {
   activeChannelId: string;
   onChannelSelect: (channelId: string) => void;
+  channels: Array<{
+    id: number;
+    name: string;
+    type: string;
+    description: string | null;
+    unreadCount?: number;
+  }>;
 }
 
 // Mission Control Channels
@@ -53,7 +60,7 @@ const DIRECT_MESSAGES: Channel[] = [
   { id: 'dm-alex', name: 'Alex Developer', type: 'dm' },
 ];
 
-export function ChannelSidebar({ activeChannelId, onChannelSelect }: ChannelSidebarProps) {
+export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: ChannelSidebarProps) {
   const { user: authUser } = useAuth();
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'mission-control': true,
@@ -81,14 +88,51 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect }: ChannelSide
   };
 
   // Toggle category expansion
-  const toggleCategory = (categoryId: string) => {
+  const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
       ...prev,
-      [categoryId]: !prev[categoryId],
+      [category]: !prev[category]
     }));
   };
 
-  // Render channel category
+  // Group real channels by category based on name patterns
+  const missionControlChannels = channels.filter(c => 
+    ['general-announcements', 'wins-and-shoutouts', 'safety-alerts', 'fleet-logistics'].includes(c.name)
+  );
+  
+  const jobLifecycleChannels = channels.filter(c => 
+    ['leads-incoming', 'estimates-and-bids', 'active-installs', 'permitting-and-hoa', 'service-and-repair'].includes(c.name)
+  );
+  
+  const fieldOfficeChannels = channels.filter(c => 
+    ['tech-support', 'material-orders', 'design-engineering'].includes(c.name)
+  );
+
+  const renderChannelList = (channelList: typeof channels) => (
+    channelList.map((channel) => (
+      <button
+        key={channel.id}
+        onClick={() => onChannelSelect(channel.name)}
+        className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-all group ${
+          activeChannelId === channel.name
+            ? 'bg-gradient-to-r from-[#00d4aa]/10 to-transparent border-l-2 border-[#00d4aa] text-white font-medium'
+            : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+        }`}
+        title={channel.description || undefined}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Hash className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="truncate text-xs">{channel.name}</span>
+        </div>
+        {channel.unreadCount && channel.unreadCount > 0 && (
+          <span className="bg-[#00d4aa] text-slate-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0">
+            {channel.unreadCount}
+          </span>
+        )}
+      </button>
+    ))
+  );
+
   const renderCategory = (categoryId: string, title: string, channels: Channel[]) => (
     <div key={categoryId} className="mb-3">
       <button
@@ -138,7 +182,7 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect }: ChannelSide
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-white">NextDoor Ops</h2>
-            <p className="text-xs text-slate-500">8 members online</p>
+            <p className="text-xs text-slate-500">{onlineUsers.length} online</p>
           </div>
           <Button variant="ghost" size="icon" className="h-6 w-6">
             <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -148,54 +192,72 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect }: ChannelSide
 
       {/* Channels Section */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-3 space-y-1">
-          {renderCategory('mission-control', 'Mission Control', MISSION_CONTROL)}
-          {renderCategory('job-lifecycle', 'Job Lifecycle', JOB_LIFECYCLE)}
-          {renderCategory('field-office', 'Field vs Office', FIELD_OFFICE)}
-        </div>
-
-        {/* Direct Messages Section */}
-        <div className="p-3 border-t border-slate-800/50">
-          <div className="flex items-center justify-between mb-2 px-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Direct Messages</span>
-            <Button variant="ghost" size="icon" className="h-5 w-5">
-              <span className="text-slate-400 text-lg leading-none">+</span>
-            </Button>
-          </div>
-          
-          <div className="space-y-0.5">
-            {DIRECT_MESSAGES.map((dm) => (
+        <div className="p-3 space-y-3">
+          {/* Mission Control */}
+          {missionControlChannels.length > 0 && (
+            <div>
               <button
-                key={dm.id}
-                onClick={() => onChannelSelect(dm.id)}
-                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-all ${
-                  activeChannelId === dm.id
-                    ? 'bg-gradient-to-r from-[#00d4aa]/10 to-transparent border-l-2 border-[#00d4aa] text-white font-medium'
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                }`}
+                onClick={() => toggleCategory('mission-control')}
+                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-slate-800/30 rounded transition-colors group"
               >
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage src={undefined} alt={dm.name} />
-                      <AvatarFallback className="bg-slate-700 text-xs text-white">
-                        {dm.name.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {isUserOnline(dm.id) && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-slate-950 rounded-full"></div>
-                    )}
-                  </div>
-                  <span className="truncate">{dm.name}</span>
-                </div>
-                {dm.unreadCount && dm.unreadCount > 0 && (
-                  <span className="bg-[#00d4aa] text-slate-900 text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                    {dm.unreadCount}
-                  </span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mission Control</span>
+                {expandedCategories['mission-control'] ? (
+                  <ChevronDown className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
                 )}
               </button>
-            ))}
-          </div>
+              {expandedCategories['mission-control'] && (
+                <div className="mt-1 space-y-0.5">
+                  {renderChannelList(missionControlChannels)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Job Lifecycle */}
+          {jobLifecycleChannels.length > 0 && (
+            <div>
+              <button
+                onClick={() => toggleCategory('job-lifecycle')}
+                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-slate-800/30 rounded transition-colors group"
+              >
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Job Lifecycle</span>
+                {expandedCategories['job-lifecycle'] ? (
+                  <ChevronDown className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+                )}
+              </button>
+              {expandedCategories['job-lifecycle'] && (
+                <div className="mt-1 space-y-0.5">
+                  {renderChannelList(jobLifecycleChannels)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Field vs Office */}
+          {fieldOfficeChannels.length > 0 && (
+            <div>
+              <button
+                onClick={() => toggleCategory('field-office')}
+                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-slate-800/30 rounded transition-colors group"
+              >
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Field vs Office</span>
+                {expandedCategories['field-office'] ? (
+                  <ChevronDown className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+                )}
+              </button>
+              {expandedCategories['field-office'] && (
+                <div className="mt-1 space-y-0.5">
+                  {renderChannelList(fieldOfficeChannels)}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
