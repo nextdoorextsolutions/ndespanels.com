@@ -8,7 +8,6 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import type { Job } from "@/types/job";
-import { AIChatWidget } from "@/components/shared/AIChatWidget";
 
 // Tab Components
 import { JobOverviewTab } from "@/components/crm/job-detail/JobOverviewTab";
@@ -543,9 +542,6 @@ export default function JobDetail() {
           )}
         </div>
       </div>
-      
-      {/* AI Chat Widget with Job Context */}
-      <AIChatWidget jobContext={jobId} />
     </CRMLayout>
   );
 }

@@ -30,7 +30,6 @@ import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
-import { AIChatWidget } from "@/components/shared/AIChatWidget";
 
 interface CRMLayoutProps {
   children: React.ReactNode;
@@ -375,9 +374,6 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
 
       {/* Main Content */}
       <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
-
-      {/* AI Chat Widget - Fixed in bottom-right corner */}
-      <AIChatWidget />
     </div>
   );
 }
