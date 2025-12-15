@@ -1,4 +1,4 @@
-import { User, ReportRequest } from "../../drizzle/schema";
+import { SafeUser, ReportRequest } from "../../drizzle/schema";
 
 /**
  * Role hierarchy and permissions for NextDoor CRM
@@ -34,32 +34,32 @@ export function normalizeRole(role: string): CRMRole {
 }
 
 // Check if user has owner role
-export function isOwner(user: User | null): boolean {
+export function isOwner(user: SafeUser | null): boolean {
   if (!user) return false;
   return user.role === "owner";
 }
 
 // Check if user has admin role (includes owner)
-export function isAdmin(user: User | null): boolean {
+export function isAdmin(user: SafeUser | null): boolean {
   if (!user) return false;
   const role = normalizeRole(user.role);
   return role === "owner" || role === "admin";
 }
 
 // Check if user has field crew role
-export function isFieldCrew(user: User | null): boolean {
+export function isFieldCrew(user: SafeUser | null): boolean {
   if (!user) return false;
   return user.role === "field_crew";
 }
 
 // Check if user has team lead role
-export function isTeamLead(user: User | null): boolean {
+export function isTeamLead(user: SafeUser | null): boolean {
   if (!user) return false;
   return user.role === "team_lead";
 }
 
 // Check if user has sales rep role
-export function isSalesRep(user: User | null): boolean {
+export function isSalesRep(user: SafeUser | null): boolean {
   if (!user) return false;
   const role = normalizeRole(user.role);
   return role === "sales_rep";
@@ -70,7 +70,7 @@ export function isSalesRep(user: User | null): boolean {
  */
 
 // Can user view a specific job?
-export function canViewJob(user: User | null, job: ReportRequest, teamMemberIds: number[] = []): boolean {
+export function canViewJob(user: SafeUser | null, job: ReportRequest, teamMemberIds: number[] = []): boolean {
   if (!user) return false;
   
   const role = normalizeRole(user.role);
@@ -103,7 +103,7 @@ export function canViewJob(user: User | null, job: ReportRequest, teamMemberIds:
 }
 
 // Can user edit a specific job?
-export function canEditJob(user: User | null, job: ReportRequest, teamMemberIds: number[] = []): boolean {
+export function canEditJob(user: SafeUser | null, job: ReportRequest, teamMemberIds: number[] = []): boolean {
   if (!user) return false;
   
   const role = normalizeRole(user.role);
@@ -134,7 +134,7 @@ export function canEditJob(user: User | null, job: ReportRequest, teamMemberIds:
 }
 
 // Can user upload photos? (Field crew can do this)
-export function canUploadPhotos(user: User | null, job: ReportRequest, teamMemberIds: number[] = []): boolean {
+export function canUploadPhotos(user: SafeUser | null, job: ReportRequest, teamMemberIds: number[] = []): boolean {
   if (!user) return false;
   
   const role = normalizeRole(user.role);
@@ -165,31 +165,31 @@ export function canUploadPhotos(user: User | null, job: ReportRequest, teamMembe
 }
 
 // Can user delete a job? (Only owners)
-export function canDeleteJob(user: User | null): boolean {
+export function canDeleteJob(user: SafeUser | null): boolean {
   if (!user) return false;
   return isOwner(user);
 }
 
 // Can user view edit history? (Only owners and admins)
-export function canViewEditHistory(user: User | null): boolean {
+export function canViewEditHistory(user: SafeUser | null): boolean {
   if (!user) return false;
   return isAdmin(user);
 }
 
 // Can user manage team members? (Only owners)
-export function canManageTeam(user: User | null): boolean {
+export function canManageTeam(user: SafeUser | null): boolean {
   if (!user) return false;
   return isOwner(user);
 }
 
 // Can user assign team members to team leads? (Only owners)
-export function canAssignTeamMembers(user: User | null): boolean {
+export function canAssignTeamMembers(user: SafeUser | null): boolean {
   if (!user) return false;
   return isOwner(user);
 }
 
 // Can user create new jobs?
-export function canCreateJob(user: User | null): boolean {
+export function canCreateJob(user: SafeUser | null): boolean {
   if (!user) return false;
   const role = normalizeRole(user.role);
   // Everyone except basic users and field crew can create jobs
