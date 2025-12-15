@@ -80,7 +80,14 @@ export const authRouter = router({
               .update(users)
               .set(updateData)
               .where(eq(users.id, existingUser.id))
-              .returning();
+              .returning({
+                id: users.id,
+                openId: users.openId,
+                email: users.email,
+                name: users.name,
+                role: users.role,
+                isActive: users.isActive,
+              });
             
             console.log(`[Sync] Successfully updated user: ${updatedUser.email} (Role: ${updatedUser.role})`);
             return updatedUser;
@@ -111,7 +118,14 @@ export const authRouter = router({
                 lastSignedIn: new Date(),
               })
               .where(eq(users.id, userByEmail.id))
-              .returning();
+              .returning({
+                id: users.id,
+                openId: users.openId,
+                email: users.email,
+                name: users.name,
+                role: users.role,
+                isActive: users.isActive,
+              });
             
             console.log(`[Sync] Successfully linked account: ${linkedUser.email} (Role: ${linkedUser.role})`);
             return linkedUser;
@@ -157,7 +171,14 @@ export const authRouter = router({
             [result] = await db
               .insert(users)
               .values(insertValues)
-              .returning();
+              .returning({
+                id: users.id,
+                openId: users.openId,
+                email: users.email,
+                name: users.name,
+                role: users.role,
+                isActive: users.isActive,
+              });
           } catch (dbError: any) {
             // Log detailed postgres error information
             console.error('❌ [Sync] DATABASE INSERT FAILED - Death Loop Prevention');
