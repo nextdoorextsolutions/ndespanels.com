@@ -38,7 +38,7 @@ export const GlobalChatWidget: React.FC = () => {
   const [activeChannelId, setActiveChannelId] = useState<number | null>(null);
   const [activeChannelName, setActiveChannelName] = useState('general-announcements');
   const [isAIOpen, setIsAIOpen] = useState(false);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
   const [streamingMessage, setStreamingMessage] = useState<string>('');
   const [streamingHistory, setStreamingHistory] = useState<Array<{ role: 'user' | 'model'; parts: string }>>([]);
   const [messageOffset, setMessageOffset] = useState(0);
@@ -168,7 +168,7 @@ export const GlobalChatWidget: React.FC = () => {
         if (!chunk.done && streamingMessageId) {
           setMessages(prev => 
             prev.map(m => 
-              m.id.toString() === streamingMessageId
+              m.id === streamingMessageId
                 ? { ...m, content: m.content + chunk.chunk }
                 : m
             )
@@ -177,7 +177,7 @@ export const GlobalChatWidget: React.FC = () => {
           // Mark streaming complete
           setMessages(prev => 
             prev.map(m => 
-              m.id.toString() === streamingMessageId
+              m.id === streamingMessageId
                 ? { ...m, isStreaming: false }
                 : m
             )
@@ -222,9 +222,9 @@ export const GlobalChatWidget: React.FC = () => {
         }));
 
       // Create placeholder for streaming response
-      const botMessageId = `streaming-${Date.now()}`;
+      const botMessageId = Date.now();
       const botMessage: ChatMessage = {
-        id: Date.now(),
+        id: botMessageId,
         content: '',
         userId: 0,
         userName: GEMINI_BOT_NAME,
