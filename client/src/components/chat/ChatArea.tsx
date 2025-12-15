@@ -7,12 +7,16 @@ import { toast } from 'sonner';
 import { usePresence, PresenceUser } from '@/hooks/usePresence';
 
 interface ChatMessage {
-  id: string;
+  id: number;
   content: string;
-  senderId: string;
-  senderName: string;
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  userImage: string | null;
   createdAt: Date;
-  isAdmin?: boolean;
+  isEdited?: boolean;
+  editedAt?: Date | null;
+  metadata?: any;
   isStreaming?: boolean;
 }
 
@@ -173,19 +177,22 @@ export function ChatArea({
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg) => {
-          const isMe = msg.senderId === currentUserId;
-          const isSystem = msg.senderId === geminiId;
+          const isMe = msg.userId.toString() === currentUserId;
+          const isSystem = msg.userName === geminiName;
 
           return (
             <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-              {!isMe && <MessageAvatar name={msg.senderName} avatarUrl={undefined} isSystem={isSystem} />}
+              {!isMe && <MessageAvatar name={msg.userName || 'Unknown'} avatarUrl={msg.userImage || undefined} isSystem={isSystem} />}
 
               <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-medium text-slate-400">{msg.senderName}</span>
+                  <span className="text-xs font-medium text-slate-400">{msg.userName || 'Unknown'}</span>
                   <span className="text-[10px] text-slate-600">
                     {msg.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
+                  {msg.isEdited && (
+                    <span className="text-[10px] text-slate-600 italic">(edited)</span>
+                  )}
                 </div>
 
                 <div

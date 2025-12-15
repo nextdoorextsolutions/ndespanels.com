@@ -34,6 +34,7 @@ import { aiRouter } from "./api/routers/ai";
 import { invoicesRouter } from "./api/routers/invoices";
 import { globalChatRouter } from "./api/routers/globalChat";
 import { chatRouter } from "./api/routers/chat";
+import { teamChatRouter } from "./api/routers/teamChat";
 import { estimatesRouter } from "./api/routers/estimates";
 import { getDb } from "./db";
 import { reportRequests, users, activities, documents, editHistory, jobAttachments, jobMessageReads, notifications, materialOrders, materialKits } from "../drizzle/schema";
@@ -186,6 +187,7 @@ export const appRouter = router({
   invoices: invoicesRouter, // Refactored to server/api/routers/invoices.ts
   globalChat: globalChatRouter, // Refactored to server/api/routers/globalChat.ts
   chat: chatRouter, // Real team messaging - server/api/routers/chat.ts
+  teamChat: teamChatRouter, // Channel-based team chat - server/api/routers/teamChat.ts
   estimates: estimatesRouter, // Refactored to server/api/routers/estimates.ts
   
   // CRM router - core job/lead operations, analytics, scheduling

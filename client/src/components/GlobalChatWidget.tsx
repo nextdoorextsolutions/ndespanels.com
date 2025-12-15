@@ -11,47 +11,56 @@ import { usePresence, PresenceUser } from '@/hooks/usePresence';
 import { useAuth } from '@/_core/hooks/useAuth';
 
 interface ChatMessage {
-  id: string;
+  id: number;
   content: string;
-  senderId: string;
-  senderName: string;
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  userImage: string | null;
   createdAt: Date;
-  isAdmin?: boolean;
+  isEdited?: boolean;
+  editedAt?: Date | null;
+  metadata?: any;
   isStreaming?: boolean;
-}
-
-interface User {
-  id: string;
-  name: string;
-  email?: string;
 }
 
 const GEMINI_BOT_ID = 'gemini-bot';
 const GEMINI_BOT_NAME = 'Zerox AI';
 
-const INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: 'm1',
-    content: "Welcome to NextDoor Operations Chat! I'm Zerox AI, your roofing & solar CRM assistant. Ask me about leads, active installs, material orders, or anything else. 🏠⚡",
-    senderId: GEMINI_BOT_ID,
-    senderName: GEMINI_BOT_NAME,
-    createdAt: new Date(Date.now() - 86400000),
-    isAdmin: true
-  },
-];
-
 export const GlobalChatWidget: React.FC = () => {
   // 1. ALL HOOKS MUST BE CALLED FIRST - Before any conditional returns
   const { isOpen, isMinimized, setOpen, setMinimized } = useChatStore();
   const { user: authUser, isAuthenticated } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [activeChannelId, setActiveChannelId] = useState('general-announcements');
+  const [activeChannelId, setActiveChannelId] = useState<number | null>(null);
+  const [activeChannelName, setActiveChannelName] = useState('general-announcements');
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [streamingMessage, setStreamingMessage] = useState<string>('');
   const [streamingHistory, setStreamingHistory] = useState<Array<{ role: 'user' | 'model'; parts: string }>>([]);
+
+  // Fetch channels
+  const { data: channels } = trpc.teamChat.getChannels.useQuery(undefined, {
+    enabled: isAuthenticated && !!authUser,
+  });
+
+  // Fetch messages for active channel
+  const { data: channelMessages, refetch: refetchMessages } = trpc.teamChat.getMessages.useQuery(
+    { channelId: activeChannelId!, limit: 50 },
+    { enabled: !!activeChannelId }
+  );
+
+  // Send message mutation
+  const sendTeamMessageMutation = trpc.teamChat.sendMessage.useMutation({
+    onSuccess: () => {
+      refetchMessages();
+    },
+  });
+
+  // Mark as read mutation
+  const markAsReadMutation = trpc.teamChat.markAsRead.useMutation();
 
   // Build current user from auth (safe to do before conditional return)
   const currentUser: PresenceUser = {
@@ -61,16 +70,39 @@ export const GlobalChatWidget: React.FC = () => {
     role: authUser?.role || 'user',
   };
 
-  // Verify real user data is flowing
+  // Set initial channel when channels load
   useEffect(() => {
-    if (authUser && isOpen) {
-      console.log('Chat initializing for:', authUser.email || authUser.name, {
-        id: authUser.id,
-        name: authUser.name,
-        role: authUser.role,
-      });
+    if (channels && channels.length > 0 && !activeChannelId) {
+      const defaultChannel = channels.find(c => c.name === 'general-announcements') || channels[0];
+      setActiveChannelId(defaultChannel.id);
+      setActiveChannelName(defaultChannel.name);
     }
-  }, [authUser, isOpen]);
+  }, [channels, activeChannelId]);
+
+  // Update messages when channel messages load
+  useEffect(() => {
+    if (channelMessages) {
+      setMessages(channelMessages.map(m => ({
+        id: m.id,
+        content: m.content,
+        userId: m.userId,
+        userName: m.userName,
+        userEmail: m.userEmail,
+        userImage: m.userImage,
+        createdAt: new Date(m.createdAt),
+        isEdited: m.isEdited || false,
+        editedAt: m.editedAt ? new Date(m.editedAt) : null,
+        metadata: m.metadata,
+      })));
+    }
+  }, [channelMessages]);
+
+  // Mark channel as read when opening
+  useEffect(() => {
+    if (activeChannelId && isOpen && !isMinimized) {
+      markAsReadMutation.mutate({ channelId: activeChannelId });
+    }
+  }, [activeChannelId, isOpen, isMinimized]);
 
   // usePresence hook - always called, but enabled flag controls behavior
   // Keep connection active even when minimized so notifications work
@@ -129,58 +161,56 @@ export const GlobalChatWidget: React.FC = () => {
 
 
   const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !activeChannelId) return;
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      content: inputText,
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      createdAt: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     const messageToSend = inputText;
     setInputText('');
-    setIsTyping(true);
 
     // Check if message mentions Gemini or is in Gemini thread
     const shouldUseGemini = messageToSend.toLowerCase().includes('@gemini') || 
-                           messageToSend.toLowerCase().includes('zerox');
+                           messageToSend.toLowerCase().includes('@zerox');
 
     if (shouldUseGemini) {
-      // Build chat history for context (before adding new messages)
+      setIsTyping(true);
+      
+      // Build chat history for context
       const history = messages
-        .filter(m => m.senderId === currentUser.id || m.senderId === GEMINI_BOT_ID)
+        .filter(m => m.userId === authUser?.id || m.userName === GEMINI_BOT_NAME)
         .map(m => ({
-          role: m.senderId === currentUser.id ? 'user' as const : 'model' as const,
+          role: m.userId === authUser?.id ? 'user' as const : 'model' as const,
           parts: m.content,
         }));
 
       // Create placeholder for streaming response
-      const botMessageId = (Date.now() + 1).toString();
+      const botMessageId = `streaming-${Date.now()}`;
       const botMessage: ChatMessage = {
-        id: botMessageId,
+        id: Date.now(),
         content: '',
-        senderId: GEMINI_BOT_ID,
-        senderName: GEMINI_BOT_NAME,
+        userId: 0,
+        userName: GEMINI_BOT_NAME,
+        userEmail: null,
+        userImage: null,
         createdAt: new Date(),
-        isAdmin: true,
-        isStreaming: true, // Enable streaming indicator
+        isStreaming: true,
       };
       
       setMessages(prev => [...prev, botMessage]);
       
-      // Trigger streaming subscription with saved message and history
+      // Trigger streaming subscription
       setStreamingMessage(messageToSend);
       setStreamingHistory(history);
       setStreamingMessageId(botMessageId);
-
-      // The subscription will handle the streaming automatically
-      // No need for try-catch here as subscription handles errors
     } else {
-      // Regular team message (no AI)
-      setIsTyping(false);
+      // Send regular team message to database
+      try {
+        await sendTeamMessageMutation.mutateAsync({
+          channelId: activeChannelId,
+          content: messageToSend,
+        });
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        toast.error('Failed to send message');
+      }
     }
   };
 
@@ -212,7 +242,15 @@ export const GlobalChatWidget: React.FC = () => {
   };
 
   const getChannelName = () => {
-    return activeChannelId.replace('dm-', '');
+    return activeChannelName;
+  };
+
+  const handleChannelSelect = (channelName: string) => {
+    const channel = channels?.find(c => c.name === channelName);
+    if (channel) {
+      setActiveChannelId(channel.id);
+      setActiveChannelName(channel.name);
+    }
   };
 
   // 2. NOW conditional returns are safe (after all hooks)
@@ -301,8 +339,8 @@ export const GlobalChatWidget: React.FC = () => {
         <div className="h-[calc(100%-60px)] flex">
           {/* Channel Sidebar */}
           <ChannelSidebar
-            activeChannelId={activeChannelId}
-            onChannelSelect={setActiveChannelId}
+            activeChannelId={activeChannelName}
+            onChannelSelect={handleChannelSelect}
           />
           
           {/* Chat Area */}
@@ -315,7 +353,7 @@ export const GlobalChatWidget: React.FC = () => {
               onSendMessage={handleSendMessage}
               onKeyDown={handleKeyDown}
               isTyping={isTyping}
-              currentUserId={currentUser.id}
+              currentUserId={authUser?.id?.toString() || 'guest'}
               geminiId={GEMINI_BOT_ID}
               geminiName={GEMINI_BOT_NAME}
               onToggleAI={() => setIsAIOpen(!isAIOpen)}
