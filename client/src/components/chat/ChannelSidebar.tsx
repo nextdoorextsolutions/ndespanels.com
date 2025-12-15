@@ -21,6 +21,7 @@ interface ChannelCategory {
 interface ChannelSidebarProps {
   activeChannelId: string;
   onChannelSelect: (channelId: string) => void;
+  currentUserId: string;
 }
 
 // Mission Control Channels

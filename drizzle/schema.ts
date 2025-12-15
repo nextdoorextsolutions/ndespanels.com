@@ -586,3 +586,53 @@ export const clients = pgTable("clients", {
 
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = typeof clients.$inferInsert;
+
+/**
+ * Chat Channels - Public channels and private DMs
+ */
+export const channelTypeEnum = pgEnum("channel_type", ["public", "private", "dm"]);
+
+export const chatChannels = pgTable("chat_channels", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  type: channelTypeEnum("type").notNull().default("public"),
+  description: text("description"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type ChatChannel = typeof chatChannels.$inferSelect;
+export type InsertChatChannel = typeof chatChannels.$inferInsert;
+
+/**
+ * Chat Messages - Messages sent in channels or DMs
+ */
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  channelId: integer("channel_id").references(() => chatChannels.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  metadata: jsonb("metadata"), // For attachments, mentions, reactions, etc.
+  isEdited: boolean("is_edited").default(false),
+  editedAt: timestamp("edited_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+/**
+ * Channel Members - Tracks who has access to which channels
+ */
+export const channelMembers = pgTable("channel_members", {
+  id: serial("id").primaryKey(),
+  channelId: integer("channel_id").references(() => chatChannels.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  role: varchar("role", { length: 20 }).default("member"), // member, admin, owner
+  lastReadAt: timestamp("last_read_at"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+export type ChannelMember = typeof channelMembers.$inferSelect;
+export type InsertChannelMember = typeof channelMembers.$inferInsert;

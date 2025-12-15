@@ -3,11 +3,11 @@ import { X, Sparkles, Wand2, FileText, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AISidebarProps {
-  onClose: () => void;
   onGenerateDraft: (type: 'grammar' | 'professional' | 'summarize') => void;
+  isGenerating: boolean;
 }
 
-export function AISidebar({ onClose, onGenerateDraft }: AISidebarProps) {
+export function AISidebar({ onGenerateDraft, isGenerating }: AISidebarProps) {
   return (
     <div className="bg-slate-950/50 border-l border-slate-800 flex flex-col h-full">
       {/* Header */}
@@ -21,14 +21,6 @@ export function AISidebar({ onClose, onGenerateDraft }: AISidebarProps) {
             <p className="text-xs text-slate-500">Your CRM Assistant</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-slate-400 hover:text-white"
-          onClick={onClose}
-        >
-          <X className="w-4 h-4" />
-        </Button>
       </div>
 
       {/* Content */}
