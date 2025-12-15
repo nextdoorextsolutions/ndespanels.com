@@ -47,11 +47,17 @@ export function InsuranceInfoCard({
   });
 
   const handleSave = () => {
+    console.log('[InsuranceInfo] Saving:', {
+      insuranceCarrier: formData.insuranceCarrier,
+      policyNumber: formData.policyNumber,
+      claimNumber: formData.claimNumber,
+      deductible: formData.deductible,
+    });
     updateInsurance.mutate({
       id: jobId,
-      insuranceCarrier: formData.insuranceCarrier || null,
-      policyNumber: formData.policyNumber || null,
-      claimNumber: formData.claimNumber || null,
+      insuranceCarrier: formData.insuranceCarrier.trim() || null,
+      policyNumber: formData.policyNumber.trim() || null,
+      claimNumber: formData.claimNumber.trim() || null,
       deductible: formData.deductible ? parseFloat(formData.deductible) : null,
     });
   };
