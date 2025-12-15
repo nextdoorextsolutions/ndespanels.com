@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerUploadRoute } from "./upload";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic } from "./vite";
@@ -107,6 +108,16 @@ try {
   console.log("[Server] OAuth routes registered");
 } catch (err) {
   console.error("[Server] Failed to register OAuth routes:", err);
+}
+
+// ============================================
+// File Upload Route
+// ============================================
+try {
+  registerUploadRoute(app);
+  console.log("[Server] Upload route registered");
+} catch (err) {
+  console.error("[Server] Failed to register upload route:", err);
 }
 
 // ============================================
