@@ -3,7 +3,7 @@ import { X, Sparkles, Wand2, FileText, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AISidebarProps {
-  onGenerateDraft: (type: 'grammar' | 'professional' | 'summarize') => void;
+  onGenerateDraft: (type: 'grammar' | 'professional' | 'summarize') => Promise<void>;
   isGenerating: boolean;
 }
 

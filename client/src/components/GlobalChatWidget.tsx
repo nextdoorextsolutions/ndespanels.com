@@ -303,7 +303,6 @@ export const GlobalChatWidget: React.FC = () => {
           <ChannelSidebar
             activeChannelId={activeChannelId}
             onChannelSelect={setActiveChannelId}
-            currentUserId={currentUser.id}
           />
           
           {/* Chat Area */}
