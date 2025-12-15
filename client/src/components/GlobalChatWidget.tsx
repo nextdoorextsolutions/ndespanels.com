@@ -9,6 +9,7 @@ import { ChatArea } from './chat/ChatArea';
 import { AISidebar } from './chat/AISidebar';
 import { usePresence, PresenceUser } from '@/hooks/usePresence';
 import { useAuth } from '@/_core/hooks/useAuth';
+import { useChatRealtime } from '@/hooks/useChatRealtime';
 
 interface ChatMessage {
   id: number;
@@ -40,15 +41,17 @@ export const GlobalChatWidget: React.FC = () => {
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [streamingMessage, setStreamingMessage] = useState<string>('');
   const [streamingHistory, setStreamingHistory] = useState<Array<{ role: 'user' | 'model'; parts: string }>>([]);
+  const [messageOffset, setMessageOffset] = useState(0);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
   // Fetch channels
   const { data: channels } = trpc.teamChat.getChannels.useQuery(undefined, {
     enabled: isAuthenticated && !!authUser,
   });
 
-  // Fetch messages for active channel
+  // Fetch messages for active channel with pagination
   const { data: channelMessages, refetch: refetchMessages } = trpc.teamChat.getMessages.useQuery(
-    { channelId: activeChannelId!, limit: 50 },
+    { channelId: activeChannelId!, limit: 50, offset: messageOffset },
     { enabled: !!activeChannelId }
   );
 
@@ -61,6 +64,33 @@ export const GlobalChatWidget: React.FC = () => {
 
   // Mark as read mutation
   const markAsReadMutation = trpc.teamChat.markAsRead.useMutation();
+
+  // Supabase Realtime subscription for auto-updates
+  useChatRealtime({
+    channelId: activeChannelId,
+    enabled: isOpen && !!activeChannelId,
+    onNewMessage: (newMsg) => {
+      // Add new message to the list if it's not from current user
+      if (newMsg.user_id !== authUser?.id) {
+        refetchMessages();
+      }
+    },
+    onMessageUpdate: (updatedMsg) => {
+      // Update existing message
+      setMessages(prev => 
+        prev.map(m => m.id === updatedMsg.id ? {
+          ...m,
+          content: updatedMsg.content,
+          isEdited: updatedMsg.is_edited,
+          editedAt: updatedMsg.edited_at ? new Date(updatedMsg.edited_at) : null,
+        } : m)
+      );
+    },
+    onMessageDelete: (messageId) => {
+      // Remove deleted message
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+    },
+  });
 
   // Build current user from auth (safe to do before conditional return)
   const currentUser: PresenceUser = {
@@ -82,7 +112,7 @@ export const GlobalChatWidget: React.FC = () => {
   // Update messages when channel messages load
   useEffect(() => {
     if (channelMessages) {
-      setMessages(channelMessages.map(m => ({
+      const newMessages = channelMessages.map(m => ({
         id: m.id,
         content: m.content,
         userId: m.userId,
@@ -93,9 +123,19 @@ export const GlobalChatWidget: React.FC = () => {
         isEdited: m.isEdited || false,
         editedAt: m.editedAt ? new Date(m.editedAt) : null,
         metadata: m.metadata,
-      })));
+      }));
+      
+      if (messageOffset === 0) {
+        setMessages(newMessages);
+      } else {
+        // Append older messages for pagination
+        setMessages(prev => [...newMessages, ...prev]);
+      }
+      
+      // Check if there are more messages to load
+      setHasMoreMessages(channelMessages.length === 50);
     }
-  }, [channelMessages]);
+  }, [channelMessages, messageOffset]);
 
   // Mark channel as read when opening
   useEffect(() => {
@@ -120,7 +160,7 @@ export const GlobalChatWidget: React.FC = () => {
     {
       message: streamingMessage,
       history: streamingHistory,
-      threadId: activeChannelId,
+      threadId: activeChannelName,
     },
     {
       enabled: !!streamingMessageId && streamingMessage.length > 0,
@@ -128,7 +168,7 @@ export const GlobalChatWidget: React.FC = () => {
         if (!chunk.done && streamingMessageId) {
           setMessages(prev => 
             prev.map(m => 
-              m.id === streamingMessageId
+              m.id.toString() === streamingMessageId
                 ? { ...m, content: m.content + chunk.chunk }
                 : m
             )
@@ -137,7 +177,7 @@ export const GlobalChatWidget: React.FC = () => {
           // Mark streaming complete
           setMessages(prev => 
             prev.map(m => 
-              m.id === streamingMessageId
+              m.id.toString() === streamingMessageId
                 ? { ...m, isStreaming: false }
                 : m
             )
@@ -250,6 +290,14 @@ export const GlobalChatWidget: React.FC = () => {
     if (channel) {
       setActiveChannelId(channel.id);
       setActiveChannelName(channel.name);
+      setMessageOffset(0); // Reset pagination when switching channels
+      setHasMoreMessages(true);
+    }
+  };
+
+  const loadMoreMessages = () => {
+    if (hasMoreMessages && !channelMessages) {
+      setMessageOffset(prev => prev + 50);
     }
   };
 
@@ -260,7 +308,7 @@ export const GlobalChatWidget: React.FC = () => {
 
   if (!isOpen) {
     return (
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-40 md:bottom-6 md:right-6">
         <button
           onClick={() => setOpen(true)}
           className="group relative flex items-center justify-center w-14 h-14 bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 rounded-full shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
@@ -277,10 +325,10 @@ export const GlobalChatWidget: React.FC = () => {
 
   return (
     <div 
-      className={`fixed right-4 z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl
+      className={`fixed z-40 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl
         ${isMinimized 
-          ? 'bottom-0 w-80 h-14 rounded-b-none'
-          : 'bottom-6 w-[900px] h-[650px]'
+          ? 'bottom-0 right-0 left-0 md:left-auto md:right-4 w-full md:w-80 h-14 rounded-b-none md:rounded-b-2xl'
+          : 'bottom-0 right-0 left-0 top-0 md:bottom-6 md:right-4 md:left-auto md:top-auto w-full md:w-[900px] h-full md:h-[650px] md:rounded-2xl rounded-none'
         }
       `}
     >
