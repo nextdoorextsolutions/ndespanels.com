@@ -196,7 +196,10 @@ export const activitiesRouter = router({
         createdAt: notifications.createdAt,
       })
       .from(notifications)
-      .where(eq(notifications.userId, ctx.user.id))
+      .where(and(
+        eq(notifications.userId, ctx.user.id),
+        eq(notifications.isRead, false) // Only show unread notifications
+      ))
       .orderBy(desc(notifications.createdAt))
       .limit(50);
 
