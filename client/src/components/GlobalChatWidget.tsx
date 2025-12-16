@@ -323,7 +323,6 @@ export const GlobalChatWidget: React.FC = () => {
     window.location.pathname === '/login' ||
     window.location.pathname === '/forgot-password' ||
     window.location.pathname === '/reset-password' ||
-    window.location.pathname === '/' ||
     window.location.pathname === '/portal' ||
     window.location.pathname === '/upload'
   );
