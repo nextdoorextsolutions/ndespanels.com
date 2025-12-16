@@ -636,3 +636,21 @@ export const channelMembers = pgTable("channel_members", {
 
 export type ChannelMember = typeof channelMembers.$inferSelect;
 export type InsertChannelMember = typeof channelMembers.$inferInsert;
+
+/**
+ * Error Logs - System error tracking and crash reports
+ */
+export const errorLogs = pgTable("error_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  userRole: varchar("user_role", { length: 50 }),
+  errorMessage: text("error_message").notNull(),
+  stackTrace: text("stack_trace"),
+  pageUrl: varchar("page_url", { length: 1000 }),
+  browserInfo: text("browser_info"),
+  resolved: boolean("resolved").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ErrorLog = typeof errorLogs.$inferSelect;
+export type InsertErrorLog = typeof errorLogs.$inferInsert;

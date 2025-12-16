@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { OwnerRoute } from "./components/OwnerRoute";
 import { GlobalChatWidget } from "./components/GlobalChatWidget";
+import { GlobalErrorWatcher } from "./components/GlobalErrorWatcher";
 
 // Auth pages
 import Login from "./pages/auth/Login";
@@ -157,6 +158,7 @@ function App() {
           <Toaster />
           <Router />
           <GlobalChatWidget />
+          <GlobalErrorWatcher />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

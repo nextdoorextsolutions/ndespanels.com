@@ -36,6 +36,7 @@ import { globalChatRouter } from "./api/routers/globalChat";
 import { chatRouter } from "./api/routers/chat";
 import { teamChatRouter } from "./api/routers/teamChat";
 import { estimatesRouter } from "./api/routers/estimates";
+import { utilityRouter } from "./api/routers/utility";
 import { getDb } from "./db";
 import { reportRequests, users, activities, documents, editHistory, jobAttachments, jobMessageReads, notifications, materialOrders, materialKits } from "../drizzle/schema";
 import { PRODUCTS, validatePromoCode } from "./products";
@@ -189,6 +190,7 @@ export const appRouter = router({
   chat: chatRouter, // Real team messaging - server/api/routers/chat.ts
   teamChat: teamChatRouter, // Channel-based team chat - server/api/routers/teamChat.ts
   estimates: estimatesRouter, // Refactored to server/api/routers/estimates.ts
+  utility: utilityRouter, // System utilities - error reporting, etc.
   
   // CRM router - core job/lead operations, analytics, scheduling
   // (Semantically this is "jobs" but kept as "crm" for frontend compatibility)
