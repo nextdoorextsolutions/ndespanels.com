@@ -64,9 +64,43 @@ export const teamChatRouter = router({
 
     const unreadMap = new Map(unreadCounts.map(u => [u.channelId, u.count]));
 
+    // Get members for each channel (for DM partner identification)
+    const channelMembersData = channelIds.length > 0 ? await db
+      .select({
+        channelId: channelMembers.channelId,
+        userId: users.id,
+        userName: users.name,
+        userEmail: users.email,
+        userImage: users.image,
+      })
+      .from(channelMembers)
+      .innerJoin(users, eq(channelMembers.userId, users.id))
+      .where(inArray(channelMembers.channelId, channelIds)) : [] as Array<{
+        channelId: number;
+        userId: number;
+        userName: string | null;
+        userEmail: string | null;
+        userImage: string | null;
+      }>;
+
+    // Group members by channel
+    const membersByChannel = new Map<number, Array<{ userId: number; userName: string | null; userEmail: string | null; userImage: string | null }>>();
+    for (const member of channelMembersData) {
+      if (!membersByChannel.has(member.channelId)) {
+        membersByChannel.set(member.channelId, []);
+      }
+      membersByChannel.get(member.channelId)!.push({
+        userId: member.userId,
+        userName: member.userName,
+        userEmail: member.userEmail,
+        userImage: member.userImage,
+      });
+    }
+
     return userChannels.map(channel => ({
       ...channel,
       unreadCount: unreadMap.get(channel.id) || 0,
+      members: membersByChannel.get(channel.id) || [],
     }));
   }),
 

@@ -28,6 +28,12 @@ interface ChannelSidebarProps {
     type: string;
     description: string | null;
     unreadCount?: number;
+    members?: Array<{
+      userId: number;
+      userName: string | null;
+      userEmail: string | null;
+      userImage: string | null;
+    }>;
   }>;
 }
 
@@ -116,6 +122,17 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
       ...prev,
       [category]: !prev[category]
     }));
+  };
+
+  // Helper function to get DM partner (the other user in a DM channel)
+  const getDMPartner = (channel: typeof channels[0]) => {
+    if (!channel.members || channel.members.length === 0) {
+      return null;
+    }
+    
+    // Find the member that is NOT the current user
+    const partner = channel.members.find(m => m.userId !== authUser?.id);
+    return partner || null;
   };
 
   // Group real channels by category based on name patterns and type
@@ -305,20 +322,35 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
             
             {expandedCategories['direct-messages'] && (
               <div className="space-y-0.5">
-                {dmChannels.map((channel) => (
-                  <button
-                    key={channel.id}
-                    onClick={() => onChannelSelect(channel.id.toString())}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all group ${
-                      activeChannelId === channel.name
-                        ? 'bg-gradient-to-r from-[#00d4aa]/10 to-transparent border-l-2 border-[#00d4aa] text-white font-medium'
-                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                    }`}
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate text-xs">{channel.description || channel.name}</span>
-                  </button>
-                ))}
+                {dmChannels.map((channel) => {
+                  const partner = getDMPartner(channel);
+                  const displayName = partner?.userName || partner?.userEmail || 'Unknown User';
+                  
+                  return (
+                    <button
+                      key={channel.id}
+                      onClick={() => onChannelSelect(channel.id.toString())}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all group ${
+                        activeChannelId === channel.name
+                          ? 'bg-gradient-to-r from-[#00d4aa]/10 to-transparent border-l-2 border-[#00d4aa] text-white font-medium'
+                          : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                      }`}
+                    >
+                      <Avatar className="w-6 h-6 flex-shrink-0">
+                        <AvatarImage src={partner?.userImage || undefined} alt={displayName} />
+                        <AvatarFallback className="bg-slate-700 text-xs text-white">
+                          {displayName.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-xs">{displayName}</span>
+                      {channel.unreadCount && channel.unreadCount > 0 && (
+                        <span className="bg-[#00d4aa] text-slate-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0 ml-auto">
+                          {channel.unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
