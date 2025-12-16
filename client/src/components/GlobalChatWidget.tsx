@@ -66,7 +66,7 @@ export const GlobalChatWidget: React.FC = () => {
   const markAsReadMutation = trpc.teamChat.markAsRead.useMutation();
 
   // Supabase Realtime subscription for auto-updates
-  useChatRealtime({
+  const realtimeStatus = useChatRealtime({
     channelId: activeChannelId,
     enabled: isOpen && !!activeChannelId,
     onNewMessage: (newMsg) => {
@@ -91,6 +91,9 @@ export const GlobalChatWidget: React.FC = () => {
       setMessages(prev => prev.filter(m => m.id !== messageId));
     },
   });
+  
+  // DEBUG: Log realtime status
+  console.log('[GlobalChatWidget] Realtime status:', realtimeStatus);
 
   // Build current user from auth (safe to do before conditional return)
   const currentUser: PresenceUser = {
@@ -325,11 +328,44 @@ export const GlobalChatWidget: React.FC = () => {
     window.location.pathname === '/upload'
   );
   
-  if (loading || !isAuthenticated || !authUser || isAuthPage) {
+  // DEBUG: Log why widget might be hidden
+  console.log('[GlobalChatWidget] Render check:', {
+    loading,
+    isAuthenticated,
+    authUser: authUser ? { id: authUser.id, name: authUser.name, email: authUser.email } : null,
+    isAuthPage,
+    currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+    connectionStatus,
+    isConnected,
+    activeChannelId,
+    channelsCount: channels?.length || 0,
+  });
+  
+  if (loading) {
+    console.log('[GlobalChatWidget] Widget hiding because: Auth is still loading');
+    return null;
+  }
+  
+  if (!isAuthenticated) {
+    console.log('[GlobalChatWidget] Widget hiding because: User is not authenticated');
+    return null;
+  }
+  
+  if (!authUser) {
+    console.log('[GlobalChatWidget] Widget hiding because: Auth user object is null');
+    return null;
+  }
+  
+  if (isAuthPage) {
+    console.log('[GlobalChatWidget] Widget hiding because: On auth/public page:', window.location.pathname);
     return null;
   }
 
+  // DEBUG: Widget should render
+  console.log('[GlobalChatWidget] Widget should be visible. isOpen:', isOpen);
+  
   if (!isOpen) {
+    console.log('[GlobalChatWidget] Rendering floating button (widget closed)');
     return (
       <div className="fixed bottom-6 right-6 z-40 md:bottom-6 md:right-6">
         <button
