@@ -1,10 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { createClient, RealtimeChannel, REALTIME_LISTEN_TYPES } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { RealtimeChannel, REALTIME_LISTEN_TYPES } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 // User object for custom auth (no Supabase auth dependency)
 export interface PresenceUser {
@@ -43,8 +39,8 @@ export function usePresence({ threadId = 'global', user, enabled = true }: UsePr
   useEffect(() => {
     if (!enabled) return;
     
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.warn('Supabase credentials not configured');
+    if (!supabase) {
+      console.warn('Supabase client not available');
       setConnectionStatus('disconnected');
       return;
     }
