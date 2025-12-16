@@ -9,7 +9,10 @@ import { logEditHistory } from "../lib/editHistory";
  * Handles multipart/form-data uploads from the frontend
  */
 export function registerUploadRoute(app: Express) {
+  console.log("[Upload] Registering POST /api/upload route");
+  
   app.post("/api/upload", async (req: Request, res: Response) => {
+    console.log("[Upload] POST /api/upload hit - method:", req.method, "path:", req.path);
     try {
       // Parse multipart form data manually (Express doesn't do this by default)
       const contentType = req.headers['content-type'] || '';

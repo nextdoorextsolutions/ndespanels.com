@@ -65,6 +65,7 @@ export async function serveStatic(app: any) {
   app.use((req: any, res: any, next: any) => {
     // Skip static file serving for API routes entirely
     if (req.path.startsWith("/api/") || req.path.startsWith("/oauth/")) {
+      console.log(`[Static] Skipping static middleware for API route: ${req.method} ${req.path}`);
       return next();
     }
     express.default.static(distPath)(req, res, next);
