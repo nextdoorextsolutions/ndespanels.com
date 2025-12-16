@@ -61,13 +61,19 @@ export async function serveStatic(app: any) {
     );
   } 
 
-  // Serve static files (images, css, js, etc.)
-  app.use(express.default.static(distPath));
+  // Serve static files ONLY for non-API routes (images, css, js, etc.)
+  app.use((req: any, res: any, next: any) => {
+    // Skip static file serving for API routes entirely
+    if (req.path.startsWith("/api/") || req.path.startsWith("/oauth/")) {
+      return next();
+    }
+    express.default.static(distPath)(req, res, next);
+  });
 
   // Serve index.html for frontend routes (SPA fallback)
   // This should be registered BEFORE the 404 handler
   app.get("*", (req: any, res: any, next: any) => {
-    // Skip API routes
+    // Skip API routes - they should have been handled already
     if (req.path.startsWith("/api/") || req.path.startsWith("/oauth/")) {
       return next();
     }
