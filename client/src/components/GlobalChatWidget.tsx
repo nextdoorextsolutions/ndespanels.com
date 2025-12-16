@@ -46,7 +46,15 @@ export const GlobalChatWidget: React.FC = () => {
 
   // Build effective user from auth or localStorage fallback (needed for hooks below)
   const storedUser = typeof window !== 'undefined' 
-    ? JSON.parse(localStorage.getItem('manus-runtime-user-info') || 'null')
+    ? (() => {
+        try {
+          const stored = localStorage.getItem('manus-runtime-user-info');
+          return stored && stored !== 'undefined' ? JSON.parse(stored) : null;
+        } catch (e) {
+          console.warn('[GlobalChatWidget] Failed to parse stored user:', e);
+          return null;
+        }
+      })()
     : null;
   const effectiveUser = authUser || storedUser;
 
