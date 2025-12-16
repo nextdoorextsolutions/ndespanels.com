@@ -1,4 +1,6 @@
 -- Add error_logs table for internal crash reporting
+-- Run this migration: psql $DATABASE_URL -f drizzle/migrations/add_error_logs.sql
+
 CREATE TABLE IF NOT EXISTS error_logs (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id),
