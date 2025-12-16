@@ -365,4 +365,106 @@ export const teamChatRouter = router({
 
     return teamMembers;
   }),
+
+  /**
+   * Get or create a DM channel between current user and target user
+   */
+  getOrCreateDM: protectedProcedure
+    .input(
+      z.object({
+        targetUserId: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database connection failed",
+        });
+      }
+
+      const currentUserId = ctx.user.id;
+      const { targetUserId } = input;
+
+      // Validate target user exists and is not the current user
+      if (currentUserId === targetUserId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot create DM with yourself",
+        });
+      }
+
+      // Check if DM channel already exists between these two users
+      // Find channels where both users are members and type is 'dm'
+      const existingDMs = await db
+        .select({
+          channelId: channelMembers.channelId,
+        })
+        .from(channelMembers)
+        .innerJoin(chatChannels, eq(channelMembers.channelId, chatChannels.id))
+        .where(
+          and(
+            eq(chatChannels.type, 'dm'),
+            eq(channelMembers.userId, currentUserId)
+          )
+        )
+        .groupBy(channelMembers.channelId);
+
+      // For each potential DM channel, verify it has exactly these two members
+      for (const dm of existingDMs) {
+        const members = await db
+          .select({ userId: channelMembers.userId })
+          .from(channelMembers)
+          .where(eq(channelMembers.channelId, dm.channelId));
+
+        const memberIds = members.map(m => m.userId).sort();
+        const targetIds = [currentUserId, targetUserId].sort();
+
+        if (
+          memberIds.length === 2 &&
+          memberIds[0] === targetIds[0] &&
+          memberIds[1] === targetIds[1]
+        ) {
+          // Found existing DM
+          return { channelId: dm.channelId };
+        }
+      }
+
+      // No existing DM found, create new one
+      // Generate unique channel name
+      const sortedIds = [currentUserId, targetUserId].sort();
+      const channelName = `dm-${sortedIds[0]}-${sortedIds[1]}`;
+
+      // Create new DM channel
+      const [newChannel] = await db
+        .insert(chatChannels)
+        .values({
+          name: channelName,
+          type: 'dm',
+          createdBy: currentUserId,
+        })
+        .returning({ id: chatChannels.id });
+
+      if (!newChannel) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create DM channel",
+        });
+      }
+
+      // Add both users as members
+      await db.insert(channelMembers).values([
+        {
+          channelId: newChannel.id,
+          userId: currentUserId,
+        },
+        {
+          channelId: newChannel.id,
+          userId: targetUserId,
+        },
+      ]);
+
+      return { channelId: newChannel.id };
+    }),
 });

@@ -285,8 +285,17 @@ export const GlobalChatWidget: React.FC = () => {
     return activeChannelName;
   };
 
-  const handleChannelSelect = (channelName: string) => {
-    const channel = channels?.find(c => c.name === channelName);
+  const handleChannelSelect = (channelIdentifier: string) => {
+    // Support both channel name and channel ID
+    // If it's a number, treat as ID, otherwise treat as name
+    const isNumericId = /^\d+$/.test(channelIdentifier);
+    
+    const channel = channels?.find(c => 
+      isNumericId 
+        ? c.id === parseInt(channelIdentifier, 10)
+        : c.name === channelIdentifier
+    );
+    
     if (channel) {
       setActiveChannelId(channel.id);
       setActiveChannelName(channel.name);

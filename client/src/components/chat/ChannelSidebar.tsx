@@ -67,11 +67,29 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
     'mission-control': true,
     'job-lifecycle': true,
     'field-office': true,
+    'direct-messages': true,
     'team': true,
   });
 
   // Fetch team members
   const { data: teamMembers } = trpc.teamChat.getTeamMembers.useQuery();
+
+  // Get utils for refetching
+  const utils = trpc.useUtils();
+
+  // Mutation to get or create DM channel
+  const getOrCreateDMMutation = trpc.teamChat.getOrCreateDM.useMutation({
+    onSuccess: async (data) => {
+      // Refetch channels to include the new DM
+      await utils.teamChat.getChannels.invalidate();
+      
+      // Switch to the DM channel
+      onChannelSelect(data.channelId.toString());
+    },
+    onError: (error) => {
+      console.error('Failed to create DM:', error);
+    },
+  });
   
   // Track presence for the global channel list
   const currentUser: PresenceUser = {
@@ -100,17 +118,19 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
     }));
   };
 
-  // Group real channels by category based on name patterns
+  // Group real channels by category based on name patterns and type
+  const dmChannels = channels.filter(c => c.type === 'dm');
+  
   const missionControlChannels = channels.filter(c => 
-    ['general-announcements', 'wins-and-shoutouts', 'safety-alerts', 'fleet-logistics'].includes(c.name)
+    c.type !== 'dm' && ['general-announcements', 'wins-and-shoutouts', 'safety-alerts', 'fleet-logistics'].includes(c.name)
   );
   
   const jobLifecycleChannels = channels.filter(c => 
-    ['leads-incoming', 'estimates-and-bids', 'active-installs', 'permitting-and-hoa', 'service-and-repair'].includes(c.name)
+    c.type !== 'dm' && ['leads-incoming', 'estimates-and-bids', 'active-installs', 'permitting-and-hoa', 'service-and-repair'].includes(c.name)
   );
   
   const fieldOfficeChannels = channels.filter(c => 
-    ['tech-support', 'material-orders', 'design-engineering'].includes(c.name)
+    c.type !== 'dm' && ['tech-support', 'material-orders', 'design-engineering'].includes(c.name)
   );
 
   const renderChannelList = (channelList: typeof channels) => (
@@ -265,6 +285,45 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
           )}
         </div>
 
+        {/* Direct Messages Section */}
+        {dmChannels.length > 0 && (
+          <div className="p-3 border-t border-slate-800/50">
+            <button
+              onClick={() => toggleCategory('direct-messages')}
+              className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-slate-800/30 rounded transition-colors group mb-2"
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Direct Messages</span>
+              </div>
+              {expandedCategories['direct-messages'] ? (
+                <ChevronDown className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+              ) : (
+                <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+              )}
+            </button>
+            
+            {expandedCategories['direct-messages'] && (
+              <div className="space-y-0.5">
+                {dmChannels.map((channel) => (
+                  <button
+                    key={channel.id}
+                    onClick={() => onChannelSelect(channel.id.toString())}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all group ${
+                      activeChannelId === channel.name
+                        ? 'bg-gradient-to-r from-[#00d4aa]/10 to-transparent border-l-2 border-[#00d4aa] text-white font-medium'
+                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate text-xs">{channel.description || channel.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Team Section */}
         {teamMembers && teamMembers.length > 0 && (
           <div className="p-3 border-t border-slate-800/50">
@@ -290,8 +349,10 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
                     key={member.id}
                     onClick={() => {
                       console.log('Team member clicked:', member.id, member.name);
+                      getOrCreateDMMutation.mutate({ targetUserId: member.id });
                     }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all hover:bg-slate-800/50 group"
+                    disabled={getOrCreateDMMutation.isPending}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all hover:bg-slate-800/50 group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Avatar className="w-6 h-6 flex-shrink-0">
                       <AvatarImage src={member.image || undefined} alt={member.name || 'User'} />
