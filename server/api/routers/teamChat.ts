@@ -337,4 +337,32 @@ export const teamChatRouter = router({
 
       return members;
     }),
+
+  /**
+   * Get all active team members for User Directory
+   */
+  getTeamMembers: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database connection failed",
+      });
+    }
+
+    // Fetch all active users
+    const teamMembers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.isActive, true))
+      .orderBy(users.name);
+
+    return teamMembers;
+  }),
 });

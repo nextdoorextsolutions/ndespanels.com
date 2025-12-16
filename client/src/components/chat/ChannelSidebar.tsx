@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { usePresence, PresenceUser } from '@/hooks/usePresence';
 import { useAuth } from '@/_core/hooks/useAuth';
+import { trpc } from '@/lib/trpc';
 
 interface Channel {
   id: string;
@@ -66,7 +67,11 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
     'mission-control': true,
     'job-lifecycle': true,
     'field-office': true,
+    'team': true,
   });
+
+  // Fetch team members
+  const { data: teamMembers } = trpc.teamChat.getTeamMembers.useQuery();
   
   // Track presence for the global channel list
   const currentUser: PresenceUser = {
@@ -259,6 +264,57 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
             </div>
           )}
         </div>
+
+        {/* Team Section */}
+        {teamMembers && teamMembers.length > 0 && (
+          <div className="p-3 border-t border-slate-800/50">
+            <button
+              onClick={() => toggleCategory('team')}
+              className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-slate-800/30 rounded transition-colors group mb-2"
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Team</span>
+              </div>
+              {expandedCategories['team'] ? (
+                <ChevronDown className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+              ) : (
+                <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-slate-400" />
+              )}
+            </button>
+            
+            {expandedCategories['team'] && (
+              <div className="space-y-0.5">
+                {teamMembers.map((member) => (
+                  <button
+                    key={member.id}
+                    onClick={() => {
+                      console.log('Team member clicked:', member.id, member.name);
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all hover:bg-slate-800/50 group"
+                  >
+                    <Avatar className="w-6 h-6 flex-shrink-0">
+                      <AvatarImage src={member.image || undefined} alt={member.name || 'User'} />
+                      <AvatarFallback className="bg-slate-700 text-xs text-white">
+                        {(member.name || member.email || 'U').substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-xs text-slate-300 truncate group-hover:text-white transition-colors">
+                        {member.name || member.email}
+                      </p>
+                      {member.role && (
+                        <p className="text-[10px] text-slate-500 truncate">
+                          {member.role}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* User Profile Footer */}
