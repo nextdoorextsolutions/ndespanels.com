@@ -44,9 +44,15 @@ export const GlobalChatWidget: React.FC = () => {
   const [messageOffset, setMessageOffset] = useState(0);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
+  // Build effective user from auth or localStorage fallback (needed for hooks below)
+  const storedUser = typeof window !== 'undefined' 
+    ? JSON.parse(localStorage.getItem('manus-runtime-user-info') || 'null')
+    : null;
+  const effectiveUser = authUser || storedUser;
+
   // Fetch channels
   const { data: channels } = trpc.teamChat.getChannels.useQuery(undefined, {
-    enabled: isAuthenticated && !!authUser,
+    enabled: isAuthenticated && !!effectiveUser,
   });
 
   // Fetch messages for active channel with pagination
@@ -71,7 +77,7 @@ export const GlobalChatWidget: React.FC = () => {
     enabled: isOpen && !!activeChannelId,
     onNewMessage: (newMsg) => {
       // Add new message to the list if it's not from current user
-      if (newMsg.user_id !== authUser?.id) {
+      if (newMsg.user_id !== effectiveUser?.id) {
         refetchMessages();
       }
     },
@@ -95,12 +101,12 @@ export const GlobalChatWidget: React.FC = () => {
   // DEBUG: Log realtime status
   console.log('[GlobalChatWidget] Realtime status:', realtimeStatus);
 
-  // Build current user from auth (safe to do before conditional return)
+  // Build current user for presence tracking
   const currentUser: PresenceUser = {
-    id: authUser?.id?.toString() || 'guest',
-    name: authUser?.name || authUser?.email || 'Guest User',
+    id: effectiveUser?.id?.toString() || 'guest',
+    name: effectiveUser?.name || effectiveUser?.email || 'Guest User',
     avatarUrl: undefined,
-    role: authUser?.role || 'user',
+    role: effectiveUser?.role || 'user',
   };
 
   // Set initial channel when channels load
@@ -218,9 +224,9 @@ export const GlobalChatWidget: React.FC = () => {
       
       // Build chat history for context
       const history = messages
-        .filter(m => m.userId === authUser?.id || m.userName === GEMINI_BOT_NAME)
+        .filter(m => m.userId === effectiveUser?.id || m.userName === GEMINI_BOT_NAME)
         .map(m => ({
-          role: m.userId === authUser?.id ? 'user' as const : 'model' as const,
+          role: m.userId === effectiveUser?.id ? 'user' as const : 'model' as const,
           parts: m.content,
         }));
 
@@ -332,6 +338,8 @@ export const GlobalChatWidget: React.FC = () => {
     loading,
     isAuthenticated,
     authUser: authUser ? { id: authUser.id, name: authUser.name, email: authUser.email } : null,
+    storedUser: storedUser ? { id: storedUser.id, name: storedUser.name, email: storedUser.email } : null,
+    effectiveUser: effectiveUser ? { id: effectiveUser.id, name: effectiveUser.name, email: effectiveUser.email } : null,
     isAuthPage,
     currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
     connectionStatus,
@@ -340,18 +348,20 @@ export const GlobalChatWidget: React.FC = () => {
     channelsCount: channels?.length || 0,
   });
   
-  if (loading) {
-    console.log('[GlobalChatWidget] Widget hiding because: Auth is still loading');
+  // Only hide if loading AND no user data exists (initial load or stored)
+  // If we have user data (from auth or localStorage), show the widget
+  if (loading && !effectiveUser) {
+    console.log('[GlobalChatWidget] Widget hiding because: Auth is still loading (initial load)');
     return null;
   }
   
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !effectiveUser) {
     console.log('[GlobalChatWidget] Widget hiding because: User is not authenticated');
     return null;
   }
   
-  if (!authUser) {
-    console.log('[GlobalChatWidget] Widget hiding because: Auth user object is null');
+  if (!effectiveUser) {
+    console.log('[GlobalChatWidget] Widget hiding because: No user data available');
     return null;
   }
   
@@ -460,7 +470,7 @@ export const GlobalChatWidget: React.FC = () => {
               onSendMessage={handleSendMessage}
               onKeyDown={handleKeyDown}
               isTyping={isTyping}
-              currentUserId={authUser?.id?.toString() || 'guest'}
+              currentUserId={effectiveUser?.id?.toString() || 'guest'}
               geminiId={GEMINI_BOT_ID}
               geminiName={GEMINI_BOT_NAME}
               onToggleAI={() => setIsAIOpen(!isAIOpen)}
