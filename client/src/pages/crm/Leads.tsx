@@ -8,12 +8,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Plus, Filter, Shield, Eye, ExternalLink, Download } from "lucide-react";
+import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Plus, Filter, Shield, Eye, ExternalLink, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { GoogleMapsLoader } from "@/components/maps/GoogleMapsLoader";
-import { EstimatorLeadImport } from "@/components/EstimatorLeadImport";
+import Papa from "papaparse";
 
 const STATUS_OPTIONS = [
   { value: "lead", label: "Lead", color: "bg-slate-500/20 text-slate-300 border-slate-400/30" },
@@ -88,6 +88,9 @@ export default function CRMLeads() {
   const [uploading, setUploading] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [importProgress, setImportProgress] = useState(0);
+  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: permissions } = trpc.users.getMyPermissions.useQuery();
@@ -108,6 +111,15 @@ export default function CRMLeads() {
       toast.success("Note added");
       setNoteText("");
       refetchLead();
+    },
+  });
+  const importLeadsMutation = trpc.leads.importLeads.useMutation({
+    onSuccess: (result) => {
+      toast.success(result.message);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to import leads");
     },
   });
   const uploadDocument = trpc.documents.uploadDocument.useMutation({
@@ -479,16 +491,162 @@ export default function CRMLeads() {
           </CardContent>
         </Card>
 
-        {/* Import Leads Dialog */}
+        {/* Import Leads Dialog - CSV Upload */}
         <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
           <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-white">Import Leads from Estimator</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-white">Import Leads from CSV</DialogTitle>
               <DialogDescription className="text-sm text-slate-400">
-                Import leads from your Estimator account. New jobs will be created as "Lead" status.
+                Upload a CSV file with columns: Name, Address, Phone, Email (optional). New jobs will be created as "Lead" status.
               </DialogDescription>
             </DialogHeader>
-            <EstimatorLeadImport />
+            
+            <div className="space-y-4 py-4">
+              {/* File Upload Zone */}
+              <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center hover:border-[#00d4aa] transition-colors">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setCsvFile(file);
+                      setImportProgress(0);
+                    }
+                  }}
+                  className="hidden"
+                  id="csv-upload"
+                />
+                <label htmlFor="csv-upload" className="cursor-pointer">
+                  <Upload className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                  <p className="text-white font-medium mb-1">
+                    {csvFile ? csvFile.name : "Click to upload CSV file"}
+                  </p>
+                  <p className="text-sm text-slate-400">
+                    Supported format: .csv (Name, Address, Phone, Email)
+                  </p>
+                </label>
+              </div>
+
+              {/* Progress Bar */}
+              {isImporting && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Importing leads...</span>
+                    <span className="text-[#00d4aa] font-medium">{importProgress}%</span>
+                  </div>
+                  <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-[#00d4aa] h-full transition-all duration-300"
+                      style={{ width: `${importProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* CSV Format Example */}
+              <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+                <p className="text-sm text-slate-400 mb-2">CSV Format Example:</p>
+                <pre className="text-xs text-slate-300 font-mono">
+{`Name,Address,Phone,Email
+John Doe,123 Main St,555-1234,john@email.com
+Jane Smith,456 Oak Ave,555-5678,jane@email.com`}
+                </pre>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowImportDialog(false);
+                    setCsvFile(null);
+                    setImportProgress(0);
+                  }}
+                  disabled={isImporting}
+                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!csvFile) {
+                      toast.error("Please select a CSV file");
+                      return;
+                    }
+
+                    setIsImporting(true);
+                    setImportProgress(10);
+
+                    // Parse CSV
+                    Papa.parse(csvFile, {
+                      header: true,
+                      skipEmptyLines: true,
+                      complete: async (results) => {
+                        setImportProgress(30);
+
+                        // Map CSV data to API format
+                        const leads = results.data
+                          .map((row: any) => ({
+                            name: row.Name || row.name || "",
+                            address: row.Address || row.address || "",
+                            phone: row.Phone || row.phone || "",
+                            email: row.Email || row.email || "",
+                          }))
+                          .filter((lead) => lead.name && lead.address && lead.phone);
+
+                        if (leads.length === 0) {
+                          toast.error("No valid leads found in CSV. Check format.");
+                          setIsImporting(false);
+                          return;
+                        }
+
+                        setImportProgress(50);
+
+                        // Call API to import leads
+                        importLeadsMutation.mutate(
+                          { leads },
+                          {
+                            onSuccess: () => {
+                              setImportProgress(100);
+                              
+                              // Close dialog after success
+                              setTimeout(() => {
+                                setShowImportDialog(false);
+                                setCsvFile(null);
+                                setImportProgress(0);
+                                setIsImporting(false);
+                              }, 1000);
+                            },
+                            onError: () => {
+                              setIsImporting(false);
+                            },
+                          }
+                        );
+                      },
+                      error: (error) => {
+                        toast.error("Failed to parse CSV file");
+                        setIsImporting(false);
+                      },
+                    });
+                  }}
+                  disabled={!csvFile || isImporting}
+                  className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold min-h-11"
+                >
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Import Leads
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 

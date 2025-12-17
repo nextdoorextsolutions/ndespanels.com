@@ -37,6 +37,7 @@ import { estimatesRouter } from "./api/routers/estimates";
 import { utilityRouter } from "./api/routers/utility";
 import { analyticsRouter } from "./api/routers/analytics";
 import { commissionsRouter } from "./api/routers/commissions";
+import { leadsRouter } from "./api/routers/leads";
 import { getDb } from "./db";
 import { reportRequests, users, activities, documents, editHistory, jobAttachments, jobMessageReads, notifications, materialOrders, materialKits } from "../drizzle/schema";
 import { PRODUCTS, validatePromoCode } from "./products";
@@ -87,6 +88,7 @@ export const appRouter = router({
   utility: utilityRouter, // System utilities - error reporting, etc.
   analytics: analyticsRouter, // Team performance & production dashboard metrics
   commissions: commissionsRouter, // Commission requests and bonus tracking
+  leads: leadsRouter, // CSV import and lead management
   
   // CRM router - core job/lead operations, analytics, scheduling
   // (Semantically this is "jobs" but kept as "crm" for frontend compatibility)
