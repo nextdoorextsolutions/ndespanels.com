@@ -791,4 +791,172 @@ export const messagingRouter = router({
 
       return { channelId: newChannel.id };
     }),
+
+  /**
+   * Create a new channel (Owner only)
+   */
+  createChannel: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(100),
+        description: z.string().optional(),
+        allowedRoles: z.array(z.string()).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const user = ctx.user;
+      if (!user || user.role !== 'owner') {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only owners can create channels",
+        });
+      }
+
+      // Create channel
+      const [newChannel] = await db
+        .insert(chatChannels)
+        .values({
+          name: input.name,
+          type: 'public',
+          description: input.description || null,
+          createdBy: user.id,
+        })
+        .returning();
+
+      // If allowedRoles specified, add members with those roles
+      if (input.allowedRoles && input.allowedRoles.length > 0) {
+        const validRoles = input.allowedRoles.filter(r => 
+          ['user', 'admin', 'owner', 'office', 'sales_rep', 'project_manager', 'team_lead', 'field_crew'].includes(r)
+        ) as Array<'user' | 'admin' | 'owner' | 'office' | 'sales_rep' | 'project_manager' | 'team_lead' | 'field_crew'>;
+        
+        if (validRoles.length > 0) {
+          const allowedUsers = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(inArray(users.role, validRoles));
+
+          if (allowedUsers.length > 0) {
+            await db.insert(channelMembers).values(
+              allowedUsers.map(u => ({
+                channelId: newChannel.id,
+                userId: u.id,
+              }))
+            );
+          }
+        }
+      }
+
+      return newChannel;
+    }),
+
+  /**
+   * Delete a channel (Owner only)
+   */
+  deleteChannel: protectedProcedure
+    .input(z.object({ channelId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const user = ctx.user;
+      if (!user || user.role !== 'owner') {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only owners can delete channels",
+        });
+      }
+
+      // Delete channel members first (foreign key constraint)
+      await db.delete(channelMembers).where(eq(channelMembers.channelId, input.channelId));
+
+      // Delete messages
+      await db.delete(chatMessages).where(eq(chatMessages.channelId, input.channelId));
+
+      // Delete channel
+      await db.delete(chatChannels).where(eq(chatChannels.id, input.channelId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Add member to channel (Owner only)
+   */
+  addChannelMember: protectedProcedure
+    .input(
+      z.object({
+        channelId: z.number(),
+        userId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const user = ctx.user;
+      if (!user || user.role !== 'owner') {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only owners can manage channel members",
+        });
+      }
+
+      // Check if member already exists
+      const existing = await db
+        .select()
+        .from(channelMembers)
+        .where(
+          and(
+            eq(channelMembers.channelId, input.channelId),
+            eq(channelMembers.userId, input.userId)
+          )
+        );
+
+      if (existing.length > 0) {
+        return { success: true, message: "User is already a member" };
+      }
+
+      await db.insert(channelMembers).values({
+        channelId: input.channelId,
+        userId: input.userId,
+      });
+
+      return { success: true };
+    }),
+
+  /**
+   * Remove member from channel (Owner only)
+   */
+  removeChannelMember: protectedProcedure
+    .input(
+      z.object({
+        channelId: z.number(),
+        userId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const user = ctx.user;
+      if (!user || user.role !== 'owner') {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only owners can manage channel members",
+        });
+      }
+
+      await db
+        .delete(channelMembers)
+        .where(
+          and(
+            eq(channelMembers.channelId, input.channelId),
+            eq(channelMembers.userId, input.userId)
+          )
+        );
+
+      return { success: true };
+    }),
 });

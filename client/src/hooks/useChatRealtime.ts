@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -35,6 +35,7 @@ export function useChatRealtime({
   enabled = true,
 }: UseChatRealtimeProps) {
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
 
   useEffect(() => {
     if (!enabled || !channelId) {
@@ -93,7 +94,19 @@ export function useChatRealtime({
       )
       .subscribe((status) => {
         console.log(`Realtime subscription status for channel ${channelId}:`, status);
+        
+        // Update connection status based on subscription state
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setConnectionStatus('disconnected');
+        } else {
+          setConnectionStatus('connecting');
+        }
       });
+
+    // Set initial connecting state
+    setConnectionStatus('connecting');
 
     // Cleanup subscription on unmount or channel change
     return () => {
@@ -101,11 +114,14 @@ export function useChatRealtime({
         console.log(`Unsubscribing from channel ${channelId}`);
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
+        setConnectionStatus('disconnected');
       }
     };
   }, [channelId, enabled, onNewMessage, onMessageUpdate, onMessageDelete]);
 
   return {
     isSubscribed: !!channelRef.current,
+    connectionStatus,
+    isConnected: connectionStatus === 'connected',
   };
 }

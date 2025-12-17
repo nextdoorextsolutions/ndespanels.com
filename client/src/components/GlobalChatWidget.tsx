@@ -80,7 +80,7 @@ export const GlobalChatWidget: React.FC = () => {
   const markAsReadMutation = trpc.messaging.markAsRead.useMutation();
 
   // Supabase Realtime subscription for auto-updates
-  const realtimeStatus = useChatRealtime({
+  const { connectionStatus: realtimeConnectionStatus, isConnected: realtimeConnected } = useChatRealtime({
     channelId: activeChannelId,
     enabled: isOpen && !!activeChannelId,
     onNewMessage: (newMsg) => {
@@ -107,7 +107,7 @@ export const GlobalChatWidget: React.FC = () => {
   });
   
   // DEBUG: Log realtime status
-  console.log('[GlobalChatWidget] Realtime status:', realtimeStatus);
+  console.log('[GlobalChatWidget] Realtime status:', realtimeConnectionStatus);
 
   // Build current user for presence tracking
   const currentUser: PresenceUser = {
@@ -412,10 +412,10 @@ export const GlobalChatWidget: React.FC = () => {
         onClick={() => !isMinimized && setMinimized(true)}
       >
         <div className="flex items-center gap-3">
-          <div className="relative" title={`Connection: ${connectionStatus}`}>
-            {isConnected ? (
+          <div className="relative" title={`Chat: ${realtimeConnectionStatus}`}>
+            {realtimeConnected ? (
               <Wifi className="w-4 h-4 text-[#00d4aa]" />
-            ) : connectionStatus === 'connecting' ? (
+            ) : realtimeConnectionStatus === 'connecting' ? (
               <Wifi className="w-4 h-4 text-yellow-500 animate-pulse" />
             ) : (
               <WifiOff className="w-4 h-4 text-red-500" />
@@ -425,7 +425,7 @@ export const GlobalChatWidget: React.FC = () => {
             <h3 className="text-sm font-semibold text-white">NextDoor Operations</h3>
             {!isMinimized && (
               <p className="text-xs text-slate-400">
-                {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                {realtimeConnected ? 'Connected' : realtimeConnectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
               </p>
             )}
           </div>
