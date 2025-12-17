@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { Hash, MessageSquare, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { Hash, MessageSquare, Users, ChevronDown, ChevronRight, Plus, Settings, Trash2, UserPlus, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { usePresence, PresenceUser } from '@/hooks/usePresence';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Channel {
   id: string;
@@ -76,12 +87,65 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
     'direct-messages': true,
     'team': true,
   });
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [showChannelSettings, setShowChannelSettings] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<typeof channels[0] | null>(null);
+  const [newChannelName, setNewChannelName] = useState('');
+  const [newChannelDescription, setNewChannelDescription] = useState('');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+
+  const isOwner = authUser?.role === 'owner';
 
   // Fetch team members
   const { data: teamMembers } = trpc.messaging.getTeamMembers.useQuery();
 
   // Get utils for refetching
   const utils = trpc.useUtils();
+
+  // Channel management mutations
+  const createChannelMutation = trpc.messaging.createChannel.useMutation({
+    onSuccess: () => {
+      toast.success('Channel created successfully');
+      utils.messaging.getChannels.invalidate();
+      setShowCreateChannel(false);
+      setNewChannelName('');
+      setNewChannelDescription('');
+      setSelectedRoles([]);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create channel');
+    },
+  });
+
+  const deleteChannelMutation = trpc.messaging.deleteChannel.useMutation({
+    onSuccess: () => {
+      toast.success('Channel deleted successfully');
+      utils.messaging.getChannels.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete channel');
+    },
+  });
+
+  const addMemberMutation = trpc.messaging.addChannelMember.useMutation({
+    onSuccess: () => {
+      toast.success('Member added successfully');
+      utils.messaging.getChannels.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to add member');
+    },
+  });
+
+  const removeMemberMutation = trpc.messaging.removeChannelMember.useMutation({
+    onSuccess: () => {
+      toast.success('Member removed successfully');
+      utils.messaging.getChannels.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to remove member');
+    },
+  });
 
   // Mutation to get or create DM channel
   const getOrCreateDMMutation = trpc.messaging.getOrCreateDM.useMutation({
@@ -152,26 +216,63 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
 
   const renderChannelList = (channelList: typeof channels) => (
     channelList.map((channel) => (
-      <button
-        key={channel.id}
-        onClick={() => onChannelSelect(channel.name)}
-        className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-all group ${
-          activeChannelId === channel.name
-            ? 'bg-gradient-to-r from-[#00d4aa]/10 to-transparent border-l-2 border-[#00d4aa] text-white font-medium'
-            : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-        }`}
-        title={channel.description || undefined}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <Hash className="w-3.5 h-3.5 flex-shrink-0" />
-          <span className="truncate text-xs">{channel.name}</span>
-        </div>
-        {channel.unreadCount && channel.unreadCount > 0 && (
-          <span className="bg-[#00d4aa] text-slate-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0">
-            {channel.unreadCount}
-          </span>
+      <div key={channel.id} className="flex items-center gap-1 group/channel">
+        <button
+          onClick={() => onChannelSelect(channel.name)}
+          className={`flex-1 flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-all ${
+            activeChannelId === channel.name
+              ? 'bg-gradient-to-r from-[#00d4aa]/10 to-transparent border-l-2 border-[#00d4aa] text-white font-medium'
+              : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+          }`}
+          title={channel.description || undefined}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <Hash className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="truncate text-xs">{channel.name}</span>
+          </div>
+          {channel.unreadCount && channel.unreadCount > 0 && (
+            <span className="bg-[#00d4aa] text-slate-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center flex-shrink-0">
+              {channel.unreadCount}
+            </span>
+          )}
+        </button>
+        {isOwner && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover/channel:opacity-100 transition-opacity"
+              >
+                <Settings className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedChannel(channel);
+                  setShowChannelSettings(true);
+                }}
+                className="text-slate-300 hover:bg-slate-700 cursor-pointer"
+              >
+                <Settings className="w-3 h-3 mr-2" />
+                Manage Members
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (confirm(`Delete channel "${channel.name}"? This cannot be undone.`)) {
+                    deleteChannelMutation.mutate({ channelId: channel.id });
+                  }
+                }}
+                className="text-red-400 hover:bg-red-500/10 cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3 mr-2" />
+                Delete Channel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-      </button>
+      </div>
     ))
   );
 
@@ -226,9 +327,17 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
             <h2 className="text-sm font-bold text-white">NextDoor Ops</h2>
             <p className="text-xs text-slate-500">{onlineUsers.length} online</p>
           </div>
-          <Button variant="ghost" size="icon" className="h-6 w-6">
-            <ChevronDown className="w-4 h-4 text-slate-400" />
-          </Button>
+          {isOwner && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setShowCreateChannel(true)}
+              title="Create Channel"
+            >
+              <Plus className="w-4 h-4 text-[#00d4aa]" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -425,6 +534,164 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
           </div>
         </div>
       </div>
+
+      {/* Create Channel Modal */}
+      <Dialog open={showCreateChannel} onOpenChange={setShowCreateChannel}>
+        <DialogContent className="bg-slate-800 border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle>Create New Channel</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Create a new channel for team communication
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-2 block">Channel Name</label>
+              <Input
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                placeholder="e.g., project-updates"
+                className="bg-slate-900 border-slate-700 text-white"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-2 block">Description (Optional)</label>
+              <Textarea
+                value={newChannelDescription}
+                onChange={(e) => setNewChannelDescription(e.target.value)}
+                placeholder="What is this channel for?"
+                className="bg-slate-900 border-slate-700 text-white"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-2 block">Allowed Roles (Optional)</label>
+              <div className="space-y-2">
+                {['owner', 'admin', 'office', 'sales_rep', 'team_lead', 'field_crew'].map((role) => (
+                  <div key={role} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedRoles.includes(role)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedRoles([...selectedRoles, role]);
+                        } else {
+                          setSelectedRoles(selectedRoles.filter(r => r !== role));
+                        }
+                      }}
+                    />
+                    <span className="text-sm text-slate-300 capitalize">{role.replace('_', ' ')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateChannel(false)}
+                className="border-slate-600 text-slate-300"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!newChannelName.trim()) {
+                    toast.error('Channel name is required');
+                    return;
+                  }
+                  createChannelMutation.mutate({
+                    name: newChannelName.trim(),
+                    description: newChannelDescription.trim() || undefined,
+                    allowedRoles: selectedRoles.length > 0 ? selectedRoles : undefined,
+                  });
+                }}
+                disabled={createChannelMutation.isPending}
+                className="bg-[#00d4aa] hover:bg-[#00b894] text-black"
+              >
+                Create Channel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Channel Settings Modal */}
+      <Dialog open={showChannelSettings} onOpenChange={setShowChannelSettings}>
+        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle>Channel Settings: {selectedChannel?.name}</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Manage channel members
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-3">Current Members</h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {selectedChannel?.members?.map((member) => (
+                  <div key={member.userId} className="flex items-center justify-between p-2 rounded bg-slate-900">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={member.userImage || undefined} />
+                        <AvatarFallback className="bg-slate-700 text-xs">
+                          {(member.userName || member.userEmail || 'U').substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm text-slate-300">{member.userName || member.userEmail}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-red-400 hover:text-red-300"
+                      onClick={() => {
+                        if (selectedChannel && confirm(`Remove ${member.userName || member.userEmail} from channel?`)) {
+                          removeMemberMutation.mutate({
+                            channelId: selectedChannel.id,
+                            userId: member.userId,
+                          });
+                        }
+                      }}
+                    >
+                      <UserMinus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-3">Add Members</h3>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {teamMembers?.filter(tm => !selectedChannel?.members?.some(m => m.userId === tm.id)).map((member) => (
+                  <div key={member.id} className="flex items-center justify-between p-2 rounded bg-slate-900">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={member.image || undefined} />
+                        <AvatarFallback className="bg-slate-700 text-xs">
+                          {(member.name || member.email || 'U').substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm text-slate-300">{member.name || member.email}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-[#00d4aa] hover:text-[#00b894]"
+                      onClick={() => {
+                        if (selectedChannel) {
+                          addMemberMutation.mutate({
+                            channelId: selectedChannel.id,
+                            userId: member.id,
+                          });
+                        }
+                      }}
+                    >
+                      <UserPlus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
