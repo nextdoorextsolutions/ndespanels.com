@@ -8,11 +8,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Plus, Filter, Shield, Eye, ExternalLink } from "lucide-react";
+import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, File, Image, Trash2, Plus, Filter, Shield, Eye, ExternalLink, Download } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { GoogleMapsLoader } from "@/components/GoogleMapsLoader";
+import { EstimatorLeadImport } from "@/components/EstimatorLeadImport";
 
 const STATUS_OPTIONS = [
   { value: "lead", label: "Lead", color: "bg-slate-500/20 text-slate-300 border-slate-400/30" },
@@ -80,6 +81,7 @@ export default function CRMLeads() {
   const [selectedLead, setSelectedLead] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [noteText, setNoteText] = useState("");
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: permissions } = trpc.users.getMyPermissions.useQuery();
@@ -269,6 +271,18 @@ export default function CRMLeads() {
                 <SelectItem value="financed" className="text-white hover:bg-slate-700">Financed</SelectItem>
               </SelectContent>
             </Select>
+            {/* Import CSV Button - Only visible for lead stage to prevent data corruption */}
+            {(statusFilter === 'lead' || statusFilter === 'all') && (
+              <Button 
+                variant="outline"
+                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                onClick={() => setShowImportDialog(true)}
+                title={statusFilter !== 'lead' && statusFilter !== 'all' ? "Import is only available for Lead stage to prevent data corruption" : "Import leads from Estimator"}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Import Leads
+              </Button>
+            )}
             <Button 
               className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
               onClick={() => setShowNewJobDialog(true)}
@@ -381,6 +395,19 @@ export default function CRMLeads() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Import Leads Dialog */}
+        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+          <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-white">Import Leads from Estimator</DialogTitle>
+              <DialogDescription className="text-sm text-slate-400">
+                Import leads from your Estimator account. New jobs will be created as "Lead" status.
+              </DialogDescription>
+            </DialogHeader>
+            <EstimatorLeadImport />
+          </DialogContent>
+        </Dialog>
 
         {/* New Job Dialog */}
         <Dialog open={showNewJobDialog} onOpenChange={setShowNewJobDialog}>
