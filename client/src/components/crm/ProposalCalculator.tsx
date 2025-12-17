@@ -92,6 +92,7 @@ export function ProposalCalculator({
   // Generate proposal PDF mutation (preview only)
   const generateProposal = trpc.proposals.generateProposal.useMutation({
     onSuccess: (data: any) => {
+      console.log('[ProposalCalculator] Generate proposal success:', data);
       toast.success("Opening signature pad...");
       
       // Convert base64 PDF to blob URL for preview
@@ -104,13 +105,16 @@ export function ProposalCalculator({
         const blob = new Blob([bytes], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         setPdfPreviewUrl(url);
+        console.log('[ProposalCalculator] PDF preview URL created:', url);
       }
       
       // Open signature pad for customer to sign
+      console.log('[ProposalCalculator] Setting showSignaturePad to true');
       setShowSignaturePad(true);
     },
     onError: (error: any) => {
-      toast.error(error.message);
+      console.error('[ProposalCalculator] Generate proposal error:', error);
+      toast.error(error.message || 'Failed to generate proposal');
     },
   });
 
@@ -831,6 +835,20 @@ export function ProposalCalculator({
             <FileText className="w-4 h-4 mr-2" />
             {generateProposal.isPending ? "Generating..." : "Generate Contract"}
           </Button>
+
+          {/* Insurance Letter of Authorization Button */}
+          {dealType === "insurance" && (
+            <Button
+              onClick={() => {
+                toast.info("Opening Letter of Authorization...");
+                setShowSignaturePad(true);
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Generate Letter of Authorization
+            </Button>
+          )}
 
           {/* Success Message */}
           <div className="p-3 bg-green-900/20 rounded border border-green-500/30 text-sm text-green-400">
