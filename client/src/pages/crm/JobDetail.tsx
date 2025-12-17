@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Trash2, Bell, BellOff, Phone, Mail, Navigation, Search } from "lucide-react";
-import { Link } from "wouter";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import CRMLayout from "@/components/crm/CRMLayout";
 import type { Job } from "@/types/job";
 import type { ActivityTag } from "@/types/activity";
+
+// Layout Components
+import { JobDetailHeader } from "@/components/crm/job-detail/JobDetailHeader";
+import { JobDetailTabs } from "@/components/crm/job-detail/JobDetailTabs";
 
 // Tab Components
 import { JobOverviewTab } from "@/components/crm/job-detail/JobOverviewTab";
@@ -160,178 +160,30 @@ export default function JobDetail() {
   return (
     <CRMLayout>
       <div className="min-h-screen bg-slate-900">
-        {/* Mobile Action Bar - Sticky at top on mobile */}
-        <div className="md:hidden sticky top-14 z-50 bg-slate-800 border-b border-slate-700 px-4 py-3">
-          <div className="flex items-center justify-around gap-2">
-            <a 
-              href={`tel:${job.phone}`}
-              className="flex-1"
-            >
-              <Button 
-                className="w-full bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold min-h-11"
-              >
-                <Phone className="w-5 h-5 mr-2" />
-                Call
-              </Button>
-            </a>
-            <a 
-              href={`sms:${job.phone}`}
-              className="flex-1"
-            >
-              <Button 
-                variant="outline"
-                className="w-full border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10 min-h-11"
-              >
-                <Mail className="w-5 h-5 mr-2" />
-                Text
-              </Button>
-            </a>
-            <a 
-              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address + ' ' + job.cityStateZip)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1"
-            >
-              <Button 
-                variant="outline"
-                className="w-full border-slate-600 text-slate-300 hover:bg-slate-700 min-h-11"
-              >
-                <Navigation className="w-5 h-5 mr-2" />
-                Map
-              </Button>
-            </a>
-          </div>
-        </div>
+        {/* Header Component */}
+        <JobDetailHeader
+          job={job as Job}
+          jobId={jobId}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          showDeleteDialog={showDeleteDialog}
+          setShowDeleteDialog={setShowDeleteDialog}
+          onToggleFollowUp={() => mutations.toggleFollowUp.mutate({ 
+            jobId, 
+            needsFollowUp: !(job as any).needsFollowUp 
+          })}
+          onDeleteJob={() => mutations.deleteJob.mutate({ id: jobId })}
+          isDeleting={mutations.deleteJob.isPending}
+        />
 
-        {/* Header */}
-        <div className="bg-slate-800 border-b border-slate-700 sticky top-14 md:top-14 z-40 backdrop-blur-sm">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <Link href="/crm">
-                  <a className="text-slate-400 hover:text-white transition-colors">
-                    <ArrowLeft className="w-5 h-5" />
-                  </a>
-                </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-white">{job.fullName}</h1>
-                  <p className="text-slate-400 text-sm">{job.address}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    onClick={() => mutations.toggleFollowUp.mutate({ 
-                      jobId, 
-                      needsFollowUp: !job.needsFollowUp 
-                    })}
-                    className={job.needsFollowUp 
-                      ? "bg-[#00d4aa]/20 border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/30"
-                      : "border-slate-600 text-slate-300 hover:bg-slate-700"
-                    }
-                  >
-                    {job.needsFollowUp ? (
-                      <>
-                        <BellOff className="w-4 h-4 mr-2" />
-                        Clear Follow Up
-                      </>
-                    ) : (
-                      <>
-                        <Bell className="w-4 h-4 mr-2" />
-                        Request Follow Up
-                      </>
-                    )}
-                  </Button>
-                )}
-                {canDelete && (
-                  <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                  <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="outline"
-                      className="bg-red-900/20 border-red-600 text-red-400 hover:bg-red-900/40 hover:text-red-300"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Job
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="bg-slate-800 border-slate-700">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="text-white">Delete Job?</AlertDialogTitle>
-                      <AlertDialogDescription className="text-slate-300">
-                        Are you sure you want to delete this job for <strong className="text-white">{job.fullName}</strong>?
-                        <br /><br />
-                        This will permanently delete:
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>Job details and customer information</li>
-                          <li>All documents and photos</li>
-                          <li>Messages and timeline</li>
-                          <li>Edit history</li>
-                        </ul>
-                        <br />
-                        <strong className="text-red-400">This action cannot be undone.</strong>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600">
-                        Cancel
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => mutations.deleteJob.mutate({ id: jobId })}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        {mutations.deleteJob.isPending ? "Deleting..." : "Delete Job"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                )}
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-2 overflow-x-auto">
-              {[
-                { id: "overview", label: "Overview" },
-                { id: "production_report", label: "Production Report" },
-                { id: "documents", label: "Documents" },
-                { id: "photos", label: "Photos" },
-                { id: "messages", label: "Messages" },
-                { id: "timeline", label: "Timeline" },
-                { id: "proposal", label: "Proposal" },
-                { id: "estimator", label: "Estimator" },
-                { id: "edit_history", label: "Edit History" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? "bg-[#00d4aa] text-black"
-                      : "text-slate-400 hover:text-white hover:bg-slate-700"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Search */}
-          {activeTab !== "overview" && activeTab !== "proposal" && (
-            <div className="px-6 pb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder={`Search ${activeTab}...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 rounded-lg"
-                />
-              </div>
-            </div>
-          )}
+        {/* Tabs Component */}
+        <div className="bg-slate-800 border-b border-slate-700 sticky top-14 md:top-14 z-40 backdrop-blur-sm pt-4">
+          <JobDetailTabs
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
         </div>
 
         {/* Tab Content */}
