@@ -5,21 +5,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Phone, User, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Plus, Video, Phone as PhoneIcon, Users } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
+type EventType = "inspection" | "call" | "meeting" | "zoom";
+
+const EVENT_TYPE_CONFIG = {
+  inspection: { label: "🔍 Inspection", color: "#ef4444", bgClass: "bg-red-500/20", textClass: "text-red-400", borderClass: "border-red-500" },
+  call: { label: "📞 Call", color: "#22c55e", bgClass: "bg-green-500/20", textClass: "text-green-400", borderClass: "border-green-500" },
+  meeting: { label: "👥 Meeting", color: "#3b82f6", bgClass: "bg-blue-500/20", textClass: "text-blue-400", borderClass: "border-blue-500" },
+  zoom: { label: "💻 Zoom", color: "#a855f7", bgClass: "bg-purple-500/20", textClass: "text-purple-400", borderClass: "border-purple-500" },
+};
+
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<number | null>(null);
-  const [scheduleTime, setScheduleTime] = useState("09:00");
-  const [assignedRep, setAssignedRep] = useState<string>("");
+  const [showEventDialog, setShowEventDialog] = useState(false);
+  
+  // Event form state
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDescription, setEventDescription] = useState("");
+  const [eventType, setEventType] = useState<EventType>("meeting");
+  const [eventTime, setEventTime] = useState("09:00");
+  const [eventEndTime, setEventEndTime] = useState("10:00");
+  const [assignedTo, setAssignedTo] = useState<string>("");
+  const [selectedAttendees, setSelectedAttendees] = useState<number[]>([]);
+  const [location, setLocation] = useState("");
+  const [meetingUrl, setMeetingUrl] = useState("");
+  const [selectedJob, setSelectedJob] = useState<number | null>(null);
 
   const { startDate, endDate } = useMemo(() => {
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -37,25 +57,38 @@ export default function Calendar() {
     };
   }, [currentDate]);
 
-  const { data: appointments, refetch } = trpc.crm.getAppointments.useQuery({
+  const { data: events, refetch } = trpc.events.getEvents.useQuery({
     startDate,
     endDate,
   });
 
   const { data: team } = trpc.users.getTeam.useQuery();
-  const { data: leads } = trpc.crm.getLeads.useQuery({ status: "new_lead" });
+  const { data: jobs } = trpc.crm.getLeads.useQuery({});
 
-  const scheduleMutation = trpc.crm.scheduleAppointment.useMutation({
+  const createEventMutation = trpc.events.createEvent.useMutation({
     onSuccess: () => {
-      toast.success("Appointment scheduled successfully");
-      setShowScheduleDialog(false);
-      setSelectedLead(null);
+      toast.success("Event created successfully! Notifications sent to attendees.");
+      setShowEventDialog(false);
+      resetForm();
       refetch();
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
+
+  const resetForm = () => {
+    setEventTitle("");
+    setEventDescription("");
+    setEventType("meeting");
+    setEventTime("09:00");
+    setEventEndTime("10:00");
+    setAssignedTo("");
+    setSelectedAttendees([]);
+    setLocation("");
+    setMeetingUrl("");
+    setSelectedJob(null);
+  };
 
   const calendarDays = useMemo(() => {
     const days = [];
@@ -69,17 +102,17 @@ export default function Calendar() {
     return days;
   }, [startDate, endDate]);
 
-  const appointmentsByDate = useMemo(() => {
-    const grouped: Record<string, typeof appointments> = {};
-    appointments?.forEach(apt => {
-      if (apt.scheduledDate) {
-        const dateKey = new Date(apt.scheduledDate).toDateString();
+  const eventsByDate = useMemo(() => {
+    const grouped: Record<string, typeof events> = {};
+    events?.forEach(evt => {
+      if (evt.startTime) {
+        const dateKey = new Date(evt.startTime).toDateString();
         if (!grouped[dateKey]) grouped[dateKey] = [];
-        grouped[dateKey]!.push(apt);
+        grouped[dateKey]!.push(evt);
       }
     });
     return grouped;
-  }, [appointments]);
+  }, [events]);
 
   const prevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -89,18 +122,40 @@ export default function Calendar() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const handleSchedule = () => {
-    if (!selectedLead || !selectedDate) return;
+  const handleCreateEvent = () => {
+    if (!eventTitle || !selectedDate) {
+      toast.error("Title and date are required");
+      return;
+    }
     
-    const scheduledDateTime = new Date(selectedDate);
-    const [hours, minutes] = scheduleTime.split(":").map(Number);
-    scheduledDateTime.setHours(hours, minutes, 0, 0);
+    const startDateTime = new Date(selectedDate);
+    const [hours, minutes] = eventTime.split(":").map(Number);
+    startDateTime.setHours(hours, minutes, 0, 0);
 
-    scheduleMutation.mutate({
-      leadId: selectedLead,
-      scheduledDate: scheduledDateTime.toISOString(),
-      assignedTo: assignedRep ? parseInt(assignedRep) : undefined,
+    const endDateTime = new Date(selectedDate);
+    const [endHours, endMinutes] = eventEndTime.split(":").map(Number);
+    endDateTime.setHours(endHours, endMinutes, 0, 0);
+
+    createEventMutation.mutate({
+      title: eventTitle,
+      description: eventDescription || undefined,
+      type: eventType,
+      startTime: startDateTime.toISOString(),
+      endTime: endDateTime.toISOString(),
+      jobId: selectedJob || undefined,
+      assignedTo: assignedTo ? parseInt(assignedTo) : undefined,
+      attendees: selectedAttendees.length > 0 ? selectedAttendees : undefined,
+      location: location || undefined,
+      meetingUrl: meetingUrl || undefined,
     });
+  };
+
+  const toggleAttendee = (userId: number) => {
+    setSelectedAttendees(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
   };
 
   const isToday = (date: Date) => {
@@ -118,75 +173,173 @@ export default function Calendar() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Scheduling Calendar</h1>
-            <p className="text-sm text-slate-400">Manage inspections and appointments</p>
+            <h1 className="text-2xl font-bold text-white">Team Calendar</h1>
+            <p className="text-sm text-slate-400">Schedule inspections, calls, meetings, and zoom sessions</p>
           </div>
-          <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+          <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
             <DialogTrigger asChild>
               <Button className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold">
                 <Plus className="w-4 h-4 mr-2" />
-                Schedule Inspection
+                Create Event
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-800 border-slate-700">
+            <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-white">Schedule New Inspection</DialogTitle>
+                <DialogTitle className="text-white">Create New Event</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
+                {/* Event Type */}
                 <div>
-                  <Label className="text-slate-300">Select Lead</Label>
-                  <Select value={selectedLead?.toString() || ""} onValueChange={(v) => setSelectedLead(parseInt(v))}>
+                  <Label className="text-slate-300 mb-2 block">Event Type *</Label>
+                  <Select value={eventType} onValueChange={(v) => setEventType(v as EventType)}>
                     <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue placeholder="Choose a lead..." />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-700 border-slate-600">
-                      {leads?.map((lead) => (
-                        <SelectItem key={lead.id} value={lead.id.toString()} className="text-white hover:bg-slate-600">
-                          {lead.fullName} - {lead.address}
+                      {Object.entries(EVENT_TYPE_CONFIG).map(([key, config]) => (
+                        <SelectItem key={key} value={key} className="text-white hover:bg-slate-600">
+                          {config.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Title */}
                 <div>
-                  <Label className="text-slate-300">Date</Label>
+                  <Label className="text-slate-300 mb-2 block">Title *</Label>
                   <Input 
-                    type="date" 
-                    value={selectedDate?.toISOString().split("T")[0] || ""} 
-                    onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                    value={eventTitle}
+                    onChange={(e) => setEventTitle(e.target.value)}
+                    placeholder="e.g., Roof Inspection - Smith Residence"
                     className="bg-slate-700 border-slate-600 text-white"
                   />
                 </div>
+
+                {/* Description */}
                 <div>
-                  <Label className="text-slate-300">Time</Label>
-                  <Input 
-                    type="time" 
-                    value={scheduleTime} 
-                    onChange={(e) => setScheduleTime(e.target.value)}
+                  <Label className="text-slate-300 mb-2 block">Description</Label>
+                  <Textarea 
+                    value={eventDescription}
+                    onChange={(e) => setEventDescription(e.target.value)}
+                    placeholder="Additional details..."
                     className="bg-slate-700 border-slate-600 text-white"
+                    rows={3}
                   />
                 </div>
+
+                {/* Date and Time */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">Date *</Label>
+                    <Input 
+                      type="date" 
+                      value={selectedDate?.toISOString().split("T")[0] || ""} 
+                      onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                      className="bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">Start Time</Label>
+                    <Input 
+                      type="time" 
+                      value={eventTime} 
+                      onChange={(e) => setEventTime(e.target.value)}
+                      className="bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">End Time</Label>
+                    <Input 
+                      type="time" 
+                      value={eventEndTime} 
+                      onChange={(e) => setEventEndTime(e.target.value)}
+                      className="bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Assigned To */}
                 <div>
-                  <Label className="text-slate-300">Assign To</Label>
-                  <Select value={assignedRep} onValueChange={setAssignedRep}>
+                  <Label className="text-slate-300 mb-2 block">Assign To</Label>
+                  <Select value={assignedTo} onValueChange={setAssignedTo}>
                     <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                       <SelectValue placeholder="Select team member..." />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-700 border-slate-600">
-                      {team?.filter((m: any) => m.role === "sales_rep" || m.role === "project_manager").map((member: any) => (
+                      {team?.map((member: any) => (
                         <SelectItem key={member.id} value={member.id.toString()} className="text-white hover:bg-slate-600">
-                          {member.name || member.email}
+                          {member.name || member.email} ({member.role})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Attendees */}
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Attendees (will receive notifications)</Label>
+                  <div className="bg-slate-700 border border-slate-600 rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                    {team?.map((member: any) => (
+                      <div key={member.id} className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedAttendees.includes(member.id)}
+                          onCheckedChange={() => toggleAttendee(member.id)}
+                          className="border-slate-500"
+                        />
+                        <span className="text-sm text-slate-300">{member.name || member.email}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Link to Job */}
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Link to Job (Optional)</Label>
+                  <Select value={selectedJob?.toString() || ""} onValueChange={(v) => setSelectedJob(v ? parseInt(v) : null)}>
+                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                      <SelectValue placeholder="Select job..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-700 border-slate-600">
+                      {jobs?.map((job) => (
+                        <SelectItem key={job.id} value={job.id.toString()} className="text-white hover:bg-slate-600">
+                          {job.fullName} - {job.address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Location or Meeting URL */}
+                {eventType === "zoom" ? (
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">Meeting URL</Label>
+                    <Input 
+                      value={meetingUrl}
+                      onChange={(e) => setMeetingUrl(e.target.value)}
+                      placeholder="https://zoom.us/j/..."
+                      className="bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">Location</Label>
+                    <Input 
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Address or meeting room"
+                      className="bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                )}
+
+                {/* Submit Button */}
                 <Button 
                   className="w-full bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold" 
-                  onClick={handleSchedule}
-                  disabled={!selectedLead || !selectedDate || scheduleMutation.isPending}
+                  onClick={handleCreateEvent}
+                  disabled={!eventTitle || !selectedDate || createEventMutation.isPending}
                 >
-                  {scheduleMutation.isPending ? "Scheduling..." : "Schedule Inspection"}
+                  {createEventMutation.isPending ? "Creating..." : "Create Event"}
                 </Button>
               </div>
             </DialogContent>
@@ -222,7 +375,7 @@ export default function Calendar() {
             <div className="grid grid-cols-7 gap-1">
               {calendarDays.map((date, idx) => {
                 const dateKey = date.toDateString();
-                const dayAppointments = appointmentsByDate[dateKey] || [];
+                const dayEvents = eventsByDate[dateKey] || [];
                 const isCurrentMonthDay = isCurrentMonth(date);
                 const isTodayDate = isToday(date);
 
@@ -234,8 +387,8 @@ export default function Calendar() {
                     } ${isTodayDate ? "border-[#00d4aa] border-2" : "border-slate-600"}`}
                     onClick={() => {
                       setSelectedDate(date);
-                      if (dayAppointments.length === 0) {
-                        setShowScheduleDialog(true);
+                      if (dayEvents.length === 0) {
+                        setShowEventDialog(true);
                       }
                     }}
                   >
@@ -245,20 +398,24 @@ export default function Calendar() {
                       {date.getDate()}
                     </div>
                     
-                    {/* Appointments */}
+                    {/* Events */}
                     <div className="space-y-1">
-                      {dayAppointments.slice(0, 2).map((apt: any) => (
-                        <div
-                          key={apt.id}
-                          className="text-xs p-1 rounded bg-[#00d4aa]/20 text-[#00d4aa] truncate font-medium"
-                          title={apt.title}
-                        >
-                          {new Date(apt.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      ))}
-                      {dayAppointments.length > 2 && (
-                        <div className="text-xs text-slate-400">
-                          +{dayAppointments.length - 2} more
+                      {dayEvents.slice(0, 3).map((evt: any) => {
+                        const config = EVENT_TYPE_CONFIG[evt.type as EventType];
+                        return (
+                          <div
+                            key={evt.id}
+                            className={`text-xs p-1 rounded ${config.bgClass} ${config.textClass} truncate font-medium border-l-2 ${config.borderClass}`}
+                            title={`${evt.title} - ${evt.type}`}
+                            style={{ backgroundColor: `${evt.color}20` }}
+                          >
+                            {new Date(evt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {evt.title}
+                          </div>
+                        );
+                      })}
+                      {dayEvents.length > 3 && (
+                        <div className="text-xs text-slate-400 pl-1">
+                          +{dayEvents.length - 3} more
                         </div>
                       )}
                     </div>
@@ -269,7 +426,7 @@ export default function Calendar() {
           </CardContent>
         </Card>
 
-        {/* Today's Appointments */}
+        {/* Today's Events */}
         <Card className="mt-6 shadow-sm bg-slate-800 border-slate-700">
           <CardHeader>
             <CardTitle className="text-lg text-white flex items-center gap-2">
@@ -278,49 +435,70 @@ export default function Calendar() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {appointmentsByDate[new Date().toDateString()]?.length ? (
+            {eventsByDate[new Date().toDateString()]?.length ? (
               <div className="space-y-3">
-                {appointmentsByDate[new Date().toDateString()]?.map((apt: any) => (
-                  <div key={apt.id} className="flex items-center gap-4 p-3 rounded-lg border-l-4 border-l-[#00d4aa] bg-slate-700/50">
-                    <div className="w-12 h-12 rounded-full bg-[#00d4aa]/20 flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-[#00d4aa]" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-white">{apt.title}</p>
-                      <div className="flex items-center gap-4 text-sm text-slate-400 mt-1">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {new Date(apt.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {apt.lead && (
-                          <>
+                {eventsByDate[new Date().toDateString()]?.map((evt: any) => {
+                  const config = EVENT_TYPE_CONFIG[evt.type as EventType];
+                  return (
+                    <div key={evt.id} className={`flex items-center gap-4 p-3 rounded-lg border-l-4 ${config.borderClass} bg-slate-700/50`}>
+                      <div className={`w-12 h-12 rounded-full ${config.bgClass} flex items-center justify-center`}>
+                        {evt.type === "zoom" && <Video className={`w-5 h-5 ${config.textClass}`} />}
+                        {evt.type === "call" && <PhoneIcon className={`w-5 h-5 ${config.textClass}`} />}
+                        {evt.type === "meeting" && <Users className={`w-5 h-5 ${config.textClass}`} />}
+                        {evt.type === "inspection" && <Clock className={`w-5 h-5 ${config.textClass}`} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-white">{evt.title}</p>
+                        <div className="flex items-center gap-4 text-sm text-slate-400 mt-1">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(evt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {evt.endTime && ` - ${new Date(evt.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                          </span>
+                          {evt.location && (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
-                              {apt.lead.address}
+                              {evt.location}
                             </span>
+                          )}
+                          {evt.assignedUserName && (
                             <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {apt.lead.phone}
+                              <Users className="w-3 h-3" />
+                              {evt.assignedUserName}
                             </span>
-                          </>
-                        )}
+                          )}
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full ${config.bgClass} ${config.textClass} text-xs font-medium`}>
+                        {evt.type}
                       </div>
                     </div>
-                    {apt.assignedTo && (
-                      <div className="flex items-center gap-2 text-sm text-slate-300">
-                        <User className="w-4 h-4" />
-                        {apt.assignedTo.name}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-slate-400">
                 <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No appointments scheduled for today</p>
+                <p>No events scheduled for today</p>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Color Legend */}
+        <Card className="mt-6 shadow-sm bg-slate-800 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-sm text-white">Event Types</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Object.entries(EVENT_TYPE_CONFIG).map(([key, config]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <div className={`w-4 h-4 rounded ${config.bgClass} border-2 ${config.borderClass}`} />
+                  <span className="text-sm text-slate-300">{config.label}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
