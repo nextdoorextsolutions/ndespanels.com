@@ -50,6 +50,17 @@ export function JobPhotosTab({
   // AI Photo Processing mutation
   const processPhoto = trpc.ai.processJobPhoto.useMutation();
 
+  // Helper to add Supabase image transformation params for thumbnails
+  const getThumbnailUrl = (url: string, width: number = 300): string => {
+    if (!url) return url;
+    // Only apply transformations to Supabase Storage URLs
+    if (url.includes('supabase.co/storage')) {
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}width=${width}&resize=contain`;
+    }
+    return url;
+  };
+
   // Toggle photo selection
   const togglePhotoSelection = (photoId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -235,7 +246,7 @@ export function JobPhotosTab({
 
                   <div className="aspect-square">
                     <img 
-                      src={photo.fileUrl} 
+                      src={getThumbnailUrl(photo.fileUrl, 300)} 
                       alt={photo.fileName}
                       className="w-full h-full object-cover"
                       loading="lazy"
