@@ -216,7 +216,8 @@ export default function JobDetail() {
       formData.append("fileType", type);
 
       try {
-        const response = await fetch("/api/upload", {
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const response = await fetch(`${apiUrl}/api/upload`, {
           method: "POST",
           body: formData,
         });
