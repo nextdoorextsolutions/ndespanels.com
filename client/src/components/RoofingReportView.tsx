@@ -6,8 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { calculateRoofMetrics, calculateMaterialRequirements, formatLinearFeet, RoofMetrics, RoofSegment } from '@/utils/roofMath';
 import { convertSqMetersToSqFeet } from '@/utils/roofingMath';
 import { Download, Ruler, Home, ChevronUp, ChevronDown, Plus, Minus, MapPin, X } from 'lucide-react';
-import { ManualRoofTakeoff } from './ManualRoofTakeoff';
-import { GoogleStreetView } from './GoogleStreetView';
+import { ManualRoofTakeoff } from './roof/ManualRoofTakeoff';
+import { GoogleStreetView } from './maps/GoogleStreetView';
 import { toast } from 'sonner';
 import { GoogleMap, DrawingManager } from '@react-google-maps/api';
 

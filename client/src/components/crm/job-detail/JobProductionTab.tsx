@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Grid3X3, DollarSign } from "lucide-react";
 import { RoofingReportView } from "@/components/RoofingReportView";
-import { GoogleMapsLoader } from "@/components/GoogleMapsLoader";
+import { GoogleMapsLoader } from "@/components/maps/GoogleMapsLoader";
 import type { Job } from "@/types";
 
 interface JobProductionTabProps {

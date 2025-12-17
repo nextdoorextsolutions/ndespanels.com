@@ -12,7 +12,7 @@ import { Search, Phone, Mail, MapPin, Clock, FileText, ChevronRight, Upload, Fil
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
-import { GoogleMapsLoader } from "@/components/GoogleMapsLoader";
+import { GoogleMapsLoader } from "@/components/maps/GoogleMapsLoader";
 import { EstimatorLeadImport } from "@/components/EstimatorLeadImport";
 
 const STATUS_OPTIONS = [
@@ -296,7 +296,72 @@ export default function CRMLeads() {
         {/* Leads Table */}
         <Card className="shadow-sm bg-slate-800 border-slate-700">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="block md:hidden">
+              {filteredLeads?.map((lead) => (
+                <div
+                  key={lead.id}
+                  className="border-b border-slate-700 p-4 hover:bg-slate-700/50 transition cursor-pointer"
+                  onClick={() => setLocation(`/crm/job/${lead.id}`)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-white text-lg mb-1">{lead.fullName}</h3>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(lead.status)}`}>
+                        {STATUS_OPTIONS.find(s => s.value === lead.status)?.label || lead.status}
+                      </span>
+                    </div>
+                    <Link href={`/crm/job/${lead.id}`} onClick={(e) => e.stopPropagation()}>
+                      <Button 
+                        size="sm" 
+                        className="bg-[#00d4aa] hover:bg-[#00b894] text-black min-h-11"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2 text-slate-300">
+                      <MapPin className="w-4 h-4 mt-0.5 text-slate-500 flex-shrink-0" />
+                      <div>
+                        <p>{lead.address}</p>
+                        <p className="text-xs text-slate-400">{lead.cityStateZip}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Phone className="w-4 h-4 flex-shrink-0" />
+                      <a href={`tel:${lead.phone}`} className="hover:text-[#00d4aa]" onClick={(e) => e.stopPropagation()}>
+                        {lead.phone}
+                      </a>
+                    </div>
+                    
+                    {lead.email && (
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Mail className="w-4 h-4 flex-shrink-0" />
+                        <a href={`mailto:${lead.email}`} className="hover:text-[#00d4aa] truncate" onClick={(e) => e.stopPropagation()}>
+                          {lead.email}
+                        </a>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2 text-slate-400 text-xs">
+                      <Clock className="w-3 h-3 flex-shrink-0" />
+                      {new Date(lead.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(!filteredLeads || filteredLeads.length === 0) && (
+                <div className="p-8 text-center text-slate-400">
+                  No leads found. They'll appear here when customers submit requests.
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-slate-700/50 border-b border-slate-600">

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, boolean, timestamp, integer, pgEnum, doublePrecision, jsonb, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, boolean, timestamp, integer, pgEnum, doublePrecision, jsonb, numeric, unique } from "drizzle-orm/pg-core";
 
 // PostgreSQL enums
 export const roleEnum = pgEnum("role", ["user", "admin", "owner", "office", "sales_rep", "project_manager", "team_lead", "field_crew"]);
@@ -594,7 +594,7 @@ export const channelTypeEnum = pgEnum("channel_type", ["public", "private", "dm"
 
 export const chatChannels = pgTable("chat_channels", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
   type: channelTypeEnum("type").notNull().default("public"),
   description: text("description"),
   createdBy: integer("created_by").references(() => users.id),
@@ -632,7 +632,10 @@ export const channelMembers = pgTable("channel_members", {
   role: varchar("role", { length: 20 }).default("member"), // member, admin, owner
   lastReadAt: timestamp("last_read_at"),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Unique constraint to prevent duplicate memberships
+  uniqueChannelUser: unique().on(table.channelId, table.userId),
+}));
 
 export type ChannelMember = typeof channelMembers.$inferSelect;
 export type InsertChannelMember = typeof channelMembers.$inferInsert;
@@ -654,3 +657,38 @@ export const errorLogs = pgTable("error_logs", {
 
 export type ErrorLog = typeof errorLogs.$inferSelect;
 export type InsertErrorLog = typeof errorLogs.$inferInsert;
+
+/**
+ * Bonus Tiers - Commission and bonus rules per user
+ */
+export const periodEnum = pgEnum("bonus_period", ["weekly", "monthly", "quarterly"]);
+export const commissionStatusEnum = pgEnum("commission_status", ["pending", "approved", "denied"]);
+
+export const bonusTiers = pgTable("bonus_tiers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  requiredDeals: integer("required_deals").notNull(),
+  bonusAmount: numeric("bonus_amount", { precision: 10, scale: 2 }).notNull(),
+  period: periodEnum("period").default("weekly").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type BonusTier = typeof bonusTiers.$inferSelect;
+export type InsertBonusTier = typeof bonusTiers.$inferInsert;
+
+/**
+ * Commission Requests - Tracks deals claimed by sales reps
+ */
+export const commissionRequests = pgTable("commission_requests", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").references(() => reportRequests.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  paymentId: varchar("payment_id", { length: 255 }), // Reference to collected payment/check
+  status: commissionStatusEnum("status").default("pending").notNull(),
+  denialReason: text("denial_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type CommissionRequest = typeof commissionRequests.$inferSelect;
+export type InsertCommissionRequest = typeof commissionRequests.$inferInsert;

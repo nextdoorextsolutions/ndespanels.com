@@ -59,25 +59,25 @@ export const GlobalChatWidget: React.FC = () => {
   const effectiveUser = authUser || storedUser;
 
   // Fetch channels
-  const { data: channels } = trpc.teamChat.getChannels.useQuery(undefined, {
+  const { data: channels } = trpc.messaging.getChannels.useQuery(undefined, {
     enabled: isAuthenticated && !!effectiveUser,
   });
 
   // Fetch messages for active channel with pagination
-  const { data: channelMessages, refetch: refetchMessages } = trpc.teamChat.getMessages.useQuery(
+  const { data: channelMessages, refetch: refetchMessages } = trpc.messaging.getMessages.useQuery(
     { channelId: activeChannelId!, limit: 50, offset: messageOffset },
     { enabled: !!activeChannelId }
   );
 
   // Send message mutation
-  const sendTeamMessageMutation = trpc.teamChat.sendMessage.useMutation({
+  const sendTeamMessageMutation = trpc.messaging.sendMessage.useMutation({
     onSuccess: () => {
       refetchMessages();
     },
   });
 
   // Mark as read mutation
-  const markAsReadMutation = trpc.teamChat.markAsRead.useMutation();
+  const markAsReadMutation = trpc.messaging.markAsRead.useMutation();
 
   // Supabase Realtime subscription for auto-updates
   const realtimeStatus = useChatRealtime({
@@ -170,14 +170,13 @@ export const GlobalChatWidget: React.FC = () => {
   });
 
   // tRPC mutations and subscriptions - must be called at component level
-  const sendMessageMutation = trpc.globalChat.sendMessage.useMutation();
-  const generateDraftMutation = trpc.globalChat.generateDraft.useMutation();
+  const generateDraftMutation = trpc.messaging.generateDraft.useMutation();
   
-  trpc.globalChat.streamMessage.useSubscription(
+  trpc.messaging.streamAIMessage.useSubscription(
     {
       message: streamingMessage,
       history: streamingHistory,
-      threadId: activeChannelName,
+      channelId: activeChannelId || undefined,
     },
     {
       enabled: !!streamingMessageId && streamingMessage.length > 0,

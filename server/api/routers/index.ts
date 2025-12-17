@@ -31,8 +31,9 @@ export { portalRouter } from "./portal";
 export { productsRouter } from "./products";
 export { aiRouter } from "./ai";
 export { invoicesRouter } from "./invoices";
-export { globalChatRouter } from "./globalChat";
-export { teamChatRouter } from "./teamChat";
+export { messagingRouter } from "./messaging";
+export { analyticsRouter } from "./analytics";
+export { commissionsRouter } from "./commissions";
 
 // Re-export the main router (assembled in server/routers.ts)
 // The 'jobs' router is exposed as 'crm' for frontend compatibility

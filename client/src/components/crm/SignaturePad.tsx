@@ -150,6 +150,13 @@ export function SignaturePad({
     }
   };
 
+  // Debug logging for modal state
+  useEffect(() => {
+    console.log('[SignaturePad] isOpen prop changed:', isOpen);
+    console.log('[SignaturePad] pdfPreviewUrl:', pdfPreviewUrl);
+    console.log('[SignaturePad] customerName:', customerName);
+  }, [isOpen, pdfPreviewUrl, customerName]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">

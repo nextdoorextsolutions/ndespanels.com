@@ -78,16 +78,16 @@ export function ChannelSidebar({ activeChannelId, onChannelSelect, channels }: C
   });
 
   // Fetch team members
-  const { data: teamMembers } = trpc.teamChat.getTeamMembers.useQuery();
+  const { data: teamMembers } = trpc.messaging.getTeamMembers.useQuery();
 
   // Get utils for refetching
   const utils = trpc.useUtils();
 
   // Mutation to get or create DM channel
-  const getOrCreateDMMutation = trpc.teamChat.getOrCreateDM.useMutation({
+  const getOrCreateDMMutation = trpc.messaging.getOrCreateDM.useMutation({
     onSuccess: async (data) => {
       // Refetch channels to include the new DM
-      await utils.teamChat.getChannels.invalidate();
+      await utils.messaging.getChannels.invalidate();
       
       // Switch to the DM channel
       onChannelSelect(data.channelId.toString());

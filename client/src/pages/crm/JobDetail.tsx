@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Search, Trash2, Bell, BellOff } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Bell, BellOff, Phone, Mail, Navigation } from "lucide-react";
 import { Link } from "wouter";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -317,8 +317,51 @@ export default function JobDetail() {
   return (
     <CRMLayout>
       <div className="min-h-screen bg-slate-900">
+        {/* Mobile Action Bar - Sticky at top on mobile */}
+        <div className="md:hidden sticky top-14 z-50 bg-slate-800 border-b border-slate-700 px-4 py-3">
+          <div className="flex items-center justify-around gap-2">
+            <a 
+              href={`tel:${job.phone}`}
+              className="flex-1"
+            >
+              <Button 
+                className="w-full bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold min-h-11"
+              >
+                <Phone className="w-5 h-5 mr-2" />
+                Call
+              </Button>
+            </a>
+            <a 
+              href={`sms:${job.phone}`}
+              className="flex-1"
+            >
+              <Button 
+                variant="outline"
+                className="w-full border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10 min-h-11"
+              >
+                <Mail className="w-5 h-5 mr-2" />
+                Text
+              </Button>
+            </a>
+            <a 
+              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address + ' ' + job.cityStateZip)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1"
+            >
+              <Button 
+                variant="outline"
+                className="w-full border-slate-600 text-slate-300 hover:bg-slate-700 min-h-11"
+              >
+                <Navigation className="w-5 h-5 mr-2" />
+                Map
+              </Button>
+            </a>
+          </div>
+        </div>
+
         {/* Header */}
-        <div className="bg-slate-800 border-b border-slate-700 sticky top-14 z-40 backdrop-blur-sm">
+        <div className="bg-slate-800 border-b border-slate-700 sticky top-14 md:top-14 z-40 backdrop-blur-sm">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">

@@ -16,6 +16,9 @@ import {
   User,
   Building2,
   DollarSign,
+  AlertCircle,
+  BarChart3,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
@@ -230,6 +234,60 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
                   </Button>
                 </Link>
               )}
+              {/* Commissions Link - All Users */}
+              <Link href="/commissions">
+                <Button
+                  variant="ghost"
+                  className={`text-white/90 hover:text-white hover:bg-white/10 gap-1 ${
+                    isActive("/commissions") ? "bg-white/20 text-white" : ""
+                  }`}
+                >
+                  <Wallet className="w-4 h-4" />
+                  Commissions
+                </Button>
+              </Link>
+              {/* Performance Dashboard Link - Owner/Admin Only */}
+              {(userProfile?.role === "owner" || userProfile?.role === "admin") && (
+                <Link href="/admin/dashboard">
+                  <Button
+                    variant="ghost"
+                    className={`text-white/90 hover:text-white hover:bg-white/10 gap-1 ${
+                      isActive("/admin/dashboard") ? "bg-white/20 text-white" : ""
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Performance
+                  </Button>
+                </Link>
+              )}
+              {/* Bonus Approvals Link - Owner/Admin Only */}
+              {(userProfile?.role === "owner" || userProfile?.role === "admin") && (
+                <Link href="/admin/bonus-approvals">
+                  <Button
+                    variant="ghost"
+                    className={`text-white/90 hover:text-white hover:bg-white/10 gap-1 ${
+                      isActive("/admin/bonus-approvals") ? "bg-white/20 text-white" : ""
+                    }`}
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    Bonus Approvals
+                  </Button>
+                </Link>
+              )}
+              {/* Error Logs Link - Owner/Admin Only */}
+              {(userProfile?.role === "owner" || userProfile?.role === "admin") && (
+                <Link href="/admin/error-logs">
+                  <Button
+                    variant="ghost"
+                    className={`text-white/90 hover:text-white hover:bg-white/10 gap-1 ${
+                      isActive("/admin/error-logs") ? "bg-white/20 text-white" : ""
+                    }`}
+                  >
+                    <AlertCircle className="w-4 h-4" />
+                    Error Logs
+                  </Button>
+                </Link>
+              )}
             </nav>
           </div>
 
@@ -243,7 +301,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
                 placeholder="Search jobs, contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-64 h-9 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white focus:text-gray-900 focus:placeholder:text-gray-400"
+                className="pl-9 w-64 h-9 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white focus:text-gray-900 focus:placeholder:text-gray-400 text-base"
               />
             </div>
 
@@ -307,22 +365,31 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden text-white"
+              className="lg:hidden text-white min-h-11 min-w-11"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Menu className="w-6 h-6" />
             </Button>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <nav className="lg:hidden bg-[#0a3d3d] border-t border-white/10 px-4 py-3">
-            <div className="flex flex-col gap-1">
+        {/* Mobile Navigation Drawer */}
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetContent side="left" className="w-[280px] bg-slate-900 border-slate-700 p-0">
+            <SheetHeader className="px-6 py-4 border-b border-slate-700">
+              <SheetTitle className="text-white flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center">
+                  <span className="text-black font-bold text-sm">N</span>
+                </div>
+                NEXTDOOR<span className="text-[#00d4aa]">CRM</span>
+              </SheetTitle>
+            </SheetHeader>
+            <nav className="flex flex-col gap-1 p-4">
               {navItems.map((item) =>
                 item.children ? (
                   <div key={item.label} className="space-y-1">
-                    <div className="text-white/70 text-sm font-medium px-3 py-2">
+                    <div className="text-slate-400 text-sm font-medium px-3 py-2 flex items-center gap-2">
+                      <item.icon className="w-4 h-4" />
                       {item.label}
                     </div>
                     {item.children.map((child) => (
@@ -331,7 +398,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
                         href={child.href}
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <div className="text-white/90 hover:bg-white/10 px-6 py-2 rounded">
+                        <div className="text-white hover:bg-slate-800 px-6 py-3 rounded min-h-11 flex items-center text-base">
                           {child.label}
                         </div>
                       </Link>
@@ -344,36 +411,94 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <div
-                      className={`flex items-center gap-2 text-white/90 hover:bg-white/10 px-3 py-2 rounded ${
-                        isActive(item.href!) ? "bg-white/20" : ""
+                      className={`flex items-center gap-3 text-white hover:bg-slate-800 px-3 py-3 rounded min-h-11 text-base ${
+                        isActive(item.href!) ? "bg-slate-800" : ""
                       }`}
                     >
-                      <item.icon className="w-4 h-4" />
+                      <item.icon className="w-5 h-5" />
                       {item.label}
                     </div>
                   </Link>
                 )
               )}
+              
+              {/* Divider */}
+              <div className="border-t border-slate-700 my-2" />
+              
+              {/* Commissions Link - All Users */}
+              <Link href="/commissions" onClick={() => setMobileMenuOpen(false)}>
+                <div
+                  className={`flex items-center gap-3 text-white hover:bg-slate-800 px-3 py-3 rounded min-h-11 text-base ${
+                    isActive("/commissions") ? "bg-slate-800" : ""
+                  }`}
+                >
+                  <Wallet className="w-5 h-5" />
+                  Commissions
+                </div>
+              </Link>
+              
               {/* Finance Link - Owner Only (Mobile) */}
               {userProfile?.role === "owner" && (
                 <Link href="/finance" onClick={() => setMobileMenuOpen(false)}>
                   <div
-                    className={`flex items-center gap-2 text-white/90 hover:bg-white/10 px-3 py-2 rounded ${
-                      isActive("/finance") ? "bg-white/20" : ""
+                    className={`flex items-center gap-3 text-white hover:bg-slate-800 px-3 py-3 rounded min-h-11 text-base ${
+                      isActive("/finance") ? "bg-slate-800" : ""
                     }`}
                   >
-                    <DollarSign className="w-4 h-4" />
+                    <DollarSign className="w-5 h-5" />
                     Finance
                   </div>
                 </Link>
               )}
-            </div>
-          </nav>
-        )}
+              
+              {/* Performance Dashboard - Owner/Admin Only */}
+              {(userProfile?.role === "owner" || userProfile?.role === "admin") && (
+                <Link href="/admin/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                  <div
+                    className={`flex items-center gap-3 text-white hover:bg-slate-800 px-3 py-3 rounded min-h-11 text-base ${
+                      isActive("/admin/dashboard") ? "bg-slate-800" : ""
+                    }`}
+                  >
+                    <BarChart3 className="w-5 h-5" />
+                    Performance
+                  </div>
+                </Link>
+              )}
+              
+              {/* Bonus Approvals - Owner/Admin Only */}
+              {(userProfile?.role === "owner" || userProfile?.role === "admin") && (
+                <Link href="/admin/bonus-approvals" onClick={() => setMobileMenuOpen(false)}>
+                  <div
+                    className={`flex items-center gap-3 text-white hover:bg-slate-800 px-3 py-3 rounded min-h-11 text-base ${
+                      isActive("/admin/bonus-approvals") ? "bg-slate-800" : ""
+                    }`}
+                  >
+                    <DollarSign className="w-5 h-5" />
+                    Bonus Approvals
+                  </div>
+                </Link>
+              )}
+              
+              {/* Error Logs - Owner/Admin Only */}
+              {(userProfile?.role === "owner" || userProfile?.role === "admin") && (
+                <Link href="/admin/error-logs" onClick={() => setMobileMenuOpen(false)}>
+                  <div
+                    className={`flex items-center gap-3 text-white hover:bg-slate-800 px-3 py-3 rounded min-h-11 text-base ${
+                      isActive("/admin/error-logs") ? "bg-slate-800" : ""
+                    }`}
+                  >
+                    <AlertCircle className="w-5 h-5" />
+                    Error Logs
+                  </div>
+                </Link>
+              )}
+            </nav>
+          </SheetContent>
+        </Sheet>
       </header>
 
       {/* Main Content */}
-      <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
+      <main className="min-h-[calc(100vh-3.5rem)] w-full">{children}</main>
     </div>
   );
 }

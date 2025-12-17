@@ -2,10 +2,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch, Redirect } from "wouter";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary from "./components/shared/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { OwnerRoute } from "./components/OwnerRoute";
+import { ProtectedRoute } from "./components/shared/ProtectedRoute";
+import { OwnerRoute } from "./components/shared/OwnerRoute";
 import { GlobalChatWidget } from "./components/GlobalChatWidget";
 import { GlobalErrorWatcher } from "./components/GlobalErrorWatcher";
 
@@ -32,6 +32,14 @@ import Clients from "./pages/finance/Clients";
 // Settings pages
 import ProfileSettings from "./pages/settings/ProfileSettings";
 import GeneralSettings from "./pages/settings/GeneralSettings";
+
+// Admin pages
+import ErrorLogsPage from "./pages/admin/ErrorLogsPage";
+import PerformanceDashboard from "./pages/admin/PerformanceDashboard";
+import BonusApprovals from "./pages/admin/BonusApprovals";
+
+// CRM pages - Commissions
+import CommissionsPage from "./pages/crm/CommissionsPage";
 
 // Public pages
 import CustomerPortal from "./pages/CustomerPortal";
@@ -129,6 +137,38 @@ function Router() {
             <Clients />
           </ErrorBoundary>
         </OwnerRoute>
+      </Route>
+      
+      {/* Admin routes - owner/admin only */}
+      <Route path="/admin/dashboard">
+        <OwnerRoute>
+          <ErrorBoundary>
+            <PerformanceDashboard />
+          </ErrorBoundary>
+        </OwnerRoute>
+      </Route>
+      <Route path="/admin/bonus-approvals">
+        <OwnerRoute>
+          <ErrorBoundary>
+            <BonusApprovals />
+          </ErrorBoundary>
+        </OwnerRoute>
+      </Route>
+      <Route path={"/admin/error-logs"}>
+        <OwnerRoute>
+          <ErrorBoundary>
+            <ErrorLogsPage />
+          </ErrorBoundary>
+        </OwnerRoute>
+      </Route>
+      
+      {/* Commissions route - protected for all authenticated users */}
+      <Route path="/commissions">
+        <ProtectedRoute>
+          <ErrorBoundary>
+            <CommissionsPage />
+          </ErrorBoundary>
+        </ProtectedRoute>
       </Route>
       
       {/* Settings routes - protected */}

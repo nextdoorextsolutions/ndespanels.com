@@ -32,11 +32,11 @@ import { portalRouter } from "./api/routers/portal";
 import { productsRouter } from "./api/routers/products";
 import { aiRouter } from "./api/routers/ai";
 import { invoicesRouter } from "./api/routers/invoices";
-import { globalChatRouter } from "./api/routers/globalChat";
-import { chatRouter } from "./api/routers/chat";
-import { teamChatRouter } from "./api/routers/teamChat";
+import { messagingRouter } from "./api/routers/messaging";
 import { estimatesRouter } from "./api/routers/estimates";
 import { utilityRouter } from "./api/routers/utility";
+import { analyticsRouter } from "./api/routers/analytics";
+import { commissionsRouter } from "./api/routers/commissions";
 import { getDb } from "./db";
 import { reportRequests, users, activities, documents, editHistory, jobAttachments, jobMessageReads, notifications, materialOrders, materialKits } from "../drizzle/schema";
 import { PRODUCTS, validatePromoCode } from "./products";
@@ -69,110 +69,6 @@ import {
   getRoleDisplayName
 } from "./lib/rbac";
 
-
-
-
-// CRM Role check helper
-const CRM_ROLES = ["owner", "admin", "office", "sales_rep", "project_manager", "team_lead"];
-
-// Helper to log edit history
-async function logEditHistory(
-  db: any,
-  reportRequestId: number,
-  userId: number,
-  fieldName: string,
-  oldValue: string | null,
-  newValue: string | null,
-  editType: "create" | "update" | "delete" | "assign" | "status_change" = "update",
-  ctx?: any
-) {
-  await db.insert(editHistory).values({
-    reportRequestId,
-    userId,
-    fieldName,
-    oldValue,
-    newValue,
-    editType,
-    ipAddress: ctx?.req?.ip || ctx?.req?.headers?.["x-forwarded-for"] || null,
-    userAgent: ctx?.req?.headers?.["user-agent"]?.substring(0, 500) || null,
-  });
-}
-
-// Helper to get team member IDs for a team lead
-async function getTeamMemberIds(db: any, teamLeadId: number): Promise<number[]> {
-  const members = await db.select({ id: users.id })
-    .from(users)
-    .where(eq(users.teamLeadId, teamLeadId));
-  return members.map((m: any) => m.id);
-}
-
-// Helper to filter leads based on user role
-async function filterLeadsByRole(db: any, user: any, leads: any[]): Promise<any[]> {
-  if (!user) return [];
-  
-  const role = normalizeRole(user.role);
-  
-  // Owners and Admins see everything
-  if (role === "owner" || role === "admin") {
-    return leads;
-  }
-  
-  // Team leads see their own + team members' leads
-  if (role === "team_lead") {
-    const teamMemberIds = await getTeamMemberIds(db, user.id);
-    return leads.filter(lead => 
-      lead.assignedTo === user.id || 
-      (lead.assignedTo && teamMemberIds.includes(lead.assignedTo))
-    );
-  }
-  
-  // Sales reps only see their assigned leads
-  if (role === "sales_rep") {
-    return leads.filter(lead => lead.assignedTo === user.id);
-  }
-  
-  return [];
-}
-
-// Helper function to detect @mentions in text
-// Format: @[userId:userName] or @userName
-function detectMentions(text: string): number[] {
-  const mentionRegex = /@\[(\d+):[^\]]+\]/g;
-  const matches = Array.from(text.matchAll(mentionRegex));
-  const userIds: number[] = [];
-  
-  for (const match of matches) {
-    const userId = parseInt(match[1]);
-    if (!isNaN(userId) && !userIds.includes(userId)) {
-      userIds.push(userId);
-    }
-  }
-  
-  return userIds;
-}
-
-// Helper function to create mention notifications
-async function createMentionNotifications(
-  db: any,
-  mentionedUserIds: number[],
-  createdBy: number,
-  resourceId: number,
-  content: string
-) {
-  if (mentionedUserIds.length === 0) return;
-  
-  const notificationRecords = mentionedUserIds.map(userId => ({
-    userId,
-    createdBy,
-    resourceId,
-    type: "mention" as const,
-    content: content.substring(0, 200), // Truncate for preview
-    isRead: false,
-  }));
-  
-  await db.insert(notifications).values(notificationRecords);
-}
-
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter, // Refactored to server/api/routers/auth.ts
@@ -186,11 +82,11 @@ export const appRouter = router({
   products: productsRouter, // Refactored to server/api/routers/products.ts
   ai: aiRouter, // Refactored to server/api/routers/ai.ts
   invoices: invoicesRouter, // Refactored to server/api/routers/invoices.ts
-  globalChat: globalChatRouter, // Refactored to server/api/routers/globalChat.ts
-  chat: chatRouter, // Real team messaging - server/api/routers/chat.ts
-  teamChat: teamChatRouter, // Channel-based team chat - server/api/routers/teamChat.ts
+  messaging: messagingRouter, // Unified messaging - channels, DMs, and AI chat
   estimates: estimatesRouter, // Refactored to server/api/routers/estimates.ts
   utility: utilityRouter, // System utilities - error reporting, etc.
+  analytics: analyticsRouter, // Team performance & production dashboard metrics
+  commissions: commissionsRouter, // Commission requests and bonus tracking
   
   // CRM router - core job/lead operations, analytics, scheduling
   // (Semantically this is "jobs" but kept as "crm" for frontend compatibility)

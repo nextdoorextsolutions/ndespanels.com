@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { SignaturePad } from "./SignaturePad";
 import { convertSqFeetToSquares, SQUARE_FEET_PER_SQUARE } from "@/utils/roofingMath";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/shared/ErrorBoundary";
 
 interface ProposalCalculatorProps {
   jobId: number;
@@ -58,6 +58,11 @@ export function ProposalCalculator({
   const [customerName, setCustomerName] = useState("");
   const [dealType, setDealType] = useState<"insurance" | "cash" | "financed">("cash");
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>();
+
+  // Debug: Track showSignaturePad state changes
+  useEffect(() => {
+    console.log('[ProposalCalculator] showSignaturePad state changed to:', showSignaturePad);
+  }, [showSignaturePad]);
   const [manualSqFt, setManualSqFt] = useState<string>("");
   const [isOverrideActive, setIsOverrideActive] = useState(false);
   const [isPriceLocked, setIsPriceLocked] = useState(false);
@@ -93,10 +98,25 @@ export function ProposalCalculator({
   const generateProposal = trpc.proposals.generateProposal.useMutation({
     onSuccess: (data: any) => {
       console.log('[ProposalCalculator] Generate proposal success:', data);
+      
+      // Validate that we received proposal data
+      if (!data || !data.proposalData) {
+        console.error('[ProposalCalculator] Proposal data is missing from response');
+        toast.error("Proposal data not found. Please ensure all required fields are filled.");
+        return;
+      }
+      
+      // Validate PDF preview exists
+      if (!data.pdfPreview) {
+        console.error('[ProposalCalculator] PDF preview is missing from response');
+        toast.error("Failed to generate PDF preview. Please try again.");
+        return;
+      }
+      
       toast.success("Opening signature pad...");
       
       // Convert base64 PDF to blob URL for preview
-      if (data.pdfPreview) {
+      try {
         const binaryString = atob(data.pdfPreview);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
@@ -106,6 +126,10 @@ export function ProposalCalculator({
         const url = URL.createObjectURL(blob);
         setPdfPreviewUrl(url);
         console.log('[ProposalCalculator] PDF preview URL created:', url);
+      } catch (error) {
+        console.error('[ProposalCalculator] Failed to create PDF preview:', error);
+        toast.error("Failed to create PDF preview. Please try again.");
+        return;
       }
       
       // Open signature pad for customer to sign
@@ -114,7 +138,17 @@ export function ProposalCalculator({
     },
     onError: (error: any) => {
       console.error('[ProposalCalculator] Generate proposal error:', error);
-      toast.error(error.message || 'Failed to generate proposal');
+      
+      // Provide specific error messages based on error type
+      if (error.message?.includes('approved')) {
+        toast.error("Proposal must be approved before generating contract");
+      } else if (error.message?.includes('not found')) {
+        toast.error("Proposal data not found. Please refresh and try again.");
+      } else if (error.message?.includes('permission')) {
+        toast.error("You don't have permission to generate this proposal");
+      } else {
+        toast.error(error.message || 'Failed to generate proposal');
+      }
     },
   });
 
@@ -828,7 +862,12 @@ export function ProposalCalculator({
 
           {/* Generate Contract Button */}
           <Button
-            onClick={() => generateProposal.mutate({ jobId })}
+            onClick={() => {
+              console.log('[ProposalCalculator] Generate Contract button clicked');
+              console.log('[ProposalCalculator] Current jobId:', jobId);
+              console.log('[ProposalCalculator] Current showSignaturePad state:', showSignaturePad);
+              generateProposal.mutate({ jobId });
+            }}
             disabled={generateProposal.isPending}
             className="w-full bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
           >

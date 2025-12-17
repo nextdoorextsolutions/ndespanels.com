@@ -54,7 +54,7 @@ export function ChatArea({
   
   // Magic Bar state
   const [isMagicWorking, setMagicWorking] = useState(false);
-  const draftMutation = trpc.globalChat.generateDraft.useMutation();
+  const draftMutation = trpc.messaging.generateDraft.useMutation();
 
   // Presence tracking with custom auth
   const currentUser: PresenceUser = {

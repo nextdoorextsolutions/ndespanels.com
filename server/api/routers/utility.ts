@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../../_core/trpc";
 import { getDb } from "../../db";
 import { errorLogs, chatMessages, chatChannels, users } from "../../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export const utilityRouter = router({
   /**
@@ -135,7 +135,7 @@ export const utilityRouter = router({
         .select()
         .from(errorLogs)
         .where(conditions.length > 0 ? conditions[0] : undefined)
-        .orderBy(errorLogs.createdAt)
+        .orderBy(desc(errorLogs.createdAt))
         .limit(input.limit)
         .offset(input.offset);
 

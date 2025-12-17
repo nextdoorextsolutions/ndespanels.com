@@ -1,16 +1,150 @@
 /**
- * Team Chat Router
- * Handles real-time team messaging with channels and DMs
+ * Unified Messaging Router
+ * Consolidates globalChat, chat, and teamChat into a single router
+ * 
+ * Features:
+ * - Channel-based messaging (from teamChat)
+ * - AI streaming with Gemini (from globalChat)
+ * - DM support
+ * - Global channel for company-wide communication
+ * - Unread counts and read receipts
  */
 
 import { router, protectedProcedure } from "../../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { observable } from "@trpc/server/observable";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getDb } from "../../db";
-import { chatChannels, chatMessages, channelMembers, users } from "../../../drizzle/schema";
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { chatChannels, chatMessages, channelMembers, users, activities } from "../../../drizzle/schema";
+import { eq, desc, and, inArray, sql, or } from "drizzle-orm";
 
-export const teamChatRouter = router({
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+
+const ZEROX_SYSTEM_PROMPT = `You are Zerox, a Senior Technical Project Manager for a roofing and solar company's CRM platform.
+
+Your role:
+- Help with job summaries and customer information
+- Draft professional replies to customers
+- Answer technical questions about the CRM system
+- Provide quick insights about jobs, invoices, and team activities
+
+**PRIORITY HANDLING:**
+- When you see 'callback_requested', treat it as your HIGHEST PRIORITY task to summarize or address
+- Customer callbacks require immediate attention and action-oriented responses
+- Urgent items need clear next steps and deadlines
+
+Guidelines:
+- Keep responses concise, professional, and action-oriented
+- Use bullet points for lists
+- Provide actionable advice with clear next steps
+- If you don't know something, say so clearly
+- Focus on helping the team work more efficiently
+
+You have access to the company's CRM data through context provided in messages.`;
+
+interface Activity {
+  id: number;
+  activityType: string;
+  description: string;
+  tags?: string[];
+  createdAt: Date | string;
+  metadata?: any;
+}
+
+/**
+ * Build activity context for AI system instruction
+ */
+function buildActivityContext(activities: Activity[]): string {
+  if (!activities || activities.length === 0) {
+    return "";
+  }
+
+  const contextLines: string[] = ["\n\n=== RECENT ACTIVITY CONTEXT ==="];
+
+  for (const activity of activities) {
+    let prefix = "";
+    
+    if (activity.activityType === "callback_requested") {
+      prefix = "[HIGH PRIORITY - CALLBACK REQUESTED]";
+    } else if (activity.activityType === "customer_message") {
+      prefix = "[CUSTOMER INQUIRY]";
+    } else if (activity.tags && activity.tags.includes("urgent")) {
+      prefix = "[URGENT]";
+    } else {
+      prefix = `[${activity.activityType.toUpperCase()}]`;
+    }
+
+    const timestamp = new Date(activity.createdAt).toLocaleString();
+    contextLines.push(`${prefix} (${timestamp}): ${activity.description}`);
+  }
+
+  contextLines.push("=== END ACTIVITY CONTEXT ===\n");
+  return contextLines.join("\n");
+}
+
+/**
+ * Ensure global channel exists - lazy initialization
+ * Uses INSERT ON CONFLICT to avoid race conditions and unnecessary queries
+ * Only runs when a user actually tries to access channels
+ */
+async function ensureGlobalChannel(db: any, userId: number): Promise<void> {
+  try {
+    // Use INSERT ... ON CONFLICT DO NOTHING for idempotent channel creation
+    // This is safe in serverless/containerized environments and handles race conditions
+    const [globalChannel] = await db
+      .insert(chatChannels)
+      .values({
+        name: "global",
+        type: "public",
+        description: "Company-wide announcements and discussions",
+        createdBy: 1, // System/first admin
+      })
+      .onConflictDoNothing({ target: chatChannels.name })
+      .returning();
+
+    // If channel was just created (not a conflict), add all active users as members
+    if (globalChannel) {
+      console.log("[Messaging] Global channel created, adding members...");
+      
+      const allUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.isActive, true));
+
+      if (allUsers.length > 0) {
+        // Use INSERT ... ON CONFLICT for members too (in case of race conditions)
+        await db.insert(channelMembers)
+          .values(
+            allUsers.map((u: { id: number }) => ({
+              channelId: globalChannel.id,
+              userId: u.id,
+            }))
+          )
+          .onConflictDoNothing();
+      }
+
+      console.log(`[Messaging] Global channel created with ${allUsers.length} members`);
+    } else {
+      // Channel already exists, ensure current user is a member
+      await db.insert(channelMembers)
+        .values({
+          channelId: (await db
+            .select({ id: chatChannels.id })
+            .from(chatChannels)
+            .where(eq(chatChannels.name, "global"))
+            .limit(1))[0].id,
+          userId: userId,
+        })
+        .onConflictDoNothing();
+    }
+  } catch (error) {
+    // Log but don't throw - global channel is a nice-to-have, not critical
+    console.error("[Messaging] Failed to ensure global channel:", error);
+  }
+}
+
+export const messagingRouter = router({
   /**
    * Get all channels the current user has access to
    */
@@ -24,6 +158,9 @@ export const teamChatRouter = router({
     }
 
     const userId = ctx.user.id;
+
+    // Lazy initialization: ensure global channel exists when user requests channels
+    await ensureGlobalChannel(db, userId);
 
     // Get channels where user is a member
     const userChannels = await db
@@ -236,6 +373,161 @@ export const teamChatRouter = router({
     }),
 
   /**
+   * Stream AI response from Gemini
+   */
+  streamAIMessage: protectedProcedure
+    .input(
+      z.object({
+        message: z.string().min(1),
+        history: z.array(
+          z.object({
+            role: z.enum(["user", "model"]),
+            parts: z.string(),
+          })
+        ).optional(),
+        channelId: z.number().optional(),
+        jobId: z.number().optional(),
+      })
+    )
+    .subscription(async ({ input }) => {
+      return observable<{ chunk: string; done: boolean }>((emit) => {
+        (async () => {
+          try {
+            const db = await getDb();
+            
+            if (!db) {
+              throw new Error("Database connection failed");
+            }
+            
+            // Fetch recent activities for context
+            let recentActivities: Activity[] = [];
+            
+            if (input.jobId) {
+              const dbActivities = await db
+                .select({
+                  id: activities.id,
+                  activityType: activities.activityType,
+                  description: activities.description,
+                  tags: activities.tags,
+                  createdAt: activities.createdAt,
+                  metadata: activities.metadata,
+                })
+                .from(activities)
+                .where(eq(activities.reportRequestId, input.jobId))
+                .orderBy(desc(activities.createdAt))
+                .limit(20);
+              
+              recentActivities = dbActivities as Activity[];
+            } else {
+              const dbActivities = await db
+                .select({
+                  id: activities.id,
+                  activityType: activities.activityType,
+                  description: activities.description,
+                  tags: activities.tags,
+                  createdAt: activities.createdAt,
+                  metadata: activities.metadata,
+                })
+                .from(activities)
+                .orderBy(desc(activities.createdAt))
+                .limit(20);
+              
+              recentActivities = dbActivities as Activity[];
+            }
+
+            // Build enhanced system instruction with activity context
+            const activityContext = buildActivityContext(recentActivities);
+            const enhancedSystemPrompt = ZEROX_SYSTEM_PROMPT + activityContext;
+
+            const model = genAI.getGenerativeModel({ 
+              model: "gemini-1.5-flash",
+              systemInstruction: enhancedSystemPrompt,
+            });
+
+            // Build chat history
+            const chatHistory = input.history?.map((msg) => ({
+              role: msg.role,
+              parts: [{ text: msg.parts }],
+            })) || [];
+
+            const chat = model.startChat({
+              history: chatHistory,
+              generationConfig: {
+                maxOutputTokens: 1000,
+                temperature: 0.7,
+              },
+            });
+
+            // Stream the response
+            const result = await chat.sendMessageStream(input.message);
+
+            for await (const chunk of result.stream) {
+              const text = chunk.text();
+              emit.next({ chunk: text, done: false });
+            }
+
+            // Signal completion
+            emit.next({ chunk: "", done: true });
+            emit.complete();
+          } catch (error) {
+            console.error("Gemini streaming error:", error);
+            emit.error(
+              new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: error instanceof Error ? error.message : "Failed to stream response",
+              })
+            );
+          }
+        })();
+      });
+    }),
+
+  /**
+   * Generate a draft reply (non-streaming)
+   */
+  generateDraft: protectedProcedure
+    .input(
+      z.object({
+        type: z.enum(["grammar", "professional", "summarize"]),
+        text: z.string(),
+        context: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        let prompt = "";
+        
+        if (input.type === "grammar") {
+          prompt = `Fix grammar and spelling in this text, keep the same tone:\n\n${input.text}`;
+        } else if (input.type === "professional") {
+          prompt = `Rewrite this message in a professional, business-appropriate tone:\n\n${input.text}`;
+        } else if (input.type === "summarize") {
+          prompt = `Summarize this conversation or text concisely with key points:\n\n${input.text}`;
+        }
+
+        if (input.context) {
+          prompt += `\n\nContext: ${input.context}`;
+        }
+
+        const result = await model.generateContent(prompt);
+        const response = result.response.text();
+
+        return {
+          draft: response,
+          success: true,
+        };
+      } catch (error) {
+        console.error("Draft generation error:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to generate draft",
+        });
+      }
+    }),
+
+  /**
    * Mark channel as read
    */
   markAsRead: protectedProcedure
@@ -269,7 +561,7 @@ export const teamChatRouter = router({
     }),
 
   /**
-   * Get channel by name (for direct access)
+   * Get channel by name (for direct access to global, etc.)
    */
   getChannelByName: protectedProcedure
     .input(
@@ -317,7 +609,7 @@ export const teamChatRouter = router({
     }),
 
   /**
-   * Get online users in a channel (for presence)
+   * Get channel members
    */
   getChannelMembers: protectedProcedure
     .input(
@@ -430,7 +722,6 @@ export const teamChatRouter = router({
       }
 
       // Check if DM channel already exists between these two users
-      // Find channels where both users are members and type is 'dm'
       const existingDMs = await db
         .select({
           channelId: channelMembers.channelId,
@@ -466,7 +757,6 @@ export const teamChatRouter = router({
       }
 
       // No existing DM found, create new one
-      // Generate unique channel name
       const sortedIds = [currentUserId, targetUserId].sort();
       const channelName = `dm-${sortedIds[0]}-${sortedIds[1]}`;
 
