@@ -38,6 +38,7 @@ import { utilityRouter } from "./api/routers/utility";
 import { analyticsRouter } from "./api/routers/analytics";
 import { commissionsRouter } from "./api/routers/commissions";
 import { leadsRouter } from "./api/routers/leads";
+import { eventsRouter } from "./api/routers/events";
 import { getDb } from "./db";
 import { reportRequests, users, activities, documents, editHistory, jobAttachments, jobMessageReads, notifications, materialOrders, materialKits } from "../drizzle/schema";
 import { PRODUCTS, validatePromoCode } from "./products";
@@ -89,6 +90,7 @@ export const appRouter = router({
   analytics: analyticsRouter, // Team performance & production dashboard metrics
   commissions: commissionsRouter, // Commission requests and bonus tracking
   leads: leadsRouter, // CSV import and lead management
+  events: eventsRouter, // Calendar events with type support
   
   // CRM router - core job/lead operations, analytics, scheduling
   // (Semantically this is "jobs" but kept as "crm" for frontend compatibility)

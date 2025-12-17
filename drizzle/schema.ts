@@ -703,11 +703,13 @@ export const events = pgTable("events", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   type: eventTypeEnum("type").default("meeting").notNull(),
+  color: varchar("color", { length: 50 }).default("#3b82f6").notNull(), // Hex color or Tailwind class
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time"),
   jobId: integer("job_id").references(() => reportRequests.id, { onDelete: "set null" }),
   assignedTo: integer("assigned_to").references(() => users.id, { onDelete: "set null" }),
   createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }).notNull(),
+  attendees: jsonb("attendees").$type<number[]>().default([]), // Array of user IDs
   location: text("location"),
   meetingUrl: text("meeting_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
