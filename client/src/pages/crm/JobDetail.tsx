@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Search, Trash2, Bell, BellOff, Phone, Mail, Navigation } from "lucide-react";
+import { ArrowLeft, Trash2, Bell, BellOff, Phone, Mail, Navigation, Search } from "lucide-react";
 import { Link } from "wouter";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import type { Job } from "@/types/job";
+import type { ActivityTag } from "@/types/activity";
 
 // Tab Components
 import { JobOverviewTab } from "@/components/crm/job-detail/JobOverviewTab";
@@ -20,42 +20,13 @@ import { JobTimelineTab } from "@/components/crm/job-detail/JobTimelineTab";
 import { JobEditHistoryTab } from "@/components/crm/job-detail/JobEditHistoryTab";
 import EstimatorTool from "@/components/estimator/EstimatorTool";
 
-// Threaded Timeline Support
-import { buildActivityTree } from "@/lib/activityTree";
-import type { ThreadedActivity, ActivityTag } from "@/types/activity";
+// Custom Hooks
+import { useJobMutations } from "@/hooks/job-detail/useJobMutations";
+import { useJobTimeline } from "@/hooks/job-detail/useJobTimeline";
+import { useDocumentUpload } from "@/hooks/job-detail/useDocumentUpload";
 
-// Helper function to format mentions in messages
-const formatMentions = (text: string) => {
-  const mentionRegex = /@\[(\d+):([^\]]+)\]/g;
-  const parts = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = mentionRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
-    }
-    parts.push(
-      <span key={match.index} className="text-[#00d4aa] font-medium">
-        @{match[2]}
-      </span>
-    );
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : text;
-};
-
-// Activity Icons mapping
-const ACTIVITY_ICONS: Record<string, any> = {
-  status_change: ArrowLeft,
-  note: Search,
-  // Add more as needed
-};
+// Utilities
+import { formatMentions, ACTIVITY_ICONS } from "@/utils/jobDetailHelpers";
 
 export default function JobDetail() {
   // ============================================================================
@@ -80,86 +51,16 @@ export default function JobDetail() {
   const { data: permissions } = trpc.users.getMyPermissions.useQuery();
   const { data: editHistory } = trpc.crm.getEditHistory.useQuery({ jobId });
 
-  // Mutation hooks
-  const updateLead = trpc.crm.updateLead.useMutation({
-    onSuccess: () => {
-      toast.success("Job updated successfully");
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(`Failed to update job: ${error.message}`);
-    },
+  // Custom hooks
+  const mutations = useJobMutations({
+    jobId,
+    onRefetch: refetch,
+    onJobDeleted: () => setLocation("/crm"),
   });
 
-  const updateCustomerInfo = trpc.crm.updateLead.useMutation({
-    onSuccess: () => {
-      toast.success("Customer information updated");
-      refetch();
-    },
-  });
-
-  const generateReport = trpc.solar.generateReport.useMutation({
-    onSuccess: () => {
-      toast.success("Report generated successfully");
-      refetch();
-    },
-  });
-
-  const uploadDocument = trpc.documents.uploadDocument.useMutation({
-    onSuccess: () => {
-      toast.success("Document uploaded");
-      refetch();
-    },
-  });
-
-  const deleteDocument = trpc.documents.deleteDocument.useMutation({
-    onSuccess: () => {
-      toast.success("Document deleted");
-      refetch();
-    },
-  });
-
-  const addMessage = trpc.activities.addNote.useMutation({
-    onSuccess: () => {
-      setNewMessage("");
-      refetch();
-    },
-  });
-
-  const deleteEditHistory = trpc.crm.deleteEditHistory.useMutation({
-    onSuccess: () => {
-      toast.success("History entry deleted");
-      refetch();
-    },
-  });
-
-  const utils = trpc.useUtils();
-  
-  const toggleFollowUp = trpc.crm.toggleFollowUp.useMutation({
-    onSuccess: () => {
-      toast.success("Follow-up status updated");
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update follow-up status");
-    },
-  });
-  
-  const deleteJob = trpc.crm.deleteLead.useMutation({
-    onSuccess: () => {
-      toast.success("Job deleted successfully");
-      // Invalidate all queries that might show this job
-      utils.crm.getLeads.invalidate();
-      utils.crm.getStats.invalidate();
-      utils.crm.getMonthlyTrends.invalidate();
-      utils.crm.getCategoryCounts.invalidate();
-      utils.crm.getLienRightsJobs.invalidate();
-      utils.crm.getLeadsByCategory.invalidate();
-      setLocation("/crm");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to delete job");
-    },
+  const { handleFileUpload } = useDocumentUpload({
+    jobId,
+    onRefetch: refetch,
   });
 
   // Effect hooks
@@ -185,12 +86,13 @@ export default function JobDetail() {
   // Handlers
   const handleSendMessage = () => {
     if (!newMessage.trim()) return;
-    addMessage.mutate({
+    mutations.addMessage.mutate({
       leadId: jobId,
       note: newMessage,
       tags: selectedTags.length > 0 ? selectedTags : undefined,
     }, {
       onSuccess: () => {
+        setNewMessage("");
         setSelectedTags([]); // Clear tags after sending
       }
     });
@@ -198,40 +100,11 @@ export default function JobDetail() {
 
   const handleReply = (text: string, parentId: number) => {
     if (!text.trim()) return;
-    addMessage.mutate({
+    mutations.addMessage.mutate({
       leadId: jobId,
       note: text,
       parentId: parentId,
     });
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "document" | "photo") => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    for (const file of Array.from(files)) {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("jobId", jobId.toString());
-      formData.append("fileType", type);
-
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || '';
-        const response = await fetch(`${apiUrl}/api/upload`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (response.ok) {
-          toast.success(`${type === "document" ? "Document" : "Photo"} uploaded`);
-          refetch();
-        } else {
-          toast.error("Upload failed");
-        }
-      } catch (error) {
-        toast.error("Upload error");
-      }
-    }
   };
 
   // Loading & Error states - NOW AFTER ALL HOOKS
@@ -262,11 +135,12 @@ export default function JobDetail() {
   const documents = job?.documents || [];
   const rawActivities = job?.activities || [];
 
-  // Build threaded activity tree
-  // Cast activities to match Activity type (tags from backend are string[] | null, we normalize to ActivityTag[] | undefined)
-  const threadedActivities: ThreadedActivity[] = rawActivities.length > 0 
-    ? buildActivityTree(rawActivities as any)
-    : [];
+  // Use timeline hook for filtering
+  const { filteredTimeline } = useJobTimeline({
+    activities: rawActivities,
+    filterTag,
+    searchQuery,
+  });
 
   // Filter data based on search
   const filteredDocuments = documents.filter((doc: any) =>
@@ -278,37 +152,6 @@ export default function JobDetail() {
   const filteredMessages = rawActivities.filter((msg: any) =>
     msg.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
-  // For timeline, use threaded structure but filter by search and tag
-  let filteredTimeline = threadedActivities;
-  
-  // Filter by tag
-  if (filterTag !== "all") {
-    filteredTimeline = filteredTimeline.filter((activity: ThreadedActivity) => {
-      // Check if activity or any of its replies have the tag
-      const hasTag = activity.tags?.includes(filterTag);
-      const replyHasTag = activity.replies?.some(reply => 
-        reply.tags?.includes(filterTag)
-      );
-      return hasTag || replyHasTag;
-    });
-  }
-  
-  // Filter by search query
-  if (searchQuery) {
-    const searchLower = searchQuery.toLowerCase();
-    filteredTimeline = filteredTimeline.filter((activity: ThreadedActivity) => {
-      // Check if root activity matches
-      const rootMatches = activity.description.toLowerCase().includes(searchLower);
-      
-      // Check if any reply matches (recursive search)
-      const replyMatches = activity.replies?.some(reply => 
-        reply.description.toLowerCase().includes(searchLower)
-      );
-      
-      return rootMatches || replyMatches;
-    });
-  }
   
   const filteredEditHistory = (editHistory || []).filter((edit: any) =>
     edit.fieldName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -379,7 +222,7 @@ export default function JobDetail() {
                 {canEdit && (
                   <Button
                     variant="outline"
-                    onClick={() => toggleFollowUp.mutate({ 
+                    onClick={() => mutations.toggleFollowUp.mutate({ 
                       jobId, 
                       needsFollowUp: !job.needsFollowUp 
                     })}
@@ -434,10 +277,10 @@ export default function JobDetail() {
                         Cancel
                       </AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => deleteJob.mutate({ id: jobId })}
+                        onClick={() => mutations.deleteJob.mutate({ id: jobId })}
                         className="bg-red-600 hover:bg-red-700 text-white"
                       >
-                        {deleteJob.isPending ? "Deleting..." : "Delete Job"}
+                        {mutations.deleteJob.isPending ? "Deleting..." : "Delete Job"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -498,9 +341,9 @@ export default function JobDetail() {
               job={job as Job} // Backend returns job with activities/documents arrays
               jobId={jobId}
               canEdit={canEdit}
-              onCustomerSave={(data) => updateCustomerInfo.mutate({ id: jobId, ...data } as any)}
-              onStatusChange={(newStatus) => updateLead.mutate({ id: jobId, status: newStatus })}
-              isSaving={updateCustomerInfo.isPending}
+              onCustomerSave={(data) => mutations.updateCustomerInfo.mutate({ id: jobId, ...data } as any)}
+              onStatusChange={(newStatus) => mutations.updateLead.mutate({ id: jobId, status: newStatus })}
+              isSaving={mutations.updateCustomerInfo.isPending}
             />
           )}
 
@@ -508,8 +351,8 @@ export default function JobDetail() {
             <JobProductionTab
               job={job as Job} // Backend returns job with activities/documents arrays
               jobId={jobId}
-              onGenerateReport={() => generateReport.mutate({ jobId })}
-              isGenerating={generateReport.isPending}
+              onGenerateReport={() => mutations.generateReport.mutate({ jobId })}
+              isGenerating={mutations.generateReport.isPending}
             />
           )}
 
@@ -518,9 +361,9 @@ export default function JobDetail() {
               documents={filteredDocuments}
               canEdit={canEdit}
               canDelete={canDelete}
-              isUploading={uploadDocument.isPending}
+              isUploading={mutations.uploadDocument.isPending}
               onFileUpload={(e) => handleFileUpload(e, "document")}
-              onDeleteDocument={(documentId) => deleteDocument.mutate({ documentId })}
+              onDeleteDocument={(documentId) => mutations.deleteDocument.mutate({ documentId })}
               onPreviewDocument={(doc) => window.open(doc.url, "_blank")}
             />
           )}
@@ -531,10 +374,10 @@ export default function JobDetail() {
               jobId={jobId}
               canEdit={canEdit}
               canDelete={canDelete}
-              isUploading={uploadDocument.isPending}
+              isUploading={mutations.uploadDocument.isPending}
               isOwner={permissions?.role === "owner"}
               onFileUpload={(e) => handleFileUpload(e, "photo")}
-              onDeletePhoto={(photoId) => deleteDocument.mutate({ documentId: photoId })}
+              onDeletePhoto={(photoId) => mutations.deleteDocument.mutate({ documentId: photoId })}
             />
           )}
 
@@ -545,7 +388,7 @@ export default function JobDetail() {
               newMessage={newMessage}
               onMessageChange={setNewMessage}
               onSendMessage={handleSendMessage}
-              isSending={addMessage.isPending}
+              isSending={mutations.addMessage.isPending}
               formatMentions={formatMentions}
               selectedTags={selectedTags}
               onTagsChange={setSelectedTags}
@@ -579,7 +422,7 @@ export default function JobDetail() {
             <JobEditHistoryTab
               editHistory={filteredEditHistory}
               canDelete={canDelete}
-              onDeleteEntry={(id) => deleteEditHistory.mutate({ id })}
+              onDeleteEntry={(id) => mutations.deleteEditHistory.mutate({ id })}
               fieldTypeConfig={{}}
               editTypeColors={{}}
             />
