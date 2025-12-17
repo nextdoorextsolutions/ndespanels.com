@@ -201,6 +201,11 @@ export interface Job {
   internalNotes?: string | null;
   customerStatusMessage?: string | null;
   
+  // Follow-up tracking
+  needsFollowUp?: boolean;
+  followUpRequestedAt?: Date | string | null;
+  followUpRequestedBy?: number | null;
+  
   // Scheduling
   scheduledDate?: Date | string | null;
   completedDate?: Date | string | null;

@@ -105,8 +105,8 @@ export const sortSchema = z.object({
 /**
  * Common field validators
  */
-export const phoneSchema = z.string().regex(/^\+?[1-9]\d{1,14}$/).optional();
-export const zipCodeSchema = z.string().regex(/^\d{5}(-\d{4})?$/).optional();
+export const phoneSchema = z.string().optional();
+export const zipCodeSchema = z.string().optional();
 export const urlSchema = z.string().url();
 export const optionalUrlSchema = z.string().url().optional();
 
