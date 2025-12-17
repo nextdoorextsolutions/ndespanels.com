@@ -119,14 +119,14 @@ export const optionalMoneySchema = moneySchema.optional();
 /**
  * Metadata schemas
  */
-export const metadataSchema = z.record(z.unknown()).optional();
+export const metadataSchema = z.record(z.string(), z.unknown()).optional();
 
 /**
  * Common update patterns
  */
 export const updateByIdSchema = z.object({
   id: z.number(),
-  data: z.record(z.unknown()),
+  data: z.record(z.string(), z.unknown()),
 });
 
 /**
