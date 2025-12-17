@@ -195,64 +195,64 @@ export default function CRMDashboard() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
           {/* Card 1: Leads */}
-          <Card className="shadow-lg hover:border-slate-300 dark:hover:border-gray-700 transition-colors group">
+          <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border border-gray-700/50 hover:border-emerald-500/50 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] group">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-gray-400 group-hover:text-slate-700 dark:group-hover:text-gray-300 transition-colors">Total Leads</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2 tracking-tight">{stats?.totalLeads || 0}</p>
+                  <p className="text-sm font-medium text-gray-400 group-hover:text-gray-300 transition-colors">Total Leads</p>
+                  <p className="text-4xl font-bold text-emerald-400 mt-2 tracking-tight">{stats?.totalLeads || 0}</p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-[#00d4aa]/10 flex items-center justify-center border border-[#00d4aa]/20 group-hover:bg-[#00d4aa]/20 group-hover:scale-110 transition-all duration-300">
-                  <Users className="w-6 h-6 text-[#00d4aa]" />
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all duration-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                  <Users className="w-6 h-6 text-emerald-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Card 2: Revenue */}
-          <Card className="shadow-lg hover:border-slate-300 dark:hover:border-gray-700 transition-colors group">
+          <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border border-gray-700/50 hover:border-green-500/50 transition-all shadow-[0_0_15px_rgba(34,197,94,0.15)] hover:shadow-[0_0_25px_rgba(34,197,94,0.25)] group">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-gray-400 group-hover:text-slate-700 dark:group-hover:text-gray-300 transition-colors">Revenue</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2 tracking-tight">${(stats?.totalRevenue || 0).toLocaleString()}</p>
+                  <p className="text-sm font-medium text-gray-400 group-hover:text-gray-300 transition-colors">Revenue</p>
+                  <p className="text-4xl font-bold text-green-400 mt-2 tracking-tight">${(stats?.totalRevenue || 0).toLocaleString()}</p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center border border-green-500/20 group-hover:bg-green-500/20 group-hover:scale-110 transition-all duration-300">
-                  <DollarSign className="w-6 h-6 text-green-500" />
+                <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center border border-green-500/30 group-hover:bg-green-500/20 group-hover:scale-110 transition-all duration-300 shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+                  <DollarSign className="w-6 h-6 text-green-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Card 3: Conversion Rate */}
-          <Card className="shadow-lg hover:border-slate-300 dark:hover:border-gray-700 transition-colors group">
+          <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border border-gray-700/50 hover:border-purple-500/50 transition-all shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:shadow-[0_0_25px_rgba(168,85,247,0.25)] group">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-gray-400 group-hover:text-slate-700 dark:group-hover:text-gray-300 transition-colors">Conversion Rate</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2 tracking-tight">
+                  <p className="text-sm font-medium text-gray-400 group-hover:text-gray-300 transition-colors">Conversion Rate</p>
+                  <p className="text-4xl font-bold text-purple-400 mt-2 tracking-tight">
                     {stats?.totalLeads ? ((stats.closedDealCount / stats.totalLeads) * 100).toFixed(1) : 0}%
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all duration-300">
-                  <Target className="w-6 h-6 text-purple-500" />
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/30 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all duration-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                  <Target className="w-6 h-6 text-purple-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Card 4: Avg Deal Value */}
-          <Card className="shadow-lg hover:border-slate-300 dark:hover:border-gray-700 transition-colors group">
+          <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border border-gray-700/50 hover:border-blue-500/50 transition-all shadow-[0_0_15px_rgba(59,130,246,0.15)] hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] group">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-gray-400 group-hover:text-slate-700 dark:group-hover:text-gray-300 transition-colors">Avg. Deal Value</p>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2 tracking-tight">
+                  <p className="text-sm font-medium text-gray-400 group-hover:text-gray-300 transition-colors">Avg. Deal Value</p>
+                  <p className="text-4xl font-bold text-blue-400 mt-2 tracking-tight">
                     ${stats?.closedDealCount ? ((stats.totalRevenue || 0) / stats.closedDealCount).toFixed(0) : 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all duration-300">
-                  <BarChart3 className="w-6 h-6 text-blue-500" />
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/30 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all duration-300 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                  <BarChart3 className="w-6 h-6 text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -423,7 +423,7 @@ export default function CRMDashboard() {
           {/* RIGHT COLUMN (Sidebar) */}
           <div className="lg:col-span-1 space-y-8">
             
-            {/* Lien Rights Summary */}
+            {/* Lien Rights Summary - Clickable */}
             <Card className="shadow-lg">
               <CardHeader className="pb-4 border-b border-slate-200 dark:border-gray-800/50">
                 <CardTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -433,24 +433,30 @@ export default function CRMDashboard() {
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/5 border border-green-500/20 hover:bg-green-500/10 transition-colors">
-                    <span className="text-green-600 dark:text-green-400 text-sm font-medium">Active</span>
-                    <span className="font-bold text-slate-900 dark:text-white bg-green-500/20 px-2.5 py-1 rounded text-sm">
-                      {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "active").length || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20 hover:bg-yellow-500/10 transition-colors">
-                    <span className="text-yellow-600 dark:text-yellow-400 text-sm font-medium">Warning</span>
-                    <span className="font-bold text-slate-900 dark:text-white bg-yellow-500/20 px-2.5 py-1 rounded text-sm">
-                      {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "warning").length || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors">
-                    <span className="text-red-600 dark:text-red-400 text-sm font-medium">Critical</span>
-                    <span className="font-bold text-slate-900 dark:text-white bg-red-500/20 px-2.5 py-1 rounded text-sm animate-pulse">
-                      {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "critical").length || 0}
-                    </span>
-                  </div>
+                  <Link href="/crm/leads?category=lien_rights&status=active">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/5 border border-green-500/20 hover:bg-green-500/10 transition-colors cursor-pointer group">
+                      <span className="text-green-600 dark:text-green-400 text-sm font-medium group-hover:text-green-700 dark:group-hover:text-green-300">Active</span>
+                      <span className="font-bold text-slate-900 dark:text-white bg-green-500/20 px-2.5 py-1 rounded text-sm group-hover:bg-green-500/30">
+                        {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "active").length || 0}
+                      </span>
+                    </div>
+                  </Link>
+                  <Link href="/crm/leads?category=lien_rights&status=warning">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20 hover:bg-yellow-500/10 transition-colors cursor-pointer group">
+                      <span className="text-yellow-600 dark:text-yellow-400 text-sm font-medium group-hover:text-yellow-700 dark:group-hover:text-yellow-300">Warning</span>
+                      <span className="font-bold text-slate-900 dark:text-white bg-yellow-500/20 px-2.5 py-1 rounded text-sm group-hover:bg-yellow-500/30">
+                        {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "warning").length || 0}
+                      </span>
+                    </div>
+                  </Link>
+                  <Link href="/crm/leads?category=lien_rights&status=critical">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors cursor-pointer group">
+                      <span className="text-red-600 dark:text-red-400 text-sm font-medium group-hover:text-red-700 dark:group-hover:text-red-300">Critical</span>
+                      <span className="font-bold text-slate-900 dark:text-white bg-red-500/20 px-2.5 py-1 rounded text-sm animate-pulse group-hover:bg-red-500/30">
+                        {lienRightsJobs?.filter((j: any) => j.urgencyLevel === "critical").length || 0}
+                      </span>
+                    </div>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

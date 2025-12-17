@@ -39,11 +39,17 @@ export default function CRMLeads() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const statusParam = params.get("status");
+    const categoryParam = params.get("category");
     const dealTypeParam = params.get("dealType");
     const paymentTypeParam = params.get("paymentType"); // Support paymentType as alias
     const filterParam = params.get("filter"); // Support filter as alias
     
-    if (statusParam && STATUS_OPTIONS.some(opt => opt.value === statusParam)) {
+    // Handle lien rights category filtering
+    if (categoryParam === "lien_rights" && statusParam) {
+      // Map lien rights status to lienRightsStatus filter
+      // This will be handled in the filtered leads logic below
+      setStatusFilter("all"); // Show all statuses, filter by lien rights status
+    } else if (statusParam && STATUS_OPTIONS.some(opt => opt.value === statusParam)) {
       setStatusFilter(statusParam);
     }
     
@@ -169,6 +175,18 @@ export default function CRMLeads() {
       (lead.email || '').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
     const matchesDealType = dealTypeFilter === "all" || lead.dealType === dealTypeFilter;
+    
+    // Handle lien rights category filtering from dashboard
+    const params = new URLSearchParams(window.location.search);
+    const categoryParam = params.get("category");
+    const lienStatusParam = params.get("status");
+    
+    if (categoryParam === "lien_rights" && lienStatusParam) {
+      // Filter by lienRightsStatus field
+      const matchesLienStatus = (lead as any).lienRightsStatus === lienStatusParam;
+      return matchesSearch && matchesDealType && matchesLienStatus;
+    }
+    
     return matchesSearch && matchesStatus && matchesDealType;
   });
 
