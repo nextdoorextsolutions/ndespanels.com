@@ -664,6 +664,8 @@ export type InsertErrorLog = typeof errorLogs.$inferInsert;
 export const periodEnum = pgEnum("bonus_period", ["weekly", "monthly", "quarterly"]);
 export const commissionStatusEnum = pgEnum("commission_status", ["pending", "approved", "denied"]);
 
+export const eventTypeEnum = pgEnum("event_type", ["inspection", "call", "meeting", "zoom"]);
+
 export const bonusTiers = pgTable("bonus_tiers", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
@@ -692,3 +694,25 @@ export const commissionRequests = pgTable("commission_requests", {
 
 export type CommissionRequest = typeof commissionRequests.$inferSelect;
 export type InsertCommissionRequest = typeof commissionRequests.$inferInsert;
+
+/**
+ * Events - Calendar events for inspections, calls, meetings, zoom
+ */
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  type: eventTypeEnum("type").default("meeting").notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  jobId: integer("job_id").references(() => reportRequests.id, { onDelete: "set null" }),
+  assignedTo: integer("assigned_to").references(() => users.id, { onDelete: "set null" }),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }).notNull(),
+  location: text("location"),
+  meetingUrl: text("meeting_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Event = typeof events.$inferSelect;
+export type InsertEvent = typeof events.$inferInsert;

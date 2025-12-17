@@ -51,7 +51,28 @@ export const commissionsRouter = router({
         });
       }
 
-      const targetUserId = input.userId || ctx.user.id;
+      // Role-based access control
+      const currentUserRole = ctx.user.role;
+      let targetUserId = ctx.user.id;
+
+      // Sales reps can ONLY view their own data
+      if (currentUserRole === 'sales_rep') {
+        if (input.userId && input.userId !== ctx.user.id) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Sales reps can only view their own progress",
+          });
+        }
+        targetUserId = ctx.user.id;
+      }
+      // Owners and office can view any user's progress
+      else if (currentUserRole === 'owner' || currentUserRole === 'office' || currentUserRole === 'admin') {
+        targetUserId = input.userId || ctx.user.id;
+      }
+      // Other roles default to their own data
+      else {
+        targetUserId = ctx.user.id;
+      }
 
       // Get current week range
       const { start, end } = getCurrentWeekRange();
