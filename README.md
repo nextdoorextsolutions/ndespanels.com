@@ -91,16 +91,42 @@ GOOGLE_MAPS_API_KEY=...
 
 ## 📚 Key Features
 
-- **Job Management** - Full CRM pipeline from lead to completion
+### Core CRM
+- **Job Management** - Full pipeline from lead to completion with status tracking
+- **Dashboard Analytics** - Role-based metrics with futuristic UI (glows, gradients, color-coded cards)
+- **Calendar Events** - Color-coded scheduling (Inspection=Red, Call=Green, Meeting=Blue, Zoom=Purple)
+- **Lien Rights Tracking** - Automated 90-day compliance with urgency levels
+- **CSV Import** - Bulk lead import with validation
+
+### Customer Experience
 - **Roof Measurements** - Manual takeoff with Google Maps integration
-- **Solar Analysis** - Google Solar API integration
-- **Proposals** - Digital proposals with e-signatures
-- **Material Orders** - Automated material calculations and ordering
-- **Customer Portal** - Public job lookup and messaging
-- **Team Chat** - Real-time messaging with channels
-- **Photo Analysis** - AI-powered damage detection
-- **Invoicing** - Invoice generation and tracking
-- **Lien Rights** - Automated compliance tracking
+- **Solar Analysis** - Google Solar API integration with savings calculator
+- **Digital Proposals** - AI-generated proposals with e-signatures
+- **Customer Portal** - Public job lookup, messaging, and callback requests
+- **Photo Analysis** - AI-powered damage detection with Gemini Vision
+
+### Team Collaboration
+- **Unified Messaging** - Real-time chat with channels, DMs, and AI assistant (Zerox)
+- **Channel Management** - Owner-only channel creation with role restrictions
+- **Event Notifications** - Auto-DM to attendees when events created
+- **Team Performance** - Analytics dashboard with leaderboards
+
+### Finance & Operations
+- **Invoicing** - Invoice generation, tracking, and email delivery
+- **Commission System** - Weekly bonus tracking with approval workflow (Owner-only)
+- **Material Orders** - Automated calculations and supplier integration
+- **Time Clock** - Employee time tracking with GPS verification
+- **Expense Tracking** - Categorized expenses with tax deduction flags
+
+### Mobile & PWA
+- **Progressive Web App** - Installable mobile experience
+- **Offline Support** - Service worker caching for field use
+- **Mobile-Optimized UI** - Responsive design with drawer navigation
+
+### Developer Tools
+- **Crash Reporter** - Global error boundary with Supabase logging
+- **Production Dashboard** - Real-time metrics and error monitoring
+- **Migration Log** - Comprehensive schema change tracking
 
 ## 🔐 User Roles
 
@@ -136,17 +162,23 @@ npm run build
 
 ## 📝 API Documentation
 
-The backend uses tRPC for type-safe APIs. See `server/api/routers/README.md` for detailed router documentation.
+The backend uses tRPC for type-safe APIs. All routers are located in `server/api/routers/`.
 
-**Main routers:**
-- `auth` - Authentication
-- `crm` - Job/lead management
-- `users` - Team management
-- `proposals` - Customer proposals
-- `materials` - Material orders
-- `invoices` - Invoicing
-- `chat` - Team messaging
-- `portal` - Customer portal
+**Main Routers:**
+- `auth` - Authentication and session management
+- `crm` (jobs) - Job/lead management with role-based filtering
+- `users` - Team management and permissions
+- `proposals` - Customer proposals with AI generation
+- `materials` - Material orders and kit management
+- `invoices` - Invoice CRUD and email delivery
+- `messaging` - Unified chat (channels, DMs, AI assistant)
+- `events` - Calendar events with notifications
+- `portal` - Customer portal (public access)
+- `analytics` - Team performance metrics
+- `commissions` - Bonus tracking and approval workflow
+- `leads` - CSV import and lead management
+- `estimates` - Estimate generation
+- `utility` - Error reporting and system utilities
 
 ## 🚢 Deployment
 
