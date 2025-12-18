@@ -156,8 +156,7 @@ export function AddressAutocomplete({
         type="text"
         value={value}
         onChange={handleInput}
-        disabled={!ready}
-        placeholder={placeholder}
+        placeholder={!ready ? "Loading address search..." : placeholder}
         className={className}
         onFocus={() => setIsOpen(true)}
       />
