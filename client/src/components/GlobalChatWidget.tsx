@@ -397,6 +397,10 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
   
   if (!isOpen) {
     console.log('[GlobalChatWidget] Rendering floating button (widget closed)');
+    
+    // Calculate total unread count across all channels
+    const totalUnreadCount = channels?.reduce((sum, channel) => sum + (channel.unreadCount || 0), 0) || 0;
+    
     return (
       <div className="fixed bottom-6 right-6 z-40 md:bottom-6 md:right-6">
         <button
@@ -404,10 +408,11 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
           className="group relative flex items-center justify-center w-14 h-14 bg-[#00d4aa] hover:bg-[#00b894] text-slate-900 rounded-full shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
         >
           <MessageSquare className="w-7 h-7" />
-          <span className="absolute -top-1 -right-1 flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-slate-900"></span>
-          </span>
+          {totalUnreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[24px] h-6 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full border-2 border-slate-900 shadow-lg">
+              {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+            </span>
+          )}
         </button>
       </div>
     );

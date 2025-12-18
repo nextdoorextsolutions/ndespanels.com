@@ -324,8 +324,9 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
     if (!event.latLng || !activeTool || activeTool === 'area') return;
     
-    // Use snapped vertex if available, otherwise use click position
-    const clickPosition = snappedVertex || event.latLng;
+    // Find nearest vertex at click time for snapping
+    const nearestVertex = findNearestVertex(event.latLng);
+    const clickPosition = nearestVertex || event.latLng;
     
     if (!tempLineStart) {
       // First click: set start point
