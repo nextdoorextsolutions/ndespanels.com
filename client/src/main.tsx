@@ -58,6 +58,18 @@ const handleUnauthorizedError = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
+  // Don't treat job-specific errors as auth errors
+  const isJobError = error.message.includes("Lead not found") ||
+    error.message.includes("Job not found") ||
+    error.message.includes("permission to view") ||
+    error.message.includes("permission to edit") ||
+    error.message.includes("permission to access");
+
+  if (isJobError) {
+    console.log("[Auth] Job-specific error, not redirecting:", error.message);
+    return;
+  }
+
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG || 
     error.message.includes("Invalid session") ||
     error.message.includes("UNAUTHORIZED") ||

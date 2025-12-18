@@ -169,20 +169,20 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
     <div className="min-h-screen bg-gray-100">
       {/* Top Navigation Bar - AccuLynx Style */}
       <header className="bg-gradient-to-r from-[#0d4f4f] to-[#0a3d3d] shadow-lg sticky top-0 z-50 w-full">
-        <div className="flex items-center justify-between px-4 h-14">
+        <div className="flex items-center justify-between px-4 h-14 gap-4">
           {/* Logo */}
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 flex-shrink-0 min-w-0">
             <Link href="/crm" className="flex items-center gap-2 flex-shrink-0">
               <div className="w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center flex-shrink-0">
                 <span className="text-black font-bold text-sm">N</span>
               </div>
-              <span className="text-white font-semibold text-lg hidden md:block whitespace-nowrap">
+              <span className="text-white font-semibold text-lg hidden xl:block whitespace-nowrap">
                 NEXTDOOR<span className="text-[#00d4aa]">CRM</span>
               </span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
               {navItems.map((item) =>
                 item.children ? (
                   <DropdownMenu key={item.label}>
@@ -292,16 +292,16 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
           </div>
 
           {/* Right Side - Search, Notifications, User */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {/* Search */}
-            <div className="hidden md:flex items-center relative">
+            <div className="hidden xl:flex items-center relative">
               <Search className="w-4 h-4 absolute left-3 text-gray-400" />
               <Input
                 type="text"
                 placeholder="Search jobs, contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-64 h-9 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white focus:text-gray-900 focus:placeholder:text-gray-400 text-base"
+                className="pl-9 w-48 xl:w-64 h-9 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white focus:text-gray-900 focus:placeholder:text-gray-400 text-base"
               />
             </div>
 

@@ -119,13 +119,33 @@ export default function JobDetail() {
   }
 
   if (error || !job) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to load job";
+    const isNotFound = errorMessage.includes("not found");
+    const isPermission = errorMessage.includes("permission");
+    
     return (
       <CRMLayout>
-        <div className="flex flex-col items-center justify-center h-screen">
-          <p className="text-red-400 mb-4">Failed to load job</p>
-          <Link href="/crm">
-            <a className="text-[#00d4aa] hover:underline">← Back to CRM</a>
-          </Link>
+        <div className="flex flex-col items-center justify-center h-screen px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 max-w-md w-full text-center">
+            <div className="text-red-400 text-5xl mb-4">
+              {isNotFound ? "🔍" : isPermission ? "🔒" : "⚠️"}
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">
+              {isNotFound ? "Job Not Found" : isPermission ? "Access Denied" : "Error Loading Job"}
+            </h2>
+            <p className="text-slate-400 mb-6">
+              {isNotFound 
+                ? "This job doesn't exist or may have been deleted."
+                : isPermission
+                ? "You don't have permission to view this job."
+                : errorMessage}
+            </p>
+            <Link href="/crm">
+              <a className="inline-block bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold px-6 py-3 rounded-lg transition-colors">
+                ← Back to CRM
+              </a>
+            </Link>
+          </div>
         </div>
       </CRMLayout>
     );
