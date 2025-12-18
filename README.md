@@ -205,6 +205,11 @@ The backend uses tRPC for type-safe APIs. All routers are located in `server/api
 - Build command: `npm run build:client`
 - Output directory: `dist/public`
 
+**CI/CD (GitHub Actions):**
+- Automatic deployment to Vercel on every push to `main`
+- Workflow file: `.github/workflows/vercel-deploy.yml`
+- Uses Vercel deploy hook for 100% reliable deployments
+
 ## 📄 License
 
 Proprietary - Next Door Exterior Solutions
