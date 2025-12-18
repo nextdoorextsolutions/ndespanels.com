@@ -96,7 +96,9 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
   // Send message mutation
   const sendTeamMessageMutation = trpc.messaging.sendMessage.useMutation({
     onSuccess: () => {
-      refetchMessages();
+      // We do NOT refetch immediately because we already showed the message.
+      // The Realtime Subscription (supabase) will eventually confirm it.
+      // This prevents the "Double Message" flicker.
     },
   });
 
@@ -244,7 +246,23 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     if (!inputText.trim() || !activeChannelId) return;
 
     const messageToSend = inputText;
-    setInputText('');
+    setInputText(''); // Clear input immediately
+
+    // 1. CREATE FAKE MESSAGE FOR INSTANT DISPLAY
+    const tempId = Date.now(); // Temporary ID
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      content: messageToSend,
+      userId: effectiveUser?.id || 0,
+      userName: effectiveUser?.name || 'Me',
+      userEmail: effectiveUser?.email || '',
+      userImage: effectiveUser?.image || null,
+      createdAt: new Date(),
+      isStreaming: false,
+    };
+
+    // 2. FORCE UPDATE SCREEN INSTANTLY
+    setMessages((prev) => [...prev, optimisticMessage]);
 
     // Check if message mentions Gemini or is in Gemini thread
     const shouldUseGemini = messageToSend.toLowerCase().includes('@gemini') || 
@@ -262,7 +280,7 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
         }));
 
       // Create placeholder for streaming response
-      const botMessageId = Date.now();
+      const botMessageId = Date.now() + 1;
       const botMessage: ChatMessage = {
         id: botMessageId,
         content: '',
@@ -273,23 +291,28 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
         createdAt: new Date(),
         isStreaming: true,
       };
-      
+
       setMessages(prev => [...prev, botMessage]);
       
       // Trigger streaming subscription
       setStreamingMessage(messageToSend);
       setStreamingHistory(history);
       setStreamingMessageId(botMessageId);
+
     } else {
-      // Send regular team message to database
+      // 3. SEND TO SERVER IN BACKGROUND
       try {
         await sendTeamMessageMutation.mutateAsync({
           channelId: activeChannelId,
           content: messageToSend,
         });
+        // Success! Realtime subscription will likely replace our fake message with the real one automatically.
       } catch (error) {
         console.error('Failed to send message:', error);
         toast.error('Failed to send message');
+        // Rollback: Remove the fake message if it failed
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setInputText(messageToSend); // Put text back in box so they can try again
       }
     }
   };
