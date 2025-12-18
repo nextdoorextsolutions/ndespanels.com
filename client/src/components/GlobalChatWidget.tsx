@@ -49,17 +49,10 @@ if (!IS_OAUTH_CONFIGURED && typeof window !== 'undefined' && !(window as any).__
 export const GlobalChatWidget: React.FC = React.memo(() => {
   const [location] = useLocation();
   
-  // Early return if on auth pages - use exact match and case-insensitive comparison
+  // Check conditions but don't return early - hooks must be called first
   const currentPath = location.toLowerCase();
-  if (AUTH_PAGES.some(page => currentPath === page || currentPath.startsWith(page + '/'))) {
-    return null;
-  }
+  const isOnAuthPage = AUTH_PAGES.some(page => currentPath === page || currentPath.startsWith(page + '/'));
   
-  // Early return if OAuth is not configured - no hooks called
-  if (!IS_OAUTH_CONFIGURED) {
-    return null;
-  }
-
   // 1. ALL HOOKS MUST BE CALLED FIRST - Before any conditional returns
   const { isOpen, isMinimized, setOpen, setMinimized } = useChatStore();
   const { user: authUser, isAuthenticated, loading } = useAuth();
@@ -358,19 +351,6 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
   };
 
   // 2. NOW conditional returns are safe (after all hooks)
-  // Don't show widget if:
-  // - Still loading authentication
-  // - User is not authenticated
-  // - User object is null
-  // - On login/auth/public pages
-  const isAuthPage = typeof window !== 'undefined' && (
-    window.location.pathname === '/login' ||
-    window.location.pathname === '/forgot-password' ||
-    window.location.pathname === '/reset-password' ||
-    window.location.pathname === '/portal' ||
-    window.location.pathname === '/upload'
-  );
-  
   // DEBUG: Log why widget might be hidden
   console.log('[GlobalChatWidget] Render check:', {
     loading,
@@ -378,13 +358,22 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     authUser: authUser ? { id: authUser.id, name: authUser.name, email: authUser.email } : null,
     storedUser: storedUser ? { id: storedUser.id, name: storedUser.name, email: storedUser.email } : null,
     effectiveUser: effectiveUser ? { id: effectiveUser.id, name: effectiveUser.name, email: effectiveUser.email } : null,
-    isAuthPage,
-    currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+    isOnAuthPage,
+    currentPath,
     connectionStatus,
     isConnected,
     activeChannelId,
     channelsCount: channels?.length || 0,
   });
+  
+  // Check OAuth config and auth page status (after all hooks are called)
+  if (!IS_OAUTH_CONFIGURED) {
+    return null;
+  }
+  
+  if (isOnAuthPage) {
+    return null;
+  }
   
   // Only hide if loading AND no user data exists (initial load or stored)
   // If we have user data (from auth or localStorage), show the widget
@@ -400,11 +389,6 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
   
   if (!effectiveUser) {
     console.log('[GlobalChatWidget] Widget hiding because: No user data available');
-    return null;
-  }
-  
-  if (isAuthPage) {
-    console.log('[GlobalChatWidget] Widget hiding because: On auth/public page:', window.location.pathname);
     return null;
   }
 
