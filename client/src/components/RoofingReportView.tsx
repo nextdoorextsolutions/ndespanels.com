@@ -530,29 +530,6 @@ export function RoofingReportView({ solarApiData, jobData, isGoogleMapsLoaded }:
         </TabsContent>
       </Tabs>
 
-      {/* Manual Roof Takeoff - Always show button, component handles its own visibility */}
-      {solarApiData?.lat && solarApiData?.lng && (
-        <ManualRoofTakeoff
-          latitude={solarApiData.lat}
-          longitude={solarApiData.lng}
-          forceShow={true}
-          onSave={(measurements) => {
-            // Update metrics with manual measurements
-            setMetrics({
-              totalArea: measurements.totalArea,
-              predominantPitch: parseInt(measurements.pitch.split('/')[0]) || 4,
-              perimeter: measurements.perimeter,
-              segments: [],
-              eaves: Math.round(measurements.perimeter * 0.5),
-              rakes: Math.round(measurements.perimeter * 0.3),
-              valleys: 0,
-              ridges: Math.round(measurements.perimeter * 0.2),
-              hips: 0,
-            });
-          }}
-        />
-      )}
-
       {/* Roof Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-slate-800 border-slate-700">
