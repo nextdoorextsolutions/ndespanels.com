@@ -1,7 +1,7 @@
 {
   "routes": [
     {
-      "src": "^/(manifest\\.json|sw\\.js|icon-.*\\.png|vite\\.svg|assets/.*)",
+      "src": "^/(manifest\\.json|sw\\.js|icon-.*\\.png|favicon\\.png|vite\\.svg|assets/.*|images/.*)",
       "dest": "/$1"
     },
     {
