@@ -34,7 +34,7 @@ const OAUTH_PORTAL_URL = import.meta.env.VITE_OAUTH_PORTAL_URL;
 const APP_ID = import.meta.env.VITE_APP_ID;
 const IS_OAUTH_CONFIGURED = !!(OAUTH_PORTAL_URL && APP_ID);
 
-// Auth pages where chat should be disabled
+// Auth pages where chat should be disabled (exact matches only)
 const AUTH_PAGES = ['/login', '/forgot-password', '/reset-password', '/portal', '/upload'];
 
 // Log warning once at module load if OAuth is not configured
@@ -49,8 +49,9 @@ if (!IS_OAUTH_CONFIGURED && typeof window !== 'undefined' && !(window as any).__
 export const GlobalChatWidget: React.FC = React.memo(() => {
   const [location] = useLocation();
   
-  // Early return if on auth pages - no hooks called
-  if (AUTH_PAGES.some(page => location.startsWith(page))) {
+  // Early return if on auth pages - use exact match and case-insensitive comparison
+  const currentPath = location.toLowerCase();
+  if (AUTH_PAGES.some(page => currentPath === page || currentPath.startsWith(page + '/'))) {
     return null;
   }
   
