@@ -63,6 +63,13 @@ export default function JobDetail() {
     onRefetch: refetch,
   });
 
+  // Timeline hook - must be called before any conditional returns
+  const { filteredTimeline } = useJobTimeline({
+    activities: job?.activities || [],
+    filterTag,
+    searchQuery,
+  });
+
   // Effect hooks
   useEffect(() => {
     // Reset active tab when job ID changes
@@ -154,13 +161,6 @@ export default function JobDetail() {
   // Extract data from job response
   const documents = job?.documents || [];
   const rawActivities = job?.activities || [];
-
-  // Use timeline hook for filtering
-  const { filteredTimeline } = useJobTimeline({
-    activities: rawActivities,
-    filterTag,
-    searchQuery,
-  });
 
   // Filter data based on search
   const filteredDocuments = documents.filter((doc: any) =>
