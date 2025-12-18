@@ -38,16 +38,35 @@ export function useChatRealtime({
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectedChannelIdRef = useRef<number | null>(null);
   const maxRetries = 3;
+
+  // Stabilize callbacks using refs to prevent dependency changes
+  const onNewMessageRef = useRef(onNewMessage);
+  const onMessageUpdateRef = useRef(onMessageUpdate);
+  const onMessageDeleteRef = useRef(onMessageDelete);
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onNewMessageRef.current = onNewMessage;
+    onMessageUpdateRef.current = onMessageUpdate;
+    onMessageDeleteRef.current = onMessageDelete;
+  }, [onNewMessage, onMessageUpdate, onMessageDelete]);
 
   useEffect(() => {
     if (!enabled || !channelId) {
       setConnectionStatus('disconnected');
       retryCountRef.current = 0;
+      connectedChannelIdRef.current = null;
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
+      return;
+    }
+
+    // Mount check: If already connected to this exact channel, do nothing
+    if (channelRef.current && connectedChannelIdRef.current === channelId) {
       return;
     }
 
@@ -103,7 +122,7 @@ export function useChatRealtime({
           filter: `channel_id=eq.${channelId}`,
         },
         (payload) => {
-          onNewMessage(payload.new);
+          onNewMessageRef.current(payload.new);
         }
       )
       .on(
@@ -115,7 +134,7 @@ export function useChatRealtime({
           filter: `channel_id=eq.${channelId}`,
         },
         (payload) => {
-          onMessageUpdate(payload.new);
+          onMessageUpdateRef.current(payload.new);
         }
       )
       .on(
@@ -127,7 +146,7 @@ export function useChatRealtime({
           filter: `channel_id=eq.${channelId}`,
         },
         (payload) => {
-          onMessageDelete(payload.old.id);
+          onMessageDeleteRef.current(payload.old.id);
         }
       )
         .subscribe((status) => {
@@ -135,9 +154,11 @@ export function useChatRealtime({
           if (status === 'SUBSCRIBED') {
             setConnectionStatus('connected');
             retryCountRef.current = 0; // Reset retry count on success
+            connectedChannelIdRef.current = channelId; // Mark this channel as connected
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             retryCountRef.current += 1;
             setConnectionStatus('disconnected');
+            connectedChannelIdRef.current = null;
             
             // Force cleanup to prevent reconnection spam
             if (retryCountRef.current >= maxRetries && channelRef.current && supabase) {
@@ -153,7 +174,7 @@ export function useChatRealtime({
       setConnectionStatus('connecting');
     }
 
-    // Cleanup subscription on unmount or channel change
+    // Cleanup subscription ONLY when channelId or enabled changes
     return () => {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
@@ -162,10 +183,11 @@ export function useChatRealtime({
       if (channelRef.current && supabase) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
+        connectedChannelIdRef.current = null;
         setConnectionStatus('disconnected');
       }
     };
-  }, [channelId, enabled, onNewMessage, onMessageUpdate, onMessageDelete]);
+  }, [channelId, enabled]);
 
   return {
     isSubscribed: !!channelRef.current,
