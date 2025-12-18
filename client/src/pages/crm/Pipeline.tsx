@@ -122,7 +122,7 @@ export default function CRMPipeline() {
   const getLeadsForStage = (stageKey: string): any[] => {
     const leads = pipeline?.[stageKey as keyof typeof pipeline] || [];
     if (stageKey === "approved" && selectedDealType) {
-      return Array.isArray(leads) ? leads.filter((lead) => lead.dealType === selectedDealType) : [];
+      return Array.isArray(leads) ? leads.filter((lead: any) => lead.dealType === selectedDealType) : [];
     }
     return Array.isArray(leads) ? leads : [];
   };
