@@ -5,12 +5,25 @@ A comprehensive roofing CRM platform with job management, proposals, material or
 ## 🎨 Recent Updates (December 2024)
 
 ### Chat Widget Improvements
+- **Optimistic UI** - Instant message display with 0ms lag, background save with rollback on failure
+- **Unread Message Badge** - Real-time notification counter on chat button (shows 1-99+)
 - **Fixed Reconnection Loop** - Stabilized useEffect dependencies to prevent subscribe/unsubscribe spam
 - **Route Detection** - Chat widget now disabled on auth pages (/login, /forgot-password, etc.)
 - **Exponential Backoff** - Added 1s, 2s, 4s retry delays to prevent connection spam
 - **Mount Check** - Prevents reconnection if already connected to the same channel
 - **Max Retry Limit** - Stops attempting after 3 failed connection attempts
 - **OAuth Configuration** - Properly configured for production deployment
+
+### Roof Measurement Tool
+- **Vertex Snapping** - Click existing measurement endpoints to snap new lines perfectly
+- **Overlay Support** - Draw rakes over eaves vertices with magnetic snapping
+- **Visual Snap Indicator** - Yellow marker shows when hovering near snap points
+- **Duplicate Tool Removed** - Cleaned up UI by removing redundant measurement tool instance
+
+### Production Fixes
+- **Cache Control Headers** - Prevents stale index.html serving, eliminates black screen/404 errors
+- **Static Asset Routing** - Fixed images folder routing for logo and static assets
+- **PWA Files** - Proper manifest.json and service worker serving
 
 ### Futuristic Dashboard UI
 - **Neon Gradient Borders** - Vibrant glowing borders on all KPI cards (blue, green, purple)
