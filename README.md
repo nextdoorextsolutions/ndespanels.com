@@ -2,6 +2,24 @@
 
 A comprehensive roofing CRM platform with job management, proposals, material ordering, customer portal, unified team chat, and mobile PWA support.
 
+## 🎨 Recent Updates (December 2024)
+
+### Chat Widget Improvements
+- **Fixed Reconnection Loop** - Stabilized useEffect dependencies to prevent subscribe/unsubscribe spam
+- **Route Detection** - Chat widget now disabled on auth pages (/login, /forgot-password, etc.)
+- **Exponential Backoff** - Added 1s, 2s, 4s retry delays to prevent connection spam
+- **Mount Check** - Prevents reconnection if already connected to the same channel
+- **Max Retry Limit** - Stops attempting after 3 failed connection attempts
+- **OAuth Configuration** - Properly configured for production deployment
+
+### Futuristic Dashboard UI
+- **Neon Gradient Borders** - Vibrant glowing borders on all KPI cards (blue, green, purple)
+- **Enhanced Shadow Effects** - Dynamic glowing shadows that intensify on hover
+- **Darker Background** - Improved contrast with `#0a0e1a` background color
+- **Glowing Icons** - Larger icons in circular containers with neon glow effects
+- **White Value Text** - More vibrant display for metrics and statistics
+- **Deal Type Cards** - Neon borders on Insurance, Cash, and Financed deal cards
+
 ## 📦 Tech Stack
 
 **Frontend:**
@@ -85,10 +103,12 @@ GOOGLE_MAPS_API_KEY=...
 
 ### Team Collaboration
 - **Unified Messaging** - Real-time chat with channels, DMs, and AI assistant (Zerox)
+- **Supabase Realtime** - Stable WebSocket connections with automatic reconnection handling
 - **Channel Management** - Owner-only channel creation with role restrictions
 - **Event Notifications** - Auto-DM to attendees when events created
 - **Team Performance** - Analytics dashboard with leaderboards
 - **@Mentions** - Tag team members in messages with notifications
+- **Connection Stability** - Smart retry logic prevents infinite reconnection loops
 
 ### Finance & Operations
 - **Invoicing** - Invoice generation, tracking, and email delivery
