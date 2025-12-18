@@ -2,33 +2,6 @@
 
 A comprehensive roofing CRM platform with job management, proposals, material ordering, and customer portal.
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+
-- PostgreSQL database (Supabase)
-- Google Maps API key
-- Gemini API key
-
-### Installation
-
-```bash
-# Install dependencies
-npm install
-
-# Copy environment variables
-cp .env.example .env
-# Edit .env with your credentials
-
-# Run database migrations
-npm run db:push
-
-# Start development server
-npm run dev
-```
-
-The application will be available at `http://localhost:5173`
-
 ## 📦 Tech Stack
 
 **Frontend:**
