@@ -18,6 +18,7 @@ import { JobPhotosTab } from "@/components/crm/job-detail/JobPhotosTab";
 import { JobMessagesTab } from "@/components/crm/job-detail/JobMessagesTab";
 import { JobTimelineTab } from "@/components/crm/job-detail/JobTimelineTab";
 import { JobEditHistoryTab } from "@/components/crm/job-detail/JobEditHistoryTab";
+import { JobPaymentsTab } from "@/components/crm/job-detail/JobPaymentsTab";
 import EstimatorTool from "@/components/estimator/EstimatorTool";
 
 // Custom Hooks
@@ -283,6 +284,13 @@ export default function JobDetail() {
               job={job as Job} // Backend returns job with activities/documents arrays
               userRole={permissions?.role || "user"}
               onUpdate={() => refetch()}
+            />
+          )}
+
+          {activeTab === "payments" && (
+            <JobPaymentsTab
+              jobId={jobId}
+              canEdit={canEdit}
             />
           )}
 

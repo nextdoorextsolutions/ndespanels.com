@@ -29,6 +29,8 @@ export const lienRightsStatusEnum = pgEnum("lien_rights_status", [
 
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "refunded"]);
 
+export const paymentMethodEnum = pgEnum("payment_method", ["check", "cash", "wire", "credit_card", "other"]);
+
 export const priorityEnum = pgEnum("priority", ["low", "medium", "high", "urgent"]);
 
 export const priceStatusEnum = pgEnum("price_status", ["draft", "pending_approval", "negotiation", "approved"]);
@@ -718,3 +720,22 @@ export const events = pgTable("events", {
 
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = typeof events.$inferInsert;
+
+/**
+ * Payments table - Manual payment tracking for jobs
+ */
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  reportRequestId: integer("report_request_id").notNull().references(() => reportRequests.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(), // Amount in cents
+  paymentDate: timestamp("payment_date").notNull(),
+  paymentMethod: paymentMethodEnum("payment_method").notNull(),
+  checkNumber: varchar("check_number", { length: 100 }),
+  notes: text("notes"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = typeof payments.$inferInsert;

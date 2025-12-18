@@ -38,6 +38,7 @@ import { analyticsRouter } from "./api/routers/analytics";
 import { commissionsRouter } from "./api/routers/commissions";
 import { leadsRouter } from "./api/routers/leads";
 import { eventsRouter } from "./api/routers/events";
+import { paymentsRouter } from "./api/routers/payments";
 
 export const appRouter = router({
   // Core System
@@ -59,6 +60,7 @@ export const appRouter = router({
   // Finance & Operations
   invoices: invoicesRouter,
   commissions: commissionsRouter,
+  payments: paymentsRouter,
   materials: materialsRouter,
   products: productsRouter,
   
