@@ -2,14 +2,21 @@
   "routes": [
     {
       "src": "^/(manifest\\.json|sw\\.js|icon-.*\\.png|favicon\\.png|vite\\.svg|assets/.*|images/.*)",
-      "dest": "/$1"
+      "dest": "/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
     }
   ],
   "buildCommand": "npm run build:client",
   "outputDirectory": "dist/public",
-  "framework": "vite"
+  "framework": "vite",
+  "cleanUrls": false
 }
