@@ -10,6 +10,7 @@ import { AISidebar } from './chat/AISidebar';
 import { usePresence, PresenceUser } from '@/hooks/usePresence';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useChatRealtime } from '@/hooks/useChatRealtime';
+import { useLocation } from 'wouter';
 
 interface ChatMessage {
   id: number;
@@ -28,17 +29,33 @@ interface ChatMessage {
 const GEMINI_BOT_ID = 'gemini-bot';
 const GEMINI_BOT_NAME = 'Zerox AI';
 
-export const GlobalChatWidget: React.FC = () => {
-  // GUARD: Check for required OAuth configuration before initializing chat
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
-  const appId = import.meta.env.VITE_APP_ID;
+// Check OAuth config once at module level to prevent re-checking on every render
+const OAUTH_PORTAL_URL = import.meta.env.VITE_OAUTH_PORTAL_URL;
+const APP_ID = import.meta.env.VITE_APP_ID;
+const IS_OAUTH_CONFIGURED = !!(OAUTH_PORTAL_URL && APP_ID);
+
+// Auth pages where chat should be disabled
+const AUTH_PAGES = ['/login', '/forgot-password', '/reset-password', '/portal', '/upload'];
+
+// Log warning once at module load if OAuth is not configured
+if (!IS_OAUTH_CONFIGURED && typeof window !== 'undefined' && !(window as any).__chatConfigWarningLogged) {
+  console.warn('[GlobalChatWidget] Chat disabled: Missing Auth Configuration',
+    '\n  VITE_OAUTH_PORTAL_URL:', OAUTH_PORTAL_URL || 'Missing',
+    '\n  VITE_APP_ID:', APP_ID || 'Missing'
+  );
+  (window as any).__chatConfigWarningLogged = true;
+}
+
+export const GlobalChatWidget: React.FC = React.memo(() => {
+  const [location] = useLocation();
   
-  if (!oauthPortalUrl || !appId) {
-    // Log warning once and return early to prevent reconnection loop
-    if (typeof window !== 'undefined' && !(window as any).__chatConfigWarningLogged) {
-      console.warn('[GlobalChatWidget] Chat disabled: Missing Auth Configuration (VITE_OAUTH_PORTAL_URL or VITE_APP_ID)');
-      (window as any).__chatConfigWarningLogged = true;
-    }
+  // Early return if on auth pages - no hooks called
+  if (AUTH_PAGES.some(page => location.startsWith(page))) {
+    return null;
+  }
+  
+  // Early return if OAuth is not configured - no hooks called
+  if (!IS_OAUTH_CONFIGURED) {
     return null;
   }
 
@@ -509,4 +526,4 @@ export const GlobalChatWidget: React.FC = () => {
       )}
     </div>
   );
-};
+});

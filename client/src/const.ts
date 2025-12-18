@@ -18,10 +18,14 @@ export const getLoginUrl = () => {
   
   // Return empty string if OAuth is not configured
   if (!isValidUrl(oauthPortalUrl) || !appId) {
-    console.warn("[Auth] OAuth not configured. Login will not work.",
-      "\n  VITE_OAUTH_PORTAL_URL:", oauthPortalUrl ? (isValidUrl(oauthPortalUrl) ? "✓ Valid" : "✗ Invalid URL") : "✗ Missing",
-      "\n  VITE_APP_ID:", appId ? "✓ Present" : "✗ Missing"
-    );
+    // Only log warning once to prevent console spam
+    if (typeof window !== 'undefined' && !(window as any).__oauthConfigWarningLogged) {
+      console.warn("[Auth] OAuth not configured. Login will not work.",
+        "\n  VITE_OAUTH_PORTAL_URL:", oauthPortalUrl ? (isValidUrl(oauthPortalUrl) ? "✓ Valid" : "✗ Invalid URL") : "✗ Missing",
+        "\n  VITE_APP_ID:", appId ? "✓ Present" : "✗ Missing"
+      );
+      (window as any).__oauthConfigWarningLogged = true;
+    }
     return "#";
   }
   
