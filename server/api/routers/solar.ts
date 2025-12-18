@@ -58,9 +58,9 @@ const solarPotentialSchema = z.object({
 }).optional();
 
 const solarApiDataSchema = z.object({
-  // Required roof measurements
-  roofAreaSqMeters: z.number().positive(),
-  totalArea: z.number().positive(),
+  // Roof measurements (optional when no solar coverage)
+  roofAreaSqMeters: z.number().positive().optional(),
+  totalArea: z.number().positive().optional(),
   
   // Optional linear measurements
   perimeter: z.number().optional(),
