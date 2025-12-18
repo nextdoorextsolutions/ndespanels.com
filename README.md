@@ -1,27 +1,30 @@
 # Next Door Exterior Solutions - CRM Platform
 
-A comprehensive roofing CRM platform with job management, proposals, material ordering, and customer portal.
+A comprehensive roofing CRM platform with job management, proposals, material ordering, customer portal, unified team chat, and mobile PWA support.
 
 ## 📦 Tech Stack
 
 **Frontend:**
 - React 18 + TypeScript
-- Vite
-- TailwindCSS + shadcn/ui
+- Vite (build tool)
+- TailwindCSS + shadcn/ui (styling)
 - tRPC for type-safe API calls
 - Wouter for routing
+- React Query for data fetching
 
 **Backend:**
-- Express + tRPC
+- Express + tRPC (type-safe APIs)
 - PostgreSQL (Supabase)
-- Drizzle ORM
-- Google Maps API
-- Gemini AI
+- Drizzle ORM (database toolkit)
+- Google Maps API (geocoding, solar data)
+- Gemini AI (proposal generation, photo analysis)
+- Nodemailer (email delivery)
 
 **Infrastructure:**
 - Supabase (Database + Storage + Auth)
 - Render (Backend hosting)
-- Vercel (Frontend hosting)
+- Vercel (Frontend hosting - optional)
+- GitHub Actions (CI/CD)
 
 ## 🗂️ Project Structure
 
@@ -114,6 +117,27 @@ GOOGLE_MAPS_API_KEY=...
 
 See `MIGRATIONS.md` for the complete list of database migrations and their purposes.
 
+## 🚀 Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env
+# Edit .env with your credentials
+
+# Run database migrations
+npm run db:push
+
+# Start development server (frontend + backend)
+npm run dev
+```
+
+The app will be available at:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:3000
+
 ## 🛠️ Development
 
 ```bash
@@ -131,6 +155,9 @@ npm run typecheck
 
 # Build for production
 npm run build
+
+# Run tests
+npm run test
 ```
 
 ## 📝 API Documentation
