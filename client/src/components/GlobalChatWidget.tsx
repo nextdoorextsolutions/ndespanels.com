@@ -29,6 +29,19 @@ const GEMINI_BOT_ID = 'gemini-bot';
 const GEMINI_BOT_NAME = 'Zerox AI';
 
 export const GlobalChatWidget: React.FC = () => {
+  // GUARD: Check for required OAuth configuration before initializing chat
+  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
+  const appId = import.meta.env.VITE_APP_ID;
+  
+  if (!oauthPortalUrl || !appId) {
+    // Log warning once and return early to prevent reconnection loop
+    if (typeof window !== 'undefined' && !(window as any).__chatConfigWarningLogged) {
+      console.warn('[GlobalChatWidget] Chat disabled: Missing Auth Configuration (VITE_OAUTH_PORTAL_URL or VITE_APP_ID)');
+      (window as any).__chatConfigWarningLogged = true;
+    }
+    return null;
+  }
+
   // 1. ALL HOOKS MUST BE CALLED FIRST - Before any conditional returns
   const { isOpen, isMinimized, setOpen, setMinimized } = useChatStore();
   const { user: authUser, isAuthenticated, loading } = useAuth();

@@ -39,11 +39,17 @@ export function useChatRealtime({
 
   useEffect(() => {
     if (!enabled || !channelId) {
+      setConnectionStatus('disconnected');
       return;
     }
 
     if (!supabase) {
-      console.warn('[useChatRealtime] Supabase client not available');
+      // Only log warning once to prevent console spam
+      if (typeof window !== 'undefined' && !(window as any).__chatRealtimeConfigWarningLogged) {
+        console.warn('[useChatRealtime] Chat realtime disabled: Supabase client not available');
+        (window as any).__chatRealtimeConfigWarningLogged = true;
+      }
+      setConnectionStatus('disconnected');
       return;
     }
 

@@ -37,10 +37,17 @@ export function usePresence({ threadId = 'global', user, enabled = true }: UsePr
   const typingDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setConnectionStatus('disconnected');
+      return;
+    }
     
     if (!supabase) {
-      console.warn('Supabase client not available');
+      // Only log warning once to prevent console spam
+      if (typeof window !== 'undefined' && !(window as any).__presenceConfigWarningLogged) {
+        console.warn('[usePresence] Presence disabled: Supabase client not available');
+        (window as any).__presenceConfigWarningLogged = true;
+      }
       setConnectionStatus('disconnected');
       return;
     }

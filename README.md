@@ -68,11 +68,12 @@ GOOGLE_MAPS_API_KEY=...
 ## 📚 Key Features
 
 ### Core CRM
-- **Job Management** - Full pipeline from lead to completion with status tracking
+- **Job Management** - Full pipeline from lead to completion with 10 status stages
 - **Dashboard Analytics** - Role-based metrics with futuristic UI (glows, gradients, color-coded cards)
 - **Calendar Events** - Color-coded scheduling (Inspection=Red, Call=Green, Meeting=Blue, Zoom=Purple)
-- **Lien Rights Tracking** - Automated 90-day compliance with urgency levels
-- **CSV Import** - Bulk lead import with validation
+- **Lien Rights Tracking** - Automated 90-day compliance with urgency levels (warning/critical alerts)
+- **CSV Import** - Bulk lead import with validation (restricted to "lead" stage only)
+- **Follow-Up System** - Flag jobs needing follow-up with reason tracking
 
 ### Customer Experience
 - **Roof Measurements** - Manual takeoff with Google Maps integration
@@ -80,12 +81,14 @@ GOOGLE_MAPS_API_KEY=...
 - **Digital Proposals** - AI-generated proposals with e-signatures
 - **Customer Portal** - Public job lookup, messaging, and callback requests
 - **Photo Analysis** - AI-powered damage detection with Gemini Vision
+- **Manual Payment Recording** - Track checks, cash, wire transfers (no payment processor fees)
 
 ### Team Collaboration
 - **Unified Messaging** - Real-time chat with channels, DMs, and AI assistant (Zerox)
 - **Channel Management** - Owner-only channel creation with role restrictions
 - **Event Notifications** - Auto-DM to attendees when events created
 - **Team Performance** - Analytics dashboard with leaderboards
+- **@Mentions** - Tag team members in messages with notifications
 
 ### Finance & Operations
 - **Invoicing** - Invoice generation, tracking, and email delivery
@@ -93,16 +96,19 @@ GOOGLE_MAPS_API_KEY=...
 - **Material Orders** - Automated calculations and supplier integration
 - **Time Clock** - Employee time tracking with GPS verification
 - **Expense Tracking** - Categorized expenses with tax deduction flags
+- **Payment Tracking** - Manual payment recording with automatic revenue updates
 
 ### Mobile & PWA
 - **Progressive Web App** - Installable mobile experience
 - **Offline Support** - Service worker caching for field use
 - **Mobile-Optimized UI** - Responsive design with drawer navigation
+- **Field Photo Upload** - Public upload endpoint for field staff (no auth required)
 
 ### Developer Tools
 - **Crash Reporter** - Global error boundary with Supabase logging
 - **Production Dashboard** - Real-time metrics and error monitoring
 - **Migration Log** - Comprehensive schema change tracking
+- **Modular Architecture** - Refactored routers (jobs split into analytics/documents/lien-rights)
 
 ## 🔐 User Roles
 
@@ -116,27 +122,6 @@ GOOGLE_MAPS_API_KEY=...
 ## 📊 Database Migrations
 
 See `MIGRATIONS.md` for the complete list of database migrations and their purposes.
-
-## 🚀 Setup
-
-```bash
-# Install dependencies
-npm install
-
-# Copy environment variables
-cp .env.example .env
-# Edit .env with your credentials
-
-# Run database migrations
-npm run db:push
-
-# Start development server (frontend + backend)
-npm run dev
-```
-
-The app will be available at:
-- Frontend: http://localhost:5173
-- Backend: http://localhost:3000
 
 ## 🛠️ Development
 
@@ -155,9 +140,6 @@ npm run typecheck
 
 # Build for production
 npm run build
-
-# Run tests
-npm run test
 ```
 
 ## 📝 API Documentation

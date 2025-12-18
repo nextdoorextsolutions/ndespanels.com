@@ -114,6 +114,49 @@ This document tracks all schema changes made to the NDES CRM database in chronol
 
 ---
 
+## December 18, 2024 - Manual Payments System
+
+**Migration:** `drizzle/migrations/add_payments_table.sql`
+
+**Changes:**
+- Added `payment_method` enum: `'check', 'cash', 'wire', 'credit_card', 'other'`
+- Created `payments` table
+  - Fields: report_request_id (FK to jobs), amount (cents), payment_date, payment_method
+  - Fields: check_number (VARCHAR 100), notes (TEXT), created_by
+  - Indexes: report_request_id, payment_date, created_by
+  - Foreign key: CASCADE delete on job deletion
+
+**Purpose:** Manual payment tracking (checks, cash, wire transfers) without payment processor fees. Automatically updates job's `amountPaid` field for revenue tracking and bonus calculations.
+
+**Backend Router:** `server/api/routers/payments.ts`
+- `recordPayment` - Insert payment, update job revenue, log activity
+- `getJobPayments` - List all payments for a job
+- `deletePayment` - Remove payment, recalculate revenue
+- `getPaymentSummary` - Total paid and payment count
+
+**Frontend Component:** `client/src/components/crm/job-detail/JobPaymentsTab.tsx`
+
+---
+
+## December 18, 2024 - Jobs Router Refactoring
+
+**Code Refactoring:** Modular architecture for maintainability
+
+**Changes:**
+- Split monolithic `server/api/routers/jobs.ts` (1,883 lines → 1,157 lines)
+- Created modular sub-routers:
+  - `server/api/routers/jobs/analytics.ts` (~400 lines) - Stats, reports, dashboard data
+  - `server/api/routers/jobs/documents.ts` (~300 lines) - File uploads, photos, field uploads
+  - `server/api/routers/jobs/lien-rights.ts` (~150 lines) - Lien tracking, alerts
+  - `server/api/routers/jobs/shared.ts` - Common imports and utilities
+  - `server/api/routers/jobs/index.ts` - Module exports
+
+**Purpose:** Improve code maintainability and reduce file size while maintaining backward compatibility. All API endpoints remain unchanged (flat structure preserved via router merging).
+
+**Reduction:** 38.5% smaller main file (726 lines extracted)
+
+---
+
 ## Schema Overview
 
 ### Core Tables
