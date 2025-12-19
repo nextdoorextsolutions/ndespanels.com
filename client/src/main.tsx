@@ -20,7 +20,13 @@ const SESSION_TOKEN_KEY = "manus-session-token";
 
 // Helper to get session token from localStorage
 export function getSessionToken(): string | null {
-  return localStorage.getItem(SESSION_TOKEN_KEY);
+  const token = localStorage.getItem(SESSION_TOKEN_KEY);
+  console.log('[getSessionToken] Retrieved token:', {
+    exists: !!token,
+    length: token?.length || 0,
+    preview: token ? `${token.substring(0, 20)}...` : 'null'
+  });
+  return token;
 }
 
 // Helper to set session token in localStorage
