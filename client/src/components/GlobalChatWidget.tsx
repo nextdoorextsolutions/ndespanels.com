@@ -208,9 +208,11 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     {
       enabled: !!streamingMessageId && streamingMessage.length > 0 && !isStreamingActiveRef.current,
       onStarted() {
+        console.log('[GlobalChatWidget] Subscription started');
         isStreamingActiveRef.current = true;
       },
       onData(chunk) {
+        console.log('[GlobalChatWidget] Received chunk:', { text: chunk.chunk, done: chunk.done });
         if (!chunk.done && streamingMessageId) {
           setMessages(prev => 
             prev.map(m => 
@@ -236,7 +238,12 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
         }
       },
       onError(err) {
-        console.error('Stream error:', err);
+        console.error('[GlobalChatWidget] Stream error:', err);
+        console.error('[GlobalChatWidget] Error details:', {
+          message: err.message,
+          code: err.data?.code,
+          httpStatus: err.data?.httpStatus,
+        });
         toast.error('Streaming failed');
         isStreamingActiveRef.current = false;
         setStreamingMessageId(null);
@@ -274,7 +281,11 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     const shouldUseGemini = messageToSend.toLowerCase().includes('@gemini') || 
                            messageToSend.toLowerCase().includes('@zerox');
 
+    console.log('[GlobalChatWidget] Message sent:', messageToSend);
+    console.log('[GlobalChatWidget] shouldUseGemini:', shouldUseGemini);
+
     if (shouldUseGemini) {
+      console.log('[GlobalChatWidget] Triggering Gemini AI response...');
       setIsTyping(true);
       
       // Build chat history for context
@@ -301,6 +312,11 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
       setMessages(prev => [...prev, botMessage]);
       
       // Trigger streaming subscription
+      console.log('[GlobalChatWidget] Setting streaming state:', {
+        message: messageToSend,
+        historyLength: history.length,
+        botMessageId,
+      });
       setStreamingMessage(messageToSend);
       setStreamingHistory(history);
       setStreamingMessageId(botMessageId);
