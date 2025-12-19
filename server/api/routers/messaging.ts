@@ -440,7 +440,7 @@ export const messagingRouter = router({
             const enhancedSystemPrompt = ZEROX_SYSTEM_PROMPT + activityContext;
 
             const model = genAI.getGenerativeModel({ 
-              model: "gemini-1.5-flash",
+              model: "gemini-2.5-flash",
               systemInstruction: enhancedSystemPrompt,
             });
 
@@ -502,7 +502,7 @@ export const messagingRouter = router({
           });
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         let prompt = "";
         
