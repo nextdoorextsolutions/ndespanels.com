@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, loading } = useSupabaseAuth();
+  const { isAuthenticated, loading, recoverSession } = useSupabaseAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -16,6 +16,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       setLocation("/login");
     }
   }, [loading, isAuthenticated, setLocation]);
+
+  // CRITICAL FIX: Listen for session recovery events from tRPC error handler
+  useEffect(() => {
+    const handleRecoverSession = () => {
+      console.log('[ProtectedRoute] Received session recovery request');
+      recoverSession();
+    };
+
+    window.addEventListener('auth:recover-session', handleRecoverSession);
+    
+    return () => {
+      window.removeEventListener('auth:recover-session', handleRecoverSession);
+    };
+  }, [recoverSession]);
 
   if (loading) {
     return (
