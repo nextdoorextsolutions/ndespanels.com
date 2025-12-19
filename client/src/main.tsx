@@ -138,17 +138,6 @@ const trpcClient = trpc.createClient({
       true: httpSubscriptionLink({
         url: apiUrl,
         transformer: superjson,
-        headers() {
-          const token = getSessionToken();
-          const headers: Record<string, string> = {};
-          if (token) {
-            headers.Authorization = `Bearer ${token}`;
-          }
-          if (import.meta.env.VITE_GEMINI_API_KEY) {
-            headers['X-Gemini-API-Key'] = import.meta.env.VITE_GEMINI_API_KEY;
-          }
-          return headers;
-        },
       }),
       false: httpBatchLink({
         url: apiUrl,
