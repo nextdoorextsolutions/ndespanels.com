@@ -14,12 +14,16 @@ import { router, protectedProcedure } from "../../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { VertexAI } from "@google-cloud/vertexai";
 import { getDb } from "../../db";
 import { chatChannels, chatMessages, channelMembers, users, activities } from "../../../drizzle/schema";
 import { eq, desc, and, inArray, sql, or } from "drizzle-orm";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+// Initialize Vertex AI with service account credentials
+const vertexAI = new VertexAI({
+  project: process.env.GCLOUD_PROJECT || "",
+  location: process.env.GCLOUD_LOCATION || "us-central1",
+});
 
 const ZEROX_SYSTEM_PROMPT = `You are Zerox, a Senior Technical Project Manager for a roofing and solar company's CRM platform.
 
@@ -439,18 +443,19 @@ export const messagingRouter = router({
             const activityContext = buildActivityContext(recentActivities);
             const enhancedSystemPrompt = ZEROX_SYSTEM_PROMPT + activityContext;
 
-            const model = genAI.getGenerativeModel({ 
-              model: "gemini-2.5-flash",
+            // Get generative model from Vertex AI
+            const generativeModel = vertexAI.getGenerativeModel({
+              model: "gemini-2.5-flash-001",
               systemInstruction: enhancedSystemPrompt,
             });
 
-            // Build chat history
+            // Build chat history in Vertex AI format
             const chatHistory = input.history?.map((msg) => ({
               role: msg.role,
               parts: [{ text: msg.parts }],
             })) || [];
 
-            const chat = model.startChat({
+            const chat = generativeModel.startChat({
               history: chatHistory,
               generationConfig: {
                 maxOutputTokens: 1000,
@@ -458,12 +463,14 @@ export const messagingRouter = router({
               },
             });
 
-            // Stream the response
+            // Stream the response using Vertex AI
             const result = await chat.sendMessageStream(input.message);
 
             for await (const chunk of result.stream) {
-              const text = chunk.text();
-              emit.next({ chunk: text, done: false });
+              const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text || "";
+              if (text) {
+                emit.next({ chunk: text, done: false });
+              }
             }
 
             // Signal completion
@@ -495,14 +502,14 @@ export const messagingRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        if (!process.env.GEMINI_API_KEY) {
+        if (!process.env.GCLOUD_PROJECT) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
             message: "AI features are not configured. Please contact your administrator.",
           });
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = vertexAI.getGenerativeModel({ model: "gemini-2.5-flash-001" });
 
         let prompt = "";
         
@@ -519,7 +526,7 @@ export const messagingRouter = router({
         }
 
         const result = await model.generateContent(prompt);
-        const response = result.response.text();
+        const response = result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
         return {
           draft: response,

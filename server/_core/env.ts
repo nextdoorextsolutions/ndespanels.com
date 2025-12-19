@@ -8,7 +8,8 @@ const REQUIRED_ENV_VARS = [
   'SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
   'SUPABASE_JWT_SECRET',
-  'GEMINI_API_KEY',
+  'GCLOUD_PROJECT',
+  'GCLOUD_LOCATION',
   'GOOGLE_MAPS_API_KEY',
 ] as const;
 
@@ -89,7 +90,8 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   // AI & Google APIs
-  geminiApiKey: process.env.GEMINI_API_KEY!,
+  gcloudProject: process.env.GCLOUD_PROJECT!,
+  gcloudLocation: process.env.GCLOUD_LOCATION!,
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY!,
   // Supabase
   supabaseUrl: process.env.SUPABASE_URL!,
