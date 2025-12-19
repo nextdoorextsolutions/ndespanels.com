@@ -114,22 +114,6 @@ export function AISidebar({ onGenerateDraft, isGenerating }: AISidebarProps) {
           </div>
         </div>
 
-        {/* Recent Interactions */}
-        <div className="pt-4 border-t border-slate-800/50">
-          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            Recent Interactions
-          </h4>
-          <div className="space-y-2">
-            <div className="p-2 rounded-md bg-slate-800/30 border border-slate-800">
-              <p className="text-xs text-slate-400 mb-1">2 hours ago</p>
-              <p className="text-xs text-slate-300">Helped draft customer email</p>
-            </div>
-            <div className="p-2 rounded-md bg-slate-800/30 border border-slate-800">
-              <p className="text-xs text-slate-400 mb-1">Yesterday</p>
-              <p className="text-xs text-slate-300">Summarized Q3 dashboard review</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
