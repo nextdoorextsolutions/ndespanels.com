@@ -67,6 +67,7 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
   const [streamingHistory, setStreamingHistory] = useState<Array<{ role: 'user' | 'model'; parts: string }>>([]);
   const [messageOffset, setMessageOffset] = useState(0);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const isStreamingActiveRef = React.useRef(false);
 
   // Build effective user from auth or localStorage fallback (needed for hooks below)
   const storedUser = typeof window !== 'undefined' 
@@ -205,7 +206,10 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
       channelId: activeChannelId || undefined,
     },
     {
-      enabled: !!streamingMessageId && streamingMessage.length > 0,
+      enabled: !!streamingMessageId && streamingMessage.length > 0 && !isStreamingActiveRef.current,
+      onStarted() {
+        isStreamingActiveRef.current = true;
+      },
       onData(chunk) {
         if (!chunk.done && streamingMessageId) {
           setMessages(prev => 
@@ -224,6 +228,7 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
                 : m
             )
           );
+          isStreamingActiveRef.current = false;
           setStreamingMessageId(null);
           setStreamingMessage('');
           setStreamingHistory([]);
@@ -233,6 +238,7 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
       onError(err) {
         console.error('Stream error:', err);
         toast.error('Streaming failed');
+        isStreamingActiveRef.current = false;
         setStreamingMessageId(null);
         setStreamingMessage('');
         setStreamingHistory([]);
