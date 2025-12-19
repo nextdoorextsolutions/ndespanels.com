@@ -495,6 +495,13 @@ export const messagingRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
+        if (!process.env.GEMINI_API_KEY) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "AI features are not configured. Please contact your administrator.",
+          });
+        }
+
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         let prompt = "";
@@ -520,9 +527,14 @@ export const messagingRouter = router({
         };
       } catch (error) {
         console.error("Draft generation error:", error);
+        
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to generate draft",
+          message: error instanceof Error ? error.message : "Failed to generate draft",
         });
       }
     }),
