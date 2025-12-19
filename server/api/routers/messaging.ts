@@ -378,6 +378,7 @@ export const messagingRouter = router({
 
   /**
    * Stream AI response from Gemini
+   * CRITICAL FIX: Added ctx parameter to access authenticated user
    */
   streamAIMessage: protectedProcedure
     .input(
@@ -393,7 +394,17 @@ export const messagingRouter = router({
         jobId: z.number().optional(),
       })
     )
-    .subscription(async ({ input }) => {
+    .subscription(async ({ input, ctx }) => {  // FIXED: Added ctx parameter
+      // CRITICAL: Verify user is authenticated before starting stream
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Please login (10001)",
+        });
+      }
+
+      console.log(`[AI Stream] Starting stream for user ${ctx.user.email} (ID: ${ctx.user.id})`);
+
       return observable<{ chunk: string; done: boolean }>((emit) => {
         (async () => {
           try {
@@ -463,6 +474,8 @@ export const messagingRouter = router({
               },
             });
 
+            console.log(`[AI Stream] Sending message to Gemini for user ${ctx.user.email}`);
+
             // Stream the response using Vertex AI
             const result = await chat.sendMessageStream(input.message);
 
@@ -473,11 +486,13 @@ export const messagingRouter = router({
               }
             }
 
+            console.log(`[AI Stream] Stream completed successfully for user ${ctx.user.email}`);
+
             // Signal completion
             emit.next({ chunk: "", done: true });
             emit.complete();
           } catch (error) {
-            console.error("Gemini streaming error:", error);
+            console.error("[AI Stream] Gemini streaming error:", error);
             emit.error(
               new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
