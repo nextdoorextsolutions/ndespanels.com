@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { trpc } from "@/lib/trpc";
-import { setSessionToken, clearSessionToken } from "@/main";
+import { setSessionToken, clearSessionToken, getSessionToken } from "@/main";
 
 export interface AuthState {
   user: User | null;
@@ -20,6 +20,7 @@ export interface UseSupabaseAuthReturn extends AuthState {
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
   isAuthenticated: boolean;
+  recoverSession: () => Promise<void>; // NEW: Manual session recovery
 }
 
 // Helper function to get user-friendly error messages
@@ -78,17 +79,25 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   const hasSyncedThisPageLoad = useRef(false); // Prevent infinite retry loop on page load
 
   // Function to sync Supabase user to CRM and store session token
-  const syncToCRM = useCallback(async (supabaseUser: User) => {
+  const syncToCRM = useCallback(async (supabaseUser: User, forceSync = false) => {
     // Guard clause: prevent overlapping sync calls
-    if (isSyncingRef.current) {
+    if (isSyncingRef.current && !forceSync) {
       console.log('[Auth] Sync already in progress, skipping duplicate call for:', supabaseUser.email);
       return null;
     }
     
-    // Guard clause: ONE-TIME ATTEMPT - prevent syncing the same user twice per session
-    if (syncAttemptedRef.current.has(supabaseUser.id)) {
+    // Guard clause: ONE-TIME ATTEMPT - prevent syncing the same user twice per session (unless forced)
+    if (!forceSync && syncAttemptedRef.current.has(supabaseUser.id)) {
       console.log('[Auth] User sync already attempted in this session, skipping:', supabaseUser.email);
-      return null;
+      
+      // CRITICAL FIX: If we have a Supabase session but no CRM session token, force sync
+      const existingToken = getSessionToken();
+      if (!existingToken) {
+        console.warn('[Auth] Missing CRM session token despite successful Supabase auth. Forcing sync...');
+        syncAttemptedRef.current.delete(supabaseUser.id); // Clear the attempt flag
+      } else {
+        return null;
+      }
     }
     
     console.log('[Auth] Starting CRM sync for:', supabaseUser.email);
@@ -104,9 +113,12 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       });
       
       if (result.success && result.user) {
-        // Store the session token returned from the backend
+        // CRITICAL FIX: Store the session token returned from the backend
         if ((result as any).sessionToken) {
           setSessionToken((result as any).sessionToken);
+          console.log('[Auth] ✅ Session token stored in localStorage');
+        } else {
+          console.error('[Auth] ⚠️  WARNING: Backend did not return session token');
         }
         
         console.log('[Auth] CRM sync complete. User role:', result.user.role);
@@ -155,6 +167,33 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       isSyncingRef.current = false; // Always reset syncing flag
     }
   }, [syncUserMutation]);
+
+  // NEW: Manual session recovery function
+  const recoverSession = useCallback(async () => {
+    if (!isSupabaseAvailable() || !supabase) {
+      console.warn('[Auth] Cannot recover session - Supabase not available');
+      return;
+    }
+    
+    try {
+      console.log('[Auth] Attempting session recovery...');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('[Auth] Session recovery failed:', error);
+        return;
+      }
+      
+      if (session?.user) {
+        console.log('[Auth] Session recovered, syncing to CRM...');
+        await syncToCRM(session.user, true); // Force sync even if already attempted
+      } else {
+        console.warn('[Auth] No active session to recover');
+      }
+    } catch (err) {
+      console.error('[Auth] Error during session recovery:', err);
+    }
+  }, [syncToCRM]);
 
   useEffect(() => {
     let mounted = true;
@@ -317,7 +356,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
 
       // Sync to CRM after successful login and wait for it
       if (data.user) {
-        await syncToCRM(data.user);
+        await syncToCRM(data.user, true); // Force sync on explicit login
       }
 
       setState(prev => ({
@@ -455,6 +494,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     signOut,
     resetPassword,
     updatePassword,
+    recoverSession, // NEW: Expose session recovery
     isAuthenticated: !!state.session,
   };
 }
