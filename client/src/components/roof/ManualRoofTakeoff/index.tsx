@@ -173,7 +173,7 @@ export function ManualRoofTakeoff({ latitude, longitude, onSave, forceShow = fal
     if (!point) return null;
     
     const zoom = mapRef.current.getZoom() || 21;
-    const snapThreshold = 15 / Math.pow(2, zoom); // Increased to 15 pixels for better magnetic effect
+    const snapThreshold = 50 / Math.pow(2, zoom); // Increased to 50 pixels for much easier snapping
     
     let nearestVertex: google.maps.LatLng | null = null;
     let minDistance = snapThreshold;
