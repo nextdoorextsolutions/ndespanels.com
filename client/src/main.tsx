@@ -138,6 +138,16 @@ const trpcClient = trpc.createClient({
       true: httpSubscriptionLink({
         url: apiUrl,
         transformer: superjson,
+        connectionParams() {
+          // CRITICAL FIX: Send auth token with subscriptions (AI chat streaming)
+          const token = getSessionToken();
+          if (token) {
+            return {
+              authorization: `Bearer ${token}`,
+            };
+          }
+          return {};
+        },
       }),
       false: httpBatchLink({
         url: apiUrl,
