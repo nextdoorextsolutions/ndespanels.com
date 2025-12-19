@@ -184,9 +184,17 @@ const trpcClient = trpc.createClient({
       true: httpSubscriptionLink({
         url: () => {
           const token = getSessionToken();
+          console.log('[httpSubscriptionLink] Getting URL for subscription:', {
+            hasToken: !!token,
+            tokenLength: token?.length || 0,
+            apiUrl,
+          });
           if (token) {
-            return `${apiUrl}?authorization=Bearer ${encodeURIComponent(token)}`;
+            const urlWithAuth = `${apiUrl}?authorization=Bearer ${encodeURIComponent(token)}`;
+            console.log('[httpSubscriptionLink] URL with auth:', urlWithAuth);
+            return urlWithAuth;
           }
+          console.warn('[httpSubscriptionLink] ⚠️ No token available, using URL without auth');
           return apiUrl;
         },
         transformer: superjson,
