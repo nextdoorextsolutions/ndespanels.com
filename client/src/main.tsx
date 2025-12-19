@@ -136,7 +136,13 @@ const trpcClient = trpc.createClient({
     splitLink({
       condition: (op) => op.type === 'subscription',
       true: httpSubscriptionLink({
-        url: apiUrl,
+        url: () => {
+          const token = getSessionToken();
+          if (token) {
+            return `${apiUrl}?authorization=Bearer ${encodeURIComponent(token)}`;
+          }
+          return apiUrl;
+        },
         transformer: superjson,
         connectionParams() {
           // CRITICAL FIX: Send auth token with subscriptions (AI chat streaming)
