@@ -456,7 +456,7 @@ export const messagingRouter = router({
 
             // Get generative model from Vertex AI
             const generativeModel = vertexAI.getGenerativeModel({
-              model: "gemini-1.5-flash",
+              model: "gemini-2.5-pro",
               systemInstruction: enhancedSystemPrompt,
             });
 
@@ -524,7 +524,7 @@ export const messagingRouter = router({
           });
         }
 
-        const model = vertexAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = vertexAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
         let prompt = "";
         
