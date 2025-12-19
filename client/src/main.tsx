@@ -26,11 +26,13 @@ export function getSessionToken(): string | null {
 // Helper to set session token in localStorage
 export function setSessionToken(token: string): void {
   localStorage.setItem(SESSION_TOKEN_KEY, token);
+  console.log('[Session] Token stored successfully');
 }
 
 // Helper to clear session token from localStorage
 export function clearSessionToken(): void {
   localStorage.removeItem(SESSION_TOKEN_KEY);
+  console.log('[Session] Token cleared');
 }
 
 const queryClient = new QueryClient({
@@ -54,9 +56,16 @@ const queryClient = new QueryClient({
   },
 });
 
+// CRITICAL FIX: Track if we're already handling an auth error to prevent redirect loops
+let isHandlingAuthError = false;
+
 const handleUnauthorizedError = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
+  if (isHandlingAuthError) {
+    console.log('[Auth] Already handling auth error, skipping duplicate handling');
+    return;
+  }
 
   // Don't treat job-specific errors as auth errors
   const isJobError = error.message.includes("Lead not found") ||
@@ -77,6 +86,39 @@ const handleUnauthorizedError = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
+  // Set flag to prevent multiple simultaneous redirects
+  isHandlingAuthError = true;
+
+  // CRITICAL FIX: Check if we have a Supabase session but no CRM session token
+  const hasSessionToken = !!getSessionToken();
+  
+  if (!hasSessionToken) {
+    console.error("[Auth] ⚠️  CRITICAL: Unauthorized error but no session token found!");
+    console.error("[Auth] This indicates a failed CRM sync. User may be logged into Supabase but not CRM.");
+    console.error("[Auth] Attempting automatic session recovery...");
+    
+    // Attempt to recover session by triggering a re-sync
+    // This will be picked up by useSupabaseAuth hook
+    window.dispatchEvent(new CustomEvent('auth:recover-session'));
+    
+    // Show user-friendly error message
+    import('sonner').then(({ toast }) => {
+      toast.error("Session Error", {
+        description: "Please refresh the page or log in again.",
+        duration: 5000,
+      });
+    }).catch(err => {
+      console.warn('[Auth] Could not show toast:', err);
+    });
+    
+    // Reset flag after 3 seconds
+    setTimeout(() => {
+      isHandlingAuthError = false;
+    }, 3000);
+    
+    return;
+  }
+
   // Clear the invalid token to prevent retry loops
   console.warn("[Auth] Unauthorized error - clearing session token");
   clearSessionToken();
@@ -84,9 +126,13 @@ const handleUnauthorizedError = (error: unknown) => {
   // Redirect to login (only if OAuth is configured)
   const loginUrl = getLoginUrl();
   if (loginUrl && loginUrl !== "#") {
-    window.location.href = loginUrl;
+    setTimeout(() => {
+      window.location.href = loginUrl;
+      isHandlingAuthError = false;
+    }, 500);
   } else {
     console.warn("[Auth] OAuth not configured, cannot redirect to login");
+    isHandlingAuthError = false;
   }
 };
 
@@ -162,10 +208,12 @@ const trpcClient = trpc.createClient({
           // Send session token as Authorization header for cross-origin requests
           const token = getSessionToken();
           if (token) {
+            console.log('[tRPC] Including auth token in request');
             return {
               Authorization: `Bearer ${token}`,
             };
           }
+          console.warn('[tRPC] ⚠️  No auth token available for request');
           return {};
         },
         fetch(input, init) {
