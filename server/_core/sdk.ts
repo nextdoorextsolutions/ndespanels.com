@@ -256,22 +256,40 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<SafeUser> {
-    // Try Authorization header first (for cross-origin requests)
     let sessionToken: string | undefined;
-    const authHeader = req.headers.authorization;
     
+    // 1. Check Authorization header (regular HTTP requests)
+    const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       sessionToken = authHeader.substring(7);
-    } else {
-      // Fall back to cookie
+      console.log('[Auth] Token found in Authorization header');
+    }
+    
+    // 2. Check query params (tRPC subscriptions send connectionParams as query)
+    if (!sessionToken && req.query?.authorization) {
+      const queryAuth = req.query.authorization as string;
+      if (queryAuth.startsWith('Bearer ')) {
+        sessionToken = queryAuth.substring(7);
+        console.log('[Auth] Token found in query params');
+      } else {
+        sessionToken = queryAuth;
+        console.log('[Auth] Token found in query params (no Bearer prefix)');
+      }
+    }
+    
+    // 3. Fall back to cookie
+    if (!sessionToken) {
       const cookies = this.parseCookies(req.headers.cookie);
       sessionToken = cookies.get(COOKIE_NAME);
+      if (sessionToken) {
+        console.log('[Auth] Token found in cookie');
+      }
     }
     
     const session = await this.verifySession(sessionToken);
 
     if (!session) {
-      console.warn('[Auth] No valid session found in header or cookie');
+      console.warn('[Auth] No valid session found in header, query, or cookie');
       throw ForbiddenError("Invalid session");
     }
 
