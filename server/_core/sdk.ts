@@ -277,6 +277,25 @@ class SDKServer {
       }
     }
     
+    // 2b. Parse URL query string manually for SSE subscriptions (Express might not parse it)
+    if (!sessionToken && req.url) {
+      const urlParts = req.url.split('?');
+      if (urlParts.length > 1) {
+        const queryString = urlParts[1];
+        const params = new URLSearchParams(queryString);
+        const authParam = params.get('authorization');
+        if (authParam) {
+          if (authParam.startsWith('Bearer ')) {
+            sessionToken = authParam.substring(7);
+            console.log('[Auth] Token found in URL query string (parsed manually)');
+          } else {
+            sessionToken = authParam;
+            console.log('[Auth] Token found in URL query string (no Bearer prefix, parsed manually)');
+          }
+        }
+      }
+    }
+    
     // 3. Fall back to cookie
     if (!sessionToken) {
       const cookies = this.parseCookies(req.headers.cookie);
