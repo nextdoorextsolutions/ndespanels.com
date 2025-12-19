@@ -16,7 +16,7 @@ import { getLoginUrl } from "./const";
 import "./index.css";
 
 // Session token storage key
-const SESSION_TOKEN_KEY = "manus-session-token";
+const SESSION_TOKEN_KEY = "ndespanels-session-token";
 
 // Helper to get session token from localStorage
 export function getSessionToken(): string | null {
