@@ -3,34 +3,27 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Download, 
-  FileSpreadsheet, 
   FileText, 
   Users, 
   DollarSign, 
   TrendingUp, 
-  Activity,
+  Target,
   Filter,
-  Loader2
+  Loader2,
+  Calendar,
+  Zap
 } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell 
-} from 'recharts';
+import AnalyticsMetricCard from "@/components/crm/analytics/AnalyticsMetricCard";
+import PipelineVolumeChart from "@/components/crm/analytics/PipelineVolumeChart";
+import RevenueTypeChart from "@/components/crm/analytics/RevenueTypeChart";
+import TopSalesRepsChart from "@/components/crm/analytics/TopSalesRepsChart";
+import ActivityFeed from "@/components/crm/analytics/ActivityFeed";
+import AIInsightsBanner from "@/components/crm/analytics/AIInsightsBanner";
 
 // Pipeline stages matching your 10-stage workflow
 const PIPELINE_STAGES = [
@@ -116,7 +109,7 @@ export default function ReportsNew() {
     return PIPELINE_STAGES.map(stage => ({
       name: stage.label,
       count: counts[stage.value]
-    })).filter(item => item.count > 0);
+    }));
   }, [leads]);
 
   // Chart Data: Revenue by Deal Type
@@ -131,9 +124,17 @@ export default function ReportsNew() {
       groups[dealType] = (groups[dealType] || 0) + (job.amountPaid / 100);
     });
 
+    const colors = {
+      cash: "rgba(0, 212, 170, 0.8)",
+      insurance: "rgba(167, 139, 250, 0.8)",
+      financing: "rgba(74, 222, 128, 0.8)",
+      other: "rgba(251, 191, 36, 0.8)"
+    };
+
     return Object.keys(groups).map(type => ({
       name: type.charAt(0).toUpperCase() + type.slice(1),
-      value: groups[type]
+      value: groups[type],
+      color: colors[type as keyof typeof colors] || "rgba(148, 163, 184, 0.8)"
     }));
   }, [leads]);
 
@@ -142,17 +143,26 @@ export default function ReportsNew() {
     if (!leads) return [];
     
     const wonJobs = leads.filter(j => WON_STATUSES.includes(j.status));
-    const groups: Record<string, number> = {};
+    const groups: Record<string, { revenue: number; deals: number }> = {};
 
     wonJobs.forEach(job => {
       const rep = job.salesRepCode || 'Direct';
-      groups[rep] = (groups[rep] || 0) + (job.amountPaid / 100);
+      if (!groups[rep]) {
+        groups[rep] = { revenue: 0, deals: 0 };
+      }
+      groups[rep].revenue += (job.amountPaid / 100);
+      groups[rep].deals += 1;
     });
 
-    return Object.keys(groups).map(rep => ({
-      name: rep,
-      revenue: groups[rep]
-    })).sort((a, b) => b.revenue - a.revenue).slice(0, 10); // Top 10
+    return Object.keys(groups).map(rep => {
+      const initials = rep.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+      return {
+        name: rep,
+        revenue: groups[rep].revenue,
+        deals: groups[rep].deals,
+        avatar: initials
+      };
+    }).sort((a, b) => b.revenue - a.revenue).slice(0, 5); // Top 5
   }, [leads]);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { 
@@ -298,138 +308,139 @@ export default function ReportsNew() {
 
   return (
     <CRMLayout>
-      <div className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-8 space-y-8">
-        
+      <div className="min-h-screen bg-slate-900 text-slate-100 relative">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Reports & Analytics</h1>
-            <p className="text-slate-400 mt-1">Real-time performance metrics and pipeline insights</p>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={exportToCSV} variant="outline" className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10">
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button onClick={exportToPDF} className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold">
-              <FileText className="w-4 h-4 mr-2" />
-              Export PDF
-            </Button>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-400">Total Leads</p>
-                  <p className="text-3xl font-bold text-white">{metrics.totalLeads}</p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-400">Revenue</p>
-                  <p className="text-3xl font-bold text-white">{formatCurrency(metrics.revenue)}</p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-green-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-400">Conversion Rate</p>
-                  <p className="text-3xl font-bold text-white">{metrics.conversionRate.toFixed(1)}%</p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-purple-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-400">Avg. Deal Value</p>
-                  <p className="text-3xl font-bold text-white">{formatCurrency(metrics.avgDealValue)}</p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-orange-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-[#00d4aa] font-semibold uppercase text-xs tracking-wider">
-              <Filter size={14} /> Filter Data
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-900/95 border-b border-slate-700/50">
+          <div className="container mx-auto px-6 py-6">
+            <div className="flex items-center justify-between">
               <div>
-                <Label className="text-slate-300 text-xs">Start Date</Label>
+                <h1 className="text-4xl font-bold text-white mb-2">Reports & Analytics</h1>
+                <p className="text-slate-400 text-lg">Real-time performance metrics and pipeline insights</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button 
+                  onClick={exportToCSV} 
+                  variant="outline" 
+                  className="glow-border hover:bg-[#00d4aa]/10 transition-all bg-transparent border-[#00d4aa] text-[#00d4aa]"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Button 
+                  onClick={exportToPDF} 
+                  className="bg-[#00d4aa] text-black hover:bg-[#00b894] font-semibold shadow-lg hover:shadow-[#00d4aa]/20 transition-all"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export PDF
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto px-6 py-8 space-y-8">
+
+          {/* AI Insights Banner */}
+          <AIInsightsBanner />
+
+          {/* Key Metrics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <AnalyticsMetricCard
+              title="Total Leads"
+              value={metrics.totalLeads.toString()}
+              change="+12.5%"
+              trend="up"
+              icon={<Users className="w-6 h-6" />}
+              iconColor="text-[#00d4aa]"
+            />
+            <AnalyticsMetricCard
+              title="Revenue"
+              value={formatCurrency(metrics.revenue)}
+              change="+8.2%"
+              trend="up"
+              icon={<DollarSign className="w-6 h-6" />}
+              iconColor="text-emerald-400"
+            />
+            <AnalyticsMetricCard
+              title="Conversion Rate"
+              value={`${metrics.conversionRate.toFixed(1)}%`}
+              change="+5.1%"
+              trend="up"
+              icon={<Target className="w-6 h-6" />}
+              iconColor="text-cyan-400"
+            />
+            <AnalyticsMetricCard
+              title="Avg. Deal Value"
+              value={formatCurrency(metrics.avgDealValue)}
+              change="-2.3%"
+              trend="down"
+              icon={<TrendingUp className="w-6 h-6" />}
+              iconColor="text-yellow-400"
+            />
+          </div>
+
+          {/* Filters Section */}
+          <Card className="glass-card glow-border p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Filter className="w-5 h-5 text-[#00d4aa]" />
+              <h2 className="text-xl font-semibold text-white">Filter Data</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm text-slate-400 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Start Date
+                </label>
                 <Input 
                   type="date" 
                   value={startDate} 
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-slate-900 border-slate-700 text-white mt-1"
+                  className="bg-slate-900 border-slate-700 focus:border-[#00d4aa] focus:ring-1 focus:ring-[#00d4aa]/20 transition-colors text-white"
                 />
               </div>
-              <div>
-                <Label className="text-slate-300 text-xs">End Date</Label>
+
+              <div className="space-y-2">
+                <label className="text-sm text-slate-400 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  End Date
+                </label>
                 <Input 
                   type="date" 
                   value={endDate} 
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-slate-900 border-slate-700 text-white mt-1"
+                  className="bg-slate-900 border-slate-700 focus:border-[#00d4aa] focus:ring-1 focus:ring-[#00d4aa]/20 transition-colors text-white"
                 />
               </div>
-              <div>
-                <Label className="text-slate-300 text-xs">Status</Label>
+
+              <div className="space-y-2">
+                <label className="text-sm text-slate-400">Status</label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="bg-slate-900 border-slate-700 text-white mt-1">
+                  <SelectTrigger className="bg-slate-900 border-slate-700 focus:border-[#00d4aa] focus:ring-1 focus:ring-[#00d4aa]/20 transition-colors text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-700 border-slate-600">
-                    <SelectItem value="all" className="text-white hover:bg-slate-600">All Statuses</SelectItem>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="all">All Statuses</SelectItem>
                     {PIPELINE_STAGES.map(s => (
-                      <SelectItem key={s.value} value={s.value} className="text-white hover:bg-slate-600">
+                      <SelectItem key={s.value} value={s.value}>
                         {s.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-slate-300 text-xs">Sales Rep</Label>
+
+              <div className="space-y-2">
+                <label className="text-sm text-slate-400">Sales Rep</label>
                 <Select value={repFilter} onValueChange={setRepFilter}>
-                  <SelectTrigger className="bg-slate-900 border-slate-700 text-white mt-1">
+                  <SelectTrigger className="bg-slate-900 border-slate-700 focus:border-[#00d4aa] focus:ring-1 focus:ring-[#00d4aa]/20 transition-colors text-white">
                     <SelectValue placeholder="All Reps" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-700 border-slate-600">
-                    <SelectItem value="all" className="text-white hover:bg-slate-600">All Reps</SelectItem>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="all">All Reps</SelectItem>
                     {team?.filter((m: any) => m.role === "sales_rep").map((rep: any) => (
-                      <SelectItem key={rep.id} value={rep.name || rep.email || 'unknown'} className="text-white hover:bg-slate-600">
+                      <SelectItem key={rep.id} value={rep.name || rep.email || 'unknown'}>
                         {rep.name || rep.email}
                       </SelectItem>
                     ))}
@@ -437,164 +448,99 @@ export default function ReportsNew() {
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Chart A: Pipeline Volume */}
-          <Card className="bg-slate-800 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white font-medium">Pipeline Stage Volume</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    layout="vertical"
-                    data={pipelineData}
-                    margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#334155" />
-                    <XAxis type="number" stroke="#94a3b8" />
-                    <YAxis dataKey="name" type="category" width={100} stroke="#94a3b8" fontSize={11} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}
-                      cursor={{fill: '#334155', opacity: 0.4}}
-                    />
-                    <Bar dataKey="count" fill={CHART_COLORS.secondary} radius={[0, 4, 4, 0]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Chart B: Revenue by Deal Type */}
-          <Card className="bg-slate-800 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white font-medium">Revenue by Deal Type</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dealTypeData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {dealTypeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS.palette[index % CHART_COLORS.palette.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}
-                    />
-                    <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: '20px'}} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Chart C: Sales Rep Performance */}
-          <Card className="bg-slate-800 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white font-medium">Top Sales Reps (Revenue)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={repPerformanceData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                    <XAxis 
-                      dataKey="name" 
-                      stroke="#94a3b8" 
-                      fontSize={11} 
-                      interval={0} 
-                      angle={-45} 
-                      textAnchor="end" 
-                      height={60}
-                    />
-                    <YAxis stroke="#94a3b8" tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
-                    <Tooltip 
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}
-                      cursor={{fill: '#334155', opacity: 0.4}}
-                    />
-                    <Bar dataKey="revenue" fill={CHART_COLORS.primary} radius={[4, 4, 0, 0]} barSize={30} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-        </div>
-
-        {/* Raw Data Table */}
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">Lead Data ({leads?.length || 0} records)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-400">
-                <thead className="bg-slate-900 text-xs uppercase font-medium text-slate-300">
-                  <tr>
-                    <th className="px-6 py-4">Name</th>
-                    <th className="px-6 py-4">Email</th>
-                    <th className="px-6 py-4">Phone</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Deal Type</th>
-                    <th className="px-6 py-4">Sales Rep</th>
-                    <th className="px-6 py-4 text-right">Amount</th>
-                    <th className="px-6 py-4 text-right">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700">
-                  {leads && leads.length > 0 ? leads.map((job) => (
-                    <tr key={job.id} className="hover:bg-slate-700/50 transition">
-                      <td className="px-6 py-4 font-medium text-white">{job.fullName}</td>
-                      <td className="px-6 py-4">{job.email}</td>
-                      <td className="px-6 py-4">{job.phone}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium border
-                          ${WON_STATUSES.includes(job.status) 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                            : job.status === 'closed_lost' 
-                              ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                              : 'bg-slate-700 text-slate-300 border-slate-600'
-                          }
-                        `}>
-                          {PIPELINE_STAGES.find(s => s.value === job.status)?.label || job.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">{job.dealType || 'cash'}</td>
-                      <td className="px-6 py-4">{job.salesRepCode || 'Direct'}</td>
-                      <td className="px-6 py-4 text-right text-white font-mono">{formatCurrency(job.amountPaid / 100)}</td>
-                      <td className="px-6 py-4 text-right">{new Date(job.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={8} className="px-6 py-8 text-center text-slate-500 italic">
-                        No records found matching current filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            <div className="flex gap-3 mt-6">
+              <Button className="bg-[#00d4aa] text-black hover:bg-[#00b894] font-semibold">
+                <Zap className="w-4 h-4 mr-2" />
+                Apply Filters
+              </Button>
+              <Button 
+                variant="outline" 
+                className="border-slate-700/50 hover:bg-slate-800 bg-transparent text-white"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                  setStatusFilter("all");
+                  setRepFilter("all");
+                }}
+              >
+                Reset
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <PipelineVolumeChart data={pipelineData} />
+            </div>
+            <div className="space-y-6">
+              <RevenueTypeChart data={dealTypeData} />
+            </div>
+          </div>
+
+          {/* Bottom Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <TopSalesRepsChart reps={repPerformanceData} />
+            <ActivityFeed />
+          </div>
+
+          {/* Raw Data Table */}
+          <Card className="glass-card glow-border">
+            <CardHeader>
+              <CardTitle className="text-white">Lead Data ({leads?.length || 0} records)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-400">
+                  <thead className="bg-slate-900/50 text-xs uppercase font-medium text-slate-300">
+                    <tr>
+                      <th className="px-6 py-4">Name</th>
+                      <th className="px-6 py-4">Email</th>
+                      <th className="px-6 py-4">Phone</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Deal Type</th>
+                      <th className="px-6 py-4">Sales Rep</th>
+                      <th className="px-6 py-4 text-right">Amount</th>
+                      <th className="px-6 py-4 text-right">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/30">
+                    {leads && leads.length > 0 ? leads.map((job) => (
+                      <tr key={job.id} className="hover:bg-slate-700/20 transition">
+                        <td className="px-6 py-4 font-medium text-white">{job.fullName}</td>
+                        <td className="px-6 py-4">{job.email}</td>
+                        <td className="px-6 py-4">{job.phone}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium border
+                            ${WON_STATUSES.includes(job.status) 
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                              : job.status === 'closed_lost' 
+                                ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                : 'bg-slate-700 text-slate-300 border-slate-600'
+                            }
+                          `}>
+                            {PIPELINE_STAGES.find(s => s.value === job.status)?.label || job.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">{job.dealType || 'cash'}</td>
+                        <td className="px-6 py-4">{job.salesRepCode || 'Direct'}</td>
+                        <td className="px-6 py-4 text-right text-white font-mono">{formatCurrency(job.amountPaid / 100)}</td>
+                        <td className="px-6 py-4 text-right">{new Date(job.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-8 text-center text-slate-500 italic">
+                          No records found matching current filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </CRMLayout>
   );

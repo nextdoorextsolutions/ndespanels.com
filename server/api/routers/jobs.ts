@@ -9,7 +9,7 @@ import { protectedProcedure, publicProcedure, router } from "../../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "../../db";
-import { reportRequests, users, activities, documents, editHistory, jobAttachments, notifications } from "../../../drizzle/schema";
+import { reportRequests, users, activities, documents, editHistory, jobAttachments, notifications, systemCache } from "../../../drizzle/schema";
 import { eq, desc, and, or, like, sql, gte, lte, inArray, isNotNull } from "drizzle-orm";
 import { storagePut, STORAGE_BUCKET } from "../../storage";
 import { supabaseAdmin } from "../../lib/supabase";
@@ -30,6 +30,7 @@ import {
   filterLeadsByRole,
 } from "../../lib/rbac"; 
 import { logEditHistory } from "../../lib/editHistory";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Import sub-routers for modular architecture
 import { analyticsRouter } from "./jobs/analytics";
@@ -1280,6 +1281,215 @@ export const jobsRouter = router({
         } catch (error) {
           console.error("[Solar API] Error:", error);
           throw new Error(error instanceof Error ? error.message : "Failed to fetch solar data");
+        }
+      }),
+
+    // AI-Powered Executive Summary for Dashboard
+    getExecutiveSummary: protectedProcedure
+      .input(z.object({
+        force: z.boolean().optional().default(false),
+      }))
+      .query(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        if (!ctx.user?.id) throw new Error("User not authenticated");
+
+        // Security: Only admin and owner can access executive summary
+        const userRole = normalizeRole(ctx.user.role);
+        if (!isOwner(ctx.user) && !isAdmin(ctx.user)) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Only administrators and owners can access executive summary",
+          });
+        }
+
+        const CACHE_KEY = "executive_summary";
+        const CACHE_DURATION_MS = 60 * 60 * 1000; // 60 minutes (1 hour)
+
+        try {
+          // STEP A: Check cache (unless force refresh)
+          if (!input.force) {
+            const [cached] = await db
+              .select()
+              .from(systemCache)
+              .where(eq(systemCache.key, CACHE_KEY))
+              .limit(1);
+
+            if (cached) {
+              const cacheAge = Date.now() - new Date(cached.updatedAt).getTime();
+              
+              // Return cached data if less than 15 minutes old
+              if (cacheAge < CACHE_DURATION_MS) {
+                console.log(`[Executive Summary] Returning cached data (age: ${Math.round(cacheAge / 1000)}s)`);
+                return cached.data as any;
+              }
+              
+              console.log(`[Executive Summary] Cache expired (age: ${Math.round(cacheAge / 1000)}s), regenerating...`);
+            } else {
+              console.log("[Executive Summary] No cache found, generating fresh data...");
+            }
+          } else {
+            console.log("[Executive Summary] Force refresh requested, bypassing cache...");
+          }
+
+          // STEP B: Fetch fresh data and call AI
+          // Get current month date range
+          const now = new Date();
+          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+          // Fetch key stats for current month
+          const allJobs = await db
+            .select()
+            .from(reportRequests)
+            .where(
+              and(
+                gte(reportRequests.createdAt, firstDayOfMonth),
+                lte(reportRequests.createdAt, lastDayOfMonth)
+              )
+            );
+
+          const totalRevenue = allJobs
+            .filter(j => ['completed', 'invoiced', 'closed_deal'].includes(j.status))
+            .reduce((sum, j) => sum + (j.amountPaid / 100), 0);
+
+          const pipelineCount = allJobs.length;
+          const wonJobs = allJobs.filter(j => ['completed', 'invoiced', 'closed_deal'].includes(j.status));
+          const winRate = pipelineCount > 0 ? (wonJobs.length / pipelineCount) * 100 : 0;
+
+          // Fetch last 5 recent activities
+          const recentActivities = await db
+            .select({
+              type: activities.activityType,
+              description: activities.description,
+              createdAt: activities.createdAt,
+              jobName: reportRequests.fullName,
+              jobStatus: reportRequests.status,
+            })
+            .from(activities)
+            .leftJoin(reportRequests, eq(activities.reportRequestId, reportRequests.id))
+            .orderBy(desc(activities.createdAt))
+            .limit(5);
+
+          // Prepare data for AI
+          const statsData = {
+            totalRevenue: `$${totalRevenue.toFixed(2)}`,
+            pipelineCount,
+            winRate: `${winRate.toFixed(1)}%`,
+            recentActivities: recentActivities.map(a => ({
+              type: a.type,
+              description: a.description,
+              jobName: a.jobName,
+              jobStatus: a.jobStatus,
+            })),
+          };
+
+          // Initialize Gemini AI
+          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+
+          const systemPrompt = `You are an expert Sales Director analyzing CRM performance data. 
+Provide exactly 3 short, high-impact bullet points of actionable advice for the business owner.
+Focus on:
+- Identifying risks (stalled deals, low conversion rates, inactive leads)
+- Celebrating wins (high revenue, strong conversion, successful closes)
+- Recommending specific actions to improve performance
+
+Be concise, direct, and business-focused. Each bullet point should be 1-2 sentences maximum.
+Return ONLY a JSON array of 3 objects with this structure:
+[
+  { "title": "Brief Title", "description": "Actionable insight", "type": "success" | "warning" | "info" },
+  { "title": "Brief Title", "description": "Actionable insight", "type": "success" | "warning" | "info" },
+  { "title": "Brief Title", "description": "Actionable insight", "type": "success" | "warning" | "info" }
+]`;
+
+          const prompt = `Analyze this CRM data and provide 3 actionable insights:
+
+STATS FOR CURRENT MONTH:
+- Total Revenue: ${statsData.totalRevenue}
+- Pipeline Count: ${statsData.pipelineCount} jobs
+- Win Rate: ${statsData.winRate}
+
+RECENT ACTIVITIES:
+${statsData.recentActivities.map((a, i) => `${i + 1}. ${a.type}: ${a.description || a.jobName} (Status: ${a.jobStatus})`).join('\n')}
+
+Return ONLY the JSON array, no other text.`;
+
+          const aiResult = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            systemInstruction: systemPrompt,
+          });
+
+          const response = await aiResult.response;
+          const text = response.text();
+          
+          // Parse JSON response
+          const jsonMatch = text.match(/\[[\s\S]*\]/);
+          if (!jsonMatch) {
+            throw new Error("Invalid AI response format");
+          }
+
+          const insights = JSON.parse(jsonMatch[0]);
+
+          const summaryResult = {
+            insights,
+            stats: statsData,
+            generatedAt: new Date().toISOString(),
+          };
+
+          // STEP C: Save to cache
+          try {
+            const [existing] = await db
+              .select()
+              .from(systemCache)
+              .where(eq(systemCache.key, CACHE_KEY))
+              .limit(1);
+
+            if (existing) {
+              // Update existing cache
+              await db
+                .update(systemCache)
+                .set({
+                  data: summaryResult as any,
+                  updatedAt: new Date(),
+                })
+                .where(eq(systemCache.key, CACHE_KEY));
+              console.log("[Executive Summary] Cache updated successfully");
+            } else {
+              // Insert new cache entry
+              await db.insert(systemCache).values({
+                key: CACHE_KEY,
+                data: summaryResult as any,
+                updatedAt: new Date(),
+              });
+              console.log("[Executive Summary] Cache created successfully");
+            }
+          } catch (cacheError) {
+            console.error("[Executive Summary] Failed to save cache:", cacheError);
+            // Continue anyway - cache failure shouldn't break the response
+          }
+
+          return summaryResult;
+        } catch (error) {
+          console.error("[Executive Summary] AI Error:", error);
+          // Return fallback insights if AI fails
+          return {
+            insights: [
+              {
+                title: "Performance Update",
+                description: "Unable to generate AI insights at this time. Please check your API configuration.",
+                type: "info",
+              },
+            ],
+            stats: {
+              totalRevenue: "$0.00",
+              pipelineCount: 0,
+              winRate: "0%",
+              recentActivities: [],
+            },
+            generatedAt: new Date().toISOString(),
+          };
         }
       }),
 

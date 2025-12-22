@@ -739,3 +739,17 @@ export const payments = pgTable("payments", {
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
+
+/**
+ * System Cache - Generic key-value cache for expensive operations
+ * Used for caching AI-generated content, API responses, etc.
+ */
+export const systemCache = pgTable("system_cache", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 255 }).notNull().unique(),
+  data: jsonb("data").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type SystemCache = typeof systemCache.$inferSelect;
+export type InsertSystemCache = typeof systemCache.$inferInsert;

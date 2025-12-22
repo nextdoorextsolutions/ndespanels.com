@@ -217,6 +217,20 @@
     content: '';
     @apply absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-primary;
   }
+  
+  /* Glassmorphism Effects for Analytics */
+  .glass-card {
+    @apply backdrop-blur-sm bg-slate-800/60 border-slate-700/50;
+  }
+  
+  .glow-border {
+    @apply border shadow-[0_0_10px_rgba(0,212,170,0.08)];
+    transition: box-shadow 0.2s ease;
+  }
+  
+  .glow-border:hover {
+    @apply shadow-[0_0_15px_rgba(0,212,170,0.15)];
+  }
 }
 
 /* Google Places Autocomplete - Fix z-index for Modal/Dialog */

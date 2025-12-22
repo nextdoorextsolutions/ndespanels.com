@@ -288,4 +288,60 @@ export const activitiesRouter = router({
 
       return { success: true };
     }),
+
+  // Get recent activities for activity feed
+  getRecentActivities: protectedProcedure
+    .input(z.object({
+      limit: z.number().optional().default(10),
+    }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      if (!ctx.user?.id) return [];
+
+      // Fetch recent activities with job info
+      const recentActivities = await db
+        .select({
+          id: activities.id,
+          activityType: activities.activityType,
+          description: activities.description,
+          createdAt: activities.createdAt,
+          userId: activities.userId,
+          reportRequestId: activities.reportRequestId,
+          jobName: reportRequests.fullName,
+          jobStatus: reportRequests.status,
+          jobDealType: reportRequests.dealType,
+          jobAmountPaid: reportRequests.amountPaid,
+        })
+        .from(activities)
+        .leftJoin(reportRequests, eq(activities.reportRequestId, reportRequests.id))
+        .orderBy(desc(activities.createdAt))
+        .limit(input.limit);
+
+      // Enrich with user info
+      const userIds = Array.from(new Set(recentActivities.map(a => a.userId).filter(id => id !== null)));
+      const activityUsers = userIds.length > 0
+        ? await db.select({ id: users.id, name: users.name, email: users.email })
+            .from(users)
+            .where(inArray(users.id, userIds))
+        : [];
+      
+      const userMap = activityUsers.reduce((acc, u) => { acc[u.id] = u; return acc; }, {} as Record<number, any>);
+
+      return recentActivities.map(a => ({
+        id: a.id,
+        type: a.activityType,
+        description: a.description,
+        createdAt: a.createdAt,
+        user: a.userId ? userMap[a.userId] : null,
+        job: a.reportRequestId ? {
+          id: a.reportRequestId,
+          name: a.jobName,
+          status: a.jobStatus,
+          dealType: a.jobDealType,
+          amountPaid: a.jobAmountPaid,
+        } : null,
+      }));
+    }),
 });
