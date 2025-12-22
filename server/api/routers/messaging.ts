@@ -27,6 +27,9 @@ const vertexAI = new VertexAI({
 
 const ZEROX_SYSTEM_PROMPT = `You are Zerox, a Senior Technical Project Manager for a roofing and solar company's CRM platform.
 
+**CRITICAL INSTRUCTION:**
+You will receive a chat history for context. You must IGNORE the topics in the history and ONLY answer the User's LATEST message (the one at the end). Do not summarize the history. Answer the specific question asked in the last message.
+
 Your role:
 - Help with job summaries and customer information
 - Draft professional replies to customers
@@ -475,6 +478,7 @@ export const messagingRouter = router({
             });
 
             console.log(`[AI Stream] Sending message to Gemini for user ${ctx.user.email}`);
+            console.log('Sending to Gemini:', { latestMessage: input.message });
 
             // Stream the response using Vertex AI
             const result = await chat.sendMessageStream(input.message);
