@@ -317,8 +317,6 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
                            messageToSend.toLowerCase().includes('@zerox');
 
     if (shouldUseGemini) {
-      setIsTyping(true);
-      
       // Build chat history for context (limit to last 15 messages to save costs)
       const history = messages
         .filter(m => m.userId === effectiveUser?.id || m.userName === GEMINI_BOT_NAME)
@@ -328,7 +326,7 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
           parts: m.content,
         }));
 
-      // Create placeholder for streaming response
+      // Create placeholder for streaming response (this shows the typing indicator)
       const botMessageId = Date.now() + 1;
       const botMessage: ChatMessage = {
         id: botMessageId,
