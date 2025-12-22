@@ -237,6 +237,24 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
           setIsTyping(false);
         }
       },
+      onComplete() {
+        console.log('[GlobalChatWidget] Subscription completed');
+        // Ensure typing indicator is cleared when stream completes
+        if (streamingMessageId) {
+          setMessages(prev => 
+            prev.map(m => 
+              m.id === streamingMessageId
+                ? { ...m, isStreaming: false }
+                : m
+            )
+          );
+        }
+        isStreamingActiveRef.current = false;
+        setStreamingMessageId(null);
+        setStreamingMessage('');
+        setStreamingHistory([]);
+        setIsTyping(false);
+      },
       onError(err) {
         console.error('[GlobalChatWidget] Stream error:', err);
         console.error('[GlobalChatWidget] Error details:', {
