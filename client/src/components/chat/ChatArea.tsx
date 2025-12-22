@@ -214,22 +214,6 @@ export function ChatArea({
           );
         })}
 
-        {isTyping && (
-          <div className="flex gap-3">
-            <MessageAvatar name={geminiName} avatarUrl={undefined} isSystem />
-            <div className="flex flex-col items-start">
-              <span className="text-xs font-medium text-slate-400 mb-1">{geminiName}</span>
-              <div className="bg-slate-800/80 border border-slate-700 px-4 py-3 rounded-2xl rounded-tl-none">
-                <div className="flex gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div ref={messagesEndRef} />
       </div>
 
