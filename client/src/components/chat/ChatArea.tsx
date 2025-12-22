@@ -70,12 +70,12 @@ export function ChatArea({
   });
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages.length]);
 
   const handleMagicAction = async (action: 'grammar' | 'professional') => {
     if (!inputText.trim()) return;

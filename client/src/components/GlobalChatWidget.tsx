@@ -111,9 +111,24 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     channelId: activeChannelId,
     enabled: isOpen && !!activeChannelId,
     onNewMessage: (newMsg) => {
-      // Add new message to the list if it's not from current user
+      // Optimistic updates handle current user messages, only add others
       if (newMsg.user_id !== effectiveUser?.id) {
-        refetchMessages();
+        setMessages(prev => {
+          // Check if message already exists (avoid duplicates)
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return [...prev, {
+            id: newMsg.id,
+            content: newMsg.content,
+            userId: newMsg.user_id,
+            userName: newMsg.user_name,
+            userEmail: newMsg.user_email,
+            userImage: newMsg.user_image,
+            createdAt: new Date(newMsg.created_at),
+            isEdited: newMsg.is_edited || false,
+            editedAt: newMsg.edited_at ? new Date(newMsg.edited_at) : null,
+            metadata: newMsg.metadata,
+          }];
+        });
       }
     },
     onMessageUpdate: (updatedMsg) => {
@@ -132,9 +147,6 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
       setMessages(prev => prev.filter(m => m.id !== messageId));
     },
   });
-  
-  // DEBUG: Log realtime status
-  console.log('[GlobalChatWidget] Realtime status:', realtimeConnectionStatus);
 
   // Build current user for presence tracking
   const currentUser: PresenceUser = {
@@ -188,6 +200,13 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     }
   }, [activeChannelId, isOpen, isMinimized]);
 
+  // Cleanup typing indicator when streaming stops or component unmounts
+  useEffect(() => {
+    if (!streamingMessageId && isTyping) {
+      setIsTyping(false);
+    }
+  }, [streamingMessageId, isTyping]);
+
   // usePresence hook - always called, but enabled flag controls behavior
   // Keep connection active even when minimized so notifications work
   const { connectionStatus, isConnected } = usePresence({
@@ -208,11 +227,9 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     {
       enabled: !!streamingMessageId && streamingMessage.length > 0 && !isStreamingActiveRef.current,
       onStarted() {
-        console.log('[GlobalChatWidget] Subscription started');
         isStreamingActiveRef.current = true;
       },
       onData(chunk) {
-        console.log('[GlobalChatWidget] Received chunk:', { text: chunk.chunk, done: chunk.done });
         if (!chunk.done && streamingMessageId) {
           setMessages(prev => 
             prev.map(m => 
@@ -238,7 +255,6 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
         }
       },
       onComplete() {
-        console.log('[GlobalChatWidget] Subscription completed');
         // Ensure typing indicator is cleared when stream completes
         if (streamingMessageId) {
           setMessages(prev => 
@@ -263,6 +279,7 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
           httpStatus: err.data?.httpStatus,
         });
         toast.error('Streaming failed');
+        // Clear typing indicator and streaming state
         isStreamingActiveRef.current = false;
         setStreamingMessageId(null);
         setStreamingMessage('');
@@ -299,16 +316,13 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     const shouldUseGemini = messageToSend.toLowerCase().includes('@gemini') || 
                            messageToSend.toLowerCase().includes('@zerox');
 
-    console.log('[GlobalChatWidget] Message sent:', messageToSend);
-    console.log('[GlobalChatWidget] shouldUseGemini:', shouldUseGemini);
-
     if (shouldUseGemini) {
-      console.log('[GlobalChatWidget] Triggering Gemini AI response...');
       setIsTyping(true);
       
-      // Build chat history for context
+      // Build chat history for context (limit to last 15 messages to save costs)
       const history = messages
         .filter(m => m.userId === effectiveUser?.id || m.userName === GEMINI_BOT_NAME)
+        .slice(-15)
         .map(m => ({
           role: m.userId === effectiveUser?.id ? 'user' as const : 'model' as const,
           parts: m.content,
@@ -330,11 +344,6 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
       setMessages(prev => [...prev, botMessage]);
       
       // Trigger streaming subscription
-      console.log('[GlobalChatWidget] Setting streaming state:', {
-        message: messageToSend,
-        historyLength: history.length,
-        botMessageId,
-      });
       setStreamingMessage(messageToSend);
       setStreamingHistory(history);
       setStreamingMessageId(botMessageId);
@@ -413,22 +422,6 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
     }
   };
 
-  // 2. NOW conditional returns are safe (after all hooks)
-  // DEBUG: Log why widget might be hidden
-  console.log('[GlobalChatWidget] Render check:', {
-    loading,
-    isAuthenticated,
-    authUser: authUser ? { id: authUser.id, name: authUser.name, email: authUser.email } : null,
-    storedUser: storedUser ? { id: storedUser.id, name: storedUser.name, email: storedUser.email } : null,
-    effectiveUser: effectiveUser ? { id: effectiveUser.id, name: effectiveUser.name, email: effectiveUser.email } : null,
-    isOnAuthPage,
-    currentPath,
-    connectionStatus,
-    isConnected,
-    activeChannelId,
-    channelsCount: channels?.length || 0,
-  });
-  
   // Check OAuth config and auth page status (after all hooks are called)
   if (!IS_OAUTH_CONFIGURED) {
     return null;
@@ -439,27 +432,19 @@ export const GlobalChatWidget: React.FC = React.memo(() => {
   }
   
   // Only hide if loading AND no user data exists (initial load or stored)
-  // If we have user data (from auth or localStorage), show the widget
   if (loading && !effectiveUser) {
-    console.log('[GlobalChatWidget] Widget hiding because: Auth is still loading (initial load)');
     return null;
   }
   
   if (!isAuthenticated && !effectiveUser) {
-    console.log('[GlobalChatWidget] Widget hiding because: User is not authenticated');
     return null;
   }
   
   if (!effectiveUser) {
-    console.log('[GlobalChatWidget] Widget hiding because: No user data available');
     return null;
   }
-
-  // DEBUG: Widget should render
-  console.log('[GlobalChatWidget] Widget should be visible. isOpen:', isOpen);
   
   if (!isOpen) {
-    console.log('[GlobalChatWidget] Rendering floating button (widget closed)');
     
     // Calculate total unread count across all channels
     const totalUnreadCount = channels?.reduce((sum, channel) => sum + (channel.unreadCount || 0), 0) || 0;
