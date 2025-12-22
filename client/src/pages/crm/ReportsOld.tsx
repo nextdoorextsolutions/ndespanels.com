@@ -49,24 +49,20 @@ export default function Reports() {
 
     const headers = [
       "ID", "Name", "Email", "Phone", "Address", "City/State/ZIP",
-      "Roof Age", "Status", "Priority", "Promo Code", "Sales Rep",
-      "Amount Paid", "Hands-On", "Created Date"
+      "Status", "Deal Type", "Sales Rep", "Amount Paid", "Created Date"
     ];
 
     const rows = leads.map(lead => [
       lead.id,
       lead.fullName,
-      lead.email,
-      lead.phone,
+      lead.email || "",
+      lead.phone || "",
       lead.address,
       lead.cityStateZip,
-      lead.roofAge || "",
       lead.status,
-      lead.priority,
-      lead.promoCode || "",
+      lead.dealType || "cash",
       lead.salesRepCode || "",
       (lead.amountPaid / 100).toFixed(2),
-      lead.handsOnInspection ? "Yes" : "No",
       new Date(lead.createdAt).toLocaleDateString(),
     ]);
 
