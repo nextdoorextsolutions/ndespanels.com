@@ -1026,8 +1026,48 @@ export const jobsRouter = router({
         }
 
         const query = conditions.length > 0
-          ? db.select().from(reportRequests).where(and(...conditions)).orderBy(desc(reportRequests.createdAt))
-          : db.select().from(reportRequests).orderBy(desc(reportRequests.createdAt));
+          ? db.select({
+              id: reportRequests.id,
+              fullName: reportRequests.fullName,
+              email: reportRequests.email,
+              phone: reportRequests.phone,
+              address: reportRequests.address,
+              cityStateZip: reportRequests.cityStateZip,
+              status: reportRequests.status,
+              dealType: reportRequests.dealType,
+              salesRepCode: reportRequests.salesRepCode,
+              leadSource: reportRequests.leadSource,
+              insuranceCarrier: reportRequests.insuranceCarrier,
+              amountPaid: reportRequests.amountPaid,
+              totalPrice: reportRequests.totalPrice,
+              approvedAmount: reportRequests.approvedAmount,
+              manualAreaSqFt: reportRequests.manualAreaSqFt,
+              scheduledDate: reportRequests.scheduledDate,
+              completedDate: reportRequests.completedDate,
+              createdAt: reportRequests.createdAt,
+              assignedTo: reportRequests.assignedTo,
+            }).from(reportRequests).where(and(...conditions)).orderBy(desc(reportRequests.createdAt))
+          : db.select({
+              id: reportRequests.id,
+              fullName: reportRequests.fullName,
+              email: reportRequests.email,
+              phone: reportRequests.phone,
+              address: reportRequests.address,
+              cityStateZip: reportRequests.cityStateZip,
+              status: reportRequests.status,
+              dealType: reportRequests.dealType,
+              salesRepCode: reportRequests.salesRepCode,
+              leadSource: reportRequests.leadSource,
+              insuranceCarrier: reportRequests.insuranceCarrier,
+              amountPaid: reportRequests.amountPaid,
+              totalPrice: reportRequests.totalPrice,
+              approvedAmount: reportRequests.approvedAmount,
+              manualAreaSqFt: reportRequests.manualAreaSqFt,
+              scheduledDate: reportRequests.scheduledDate,
+              completedDate: reportRequests.completedDate,
+              createdAt: reportRequests.createdAt,
+              assignedTo: reportRequests.assignedTo,
+            }).from(reportRequests).orderBy(desc(reportRequests.createdAt));
 
         let leads = await query;
         

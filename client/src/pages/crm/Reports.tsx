@@ -76,20 +76,39 @@ export default function ReportsNew() {
       totalLeads: 0,
       revenue: 0,
       conversionRate: 0,
-      avgDealValue: 0
+      avgDealValue: 0,
+      totalSquares: 0,
+      avgPricePerSquare: 0
     };
 
     const totalLeads = leads.length;
     const wonJobs = leads.filter(j => WON_STATUSES.includes(j.status));
-    const revenue = wonJobs.reduce((acc, curr) => acc + (curr.amountPaid / 100), 0);
+    
+    // Calculate revenue - use the most relevant non-zero value
+    const revenue = wonJobs.reduce((acc, curr) => {
+      const contractValue = Number(curr.totalPrice) || Number(curr.approvedAmount) || (curr.amountPaid / 100) || 0;
+      return acc + contractValue;
+    }, 0);
+    
     const conversionRate = totalLeads > 0 ? (wonJobs.length / totalLeads) * 100 : 0;
     const avgDealValue = wonJobs.length > 0 ? revenue / wonJobs.length : 0;
+    
+    // Calculate total squares and avg price per square
+    const totalSquares = wonJobs.reduce((acc, curr) => {
+      const sqFt = curr.manualAreaSqFt || 0;
+      const squares = sqFt / 100; // Convert sq ft to squares
+      return acc + squares;
+    }, 0);
+    
+    const avgPricePerSquare = totalSquares > 0 ? revenue / totalSquares : 0;
 
     return {
       totalLeads,
       revenue,
       conversionRate,
-      avgDealValue
+      avgDealValue,
+      totalSquares,
+      avgPricePerSquare
     };
   }, [leads]);
 
@@ -178,22 +197,34 @@ export default function ReportsNew() {
 
     const headers = [
       "ID", "Name", "Email", "Phone", "Address", "City/State/ZIP",
-      "Status", "Deal Type", "Sales Rep", "Amount Paid", "Created Date"
+      "Status", "Deal Type", "Sales Rep", "Source", "Insurance Carrier",
+      "Squares", "Contract Value", "Install Date", "Created Date"
     ];
 
-    const rows = leads.map(lead => [
-      lead.id,
-      lead.fullName,
-      lead.email,
-      lead.phone,
-      lead.address,
-      lead.cityStateZip,
-      lead.status,
-      lead.dealType || 'cash',
-      lead.salesRepCode || "Direct",
-      (lead.amountPaid / 100).toFixed(2),
-      new Date(lead.createdAt).toLocaleDateString(),
-    ]);
+    const rows = leads.map(lead => {
+      const sqFt = lead.manualAreaSqFt || 0;
+      const squares = sqFt > 0 ? (sqFt / 100).toFixed(1) : '0';
+      const contractValue = Number(lead.totalPrice) || Number(lead.approvedAmount) || (lead.amountPaid / 100) || 0;
+      const installDate = lead.completedDate || lead.scheduledDate;
+      
+      return [
+        lead.id,
+        lead.fullName,
+        lead.email || '',
+        lead.phone || '',
+        lead.address,
+        lead.cityStateZip,
+        lead.status,
+        lead.dealType || 'cash',
+        lead.salesRepCode || "Direct",
+        lead.leadSource || 'website',
+        lead.insuranceCarrier || 'N/A',
+        squares,
+        contractValue.toFixed(2),
+        installDate ? new Date(installDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '',
+        new Date(lead.createdAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }),
+      ];
+    });
 
     const csvContent = [
       headers.join(","),
@@ -247,36 +278,51 @@ export default function ReportsNew() {
           <div class="stat"><strong>Revenue:</strong> ${formatCurrency(metrics.revenue)}</div>
           <div class="stat"><strong>Conversion Rate:</strong> ${metrics.conversionRate.toFixed(1)}%</div>
           <div class="stat"><strong>Avg. Deal Value:</strong> ${formatCurrency(metrics.avgDealValue)}</div>
+          <div class="stat"><strong>Total Squares:</strong> ${metrics.totalSquares.toFixed(1)} sq</div>
+          <div class="stat"><strong>Avg Price/Square:</strong> ${formatCurrency(metrics.avgPricePerSquare)}</div>
         </div>
 
         <table>
           <thead>
             <tr>
               <th>Name</th>
-              <th>Email</th>
               <th>Phone</th>
               <th>Address</th>
               <th>Status</th>
               <th>Deal Type</th>
               <th>Sales Rep</th>
-              <th>Amount</th>
-              <th>Date</th>
+              <th>Source</th>
+              <th>Insurance</th>
+              <th>Squares</th>
+              <th>Contract Value</th>
+              <th>Install Date</th>
+              <th>Created</th>
             </tr>
           </thead>
           <tbody>
-            ${leads.map(lead => `
+            ${leads.map(lead => {
+              const sqFt = lead.manualAreaSqFt || 0;
+              const squares = sqFt > 0 ? (sqFt / 100).toFixed(1) : '0';
+              const contractValue = Number(lead.totalPrice) || Number(lead.approvedAmount) || (lead.amountPaid / 100) || 0;
+              const installDate = lead.completedDate || lead.scheduledDate;
+              
+              return `
               <tr>
                 <td>${lead.fullName}</td>
-                <td>${lead.email}</td>
-                <td>${lead.phone}</td>
+                <td>${lead.phone || ''}</td>
                 <td>${lead.address}</td>
                 <td>${lead.status}</td>
                 <td>${lead.dealType || 'cash'}</td>
                 <td>${lead.salesRepCode || "Direct"}</td>
-                <td>$${(lead.amountPaid / 100).toFixed(2)}</td>
-                <td>${new Date(lead.createdAt).toLocaleDateString()}</td>
+                <td>${lead.leadSource || 'website'}</td>
+                <td>${lead.insuranceCarrier || 'N/A'}</td>
+                <td>${squares} sq</td>
+                <td>$${contractValue.toFixed(2)}</td>
+                <td>${installDate ? new Date(installDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : ''}</td>
+                <td>${new Date(lead.createdAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</td>
               </tr>
-            `).join("")}
+            `;
+            }).join("")}
           </tbody>
         </table>
       </body>
