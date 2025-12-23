@@ -271,6 +271,7 @@ export const jobsRouter = router({
         supplementNumbers: z.string().nullable().optional(), // Supplement numbers for insurance claims
         phone: z.string().nullable().optional(),
         email: z.string().nullable().optional(),
+        projectCompletedAt: z.string().nullable().optional(), // Manual completion date for lien rights tracking
         attachments: z.array(z.object({
           fileName: z.string(),
           fileData: z.string(), // Base64 encoded file data
