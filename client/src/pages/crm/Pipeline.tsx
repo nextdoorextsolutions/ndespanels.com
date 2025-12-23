@@ -292,7 +292,7 @@ export default function CRMPipeline() {
         )}
 
         {/* Kanban Board */}
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
           {PIPELINE_STAGES.map((stage) => {
             const leads = getLeadsForStage(stage.key);
             const totalValue = getTotalValue(leads);
