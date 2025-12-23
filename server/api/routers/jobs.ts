@@ -269,6 +269,8 @@ export const jobsRouter = router({
         approvedAmount: z.number().nullable().optional(), // Approved amount (visible after approval)
         extrasCharged: z.number().nullable().optional(), // Additional charges for extras/change orders
         supplementNumbers: z.string().nullable().optional(), // Supplement numbers for insurance claims
+        phone: z.string().nullable().optional(),
+        email: z.string().nullable().optional(),
         attachments: z.array(z.object({
           fileName: z.string(),
           fileData: z.string(), // Base64 encoded file data
