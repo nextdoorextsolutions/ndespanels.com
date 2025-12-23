@@ -322,7 +322,8 @@ export const jobsRouter = router({
           
           // Handle lien rights tracking when status changes to "completed"
           if (input.status === "completed" && currentLead.status !== "completed") {
-            const completedAt = new Date();
+            // Use provided completion date or default to current date
+            const completedAt = input.projectCompletedAt ? new Date(input.projectCompletedAt) : new Date();
             const expiresAt = new Date(completedAt);
             expiresAt.setDate(expiresAt.getDate() + 90); // 90 days from completion
             
@@ -332,6 +333,18 @@ export const jobsRouter = router({
             
             await logEditHistory(db, input.id, user!.id, "projectCompletedAt", null, completedAt.toISOString(), "update", ctx);
             await logEditHistory(db, input.id, user!.id, "lienRightsStatus", currentLead.lienRightsStatus || "not_applicable", "active", "update", ctx);
+          }
+          
+          // Allow updating completion date even if already completed
+          if (input.projectCompletedAt && input.status === "completed") {
+            const completedAt = new Date(input.projectCompletedAt);
+            const expiresAt = new Date(completedAt);
+            expiresAt.setDate(expiresAt.getDate() + 90);
+            
+            updateData.projectCompletedAt = completedAt;
+            updateData.lienRightsExpiresAt = expiresAt;
+            
+            await logEditHistory(db, input.id, user!.id, "projectCompletedAt", currentLead.projectCompletedAt?.toISOString() || null, completedAt.toISOString(), "update", ctx);
           }
           
           // Handle lien_legal status

@@ -124,22 +124,29 @@ export const analyticsRouter = router({
       status: reportRequests.status,
       dealType: reportRequests.dealType,
       assignedTo: reportRequests.assignedTo,
+      fullName: reportRequests.fullName,
+      address: reportRequests.address,
+      phone: reportRequests.phone,
+      email: reportRequests.email,
+      salesRepCode: reportRequests.salesRepCode,
+      amountPaid: reportRequests.amountPaid,
+      projectCompletedAt: reportRequests.projectCompletedAt,
     }).from(reportRequests);
 
     // Filter by role
     leads = await filterLeadsByRole(db, ctx.user, leads);
 
     const pipeline = {
-      lead: leads.filter(l => l.status === "lead").length,
-      appointment_set: leads.filter(l => l.status === "appointment_set").length,
-      prospect: leads.filter(l => l.status === "prospect").length,
-      approved: leads.filter(l => l.status === "approved").length,
-      project_scheduled: leads.filter(l => l.status === "project_scheduled").length,
-      completed: leads.filter(l => l.status === "completed").length,
-      invoiced: leads.filter(l => l.status === "invoiced").length,
-      lien_legal: leads.filter(l => l.status === "lien_legal").length,
-      closed_deal: leads.filter(l => l.status === "closed_deal").length,
-      closed_lost: leads.filter(l => l.status === "closed_lost").length,
+      lead: leads.filter(l => l.status === "lead"),
+      appointment_set: leads.filter(l => l.status === "appointment_set"),
+      prospect: leads.filter(l => l.status === "prospect"),
+      approved: leads.filter(l => l.status === "approved"),
+      project_scheduled: leads.filter(l => l.status === "project_scheduled"),
+      completed: leads.filter(l => l.status === "completed"),
+      invoiced: leads.filter(l => l.status === "invoiced"),
+      lien_legal: leads.filter(l => l.status === "lien_legal"),
+      closed_deal: leads.filter(l => l.status === "closed_deal"),
+      closed_lost: leads.filter(l => l.status === "closed_lost"),
     };
 
     return pipeline;

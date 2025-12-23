@@ -1,11 +1,15 @@
 import { trpc } from "@/lib/trpc";
-import { User, Phone, MapPin, GripVertical, DollarSign, AlertTriangle, Clock, Shield, Banknote, CreditCard, Building2, ChevronDown, ChevronRight } from "lucide-react";
+import { User, Phone, MapPin, GripVertical, DollarSign, AlertTriangle, Clock, Shield, Banknote, CreditCard, Building2, ChevronDown, ChevronRight, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import { Card } from "@/components/ui/card";
 import { useState } from "react";
 import { Link } from "wouter";
 import { AIChatWidget } from "@/components/shared/AIChatWidget";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type PipelineStatus = "lead" | "appointment_set" | "prospect" | "approved" | "project_scheduled" | "completed" | "invoiced" | "lien_legal" | "closed_deal" | "closed_lost";
 
@@ -70,6 +74,9 @@ const DEAL_TYPES = [
 export default function CRMPipeline() {
   const [expandedApproved, setExpandedApproved] = useState(true);
   const [selectedDealType, setSelectedDealType] = useState<string | null>(null);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [pendingJobId, setPendingJobId] = useState<number | null>(null);
+  const [completionDate, setCompletionDate] = useState<string>("");
   
   const { data: pipeline, isLoading, refetch } = trpc.crm.getPipeline.useQuery();
   const { data: lienRightsJobs } = trpc.crm.getLienRightsJobs.useQuery();
@@ -99,8 +106,36 @@ export default function CRMPipeline() {
     e.preventDefault();
     const leadId = parseInt(e.dataTransfer.getData("leadId"));
     if (leadId) {
-      updateLead.mutate({ id: leadId, status: newStatus });
+      // If moving to completed, show date picker dialog
+      if (newStatus === "completed") {
+        setPendingJobId(leadId);
+        // Default to today's date
+        const today = new Date().toISOString().split('T')[0];
+        setCompletionDate(today);
+        setShowCompletionDialog(true);
+      } else {
+        updateLead.mutate({ id: leadId, status: newStatus });
+      }
     }
+  };
+
+  const handleConfirmCompletion = () => {
+    if (pendingJobId && completionDate) {
+      updateLead.mutate({ 
+        id: pendingJobId, 
+        status: "completed",
+        projectCompletedAt: completionDate
+      });
+      setShowCompletionDialog(false);
+      setPendingJobId(null);
+      setCompletionDate("");
+    }
+  };
+
+  const handleCancelCompletion = () => {
+    setShowCompletionDialog(false);
+    setPendingJobId(null);
+    setCompletionDate("");
   };
 
   if (isLoading) {
@@ -388,6 +423,58 @@ export default function CRMPipeline() {
             </div>
           </div>
         )}
+
+        {/* Completion Date Dialog */}
+        <Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+          <DialogContent className="bg-slate-800 border-slate-700">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-[#00d4aa]" />
+                Set Project Completion Date
+              </DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Choose the date when this project was completed. This is used for accurate lien rights tracking (90-day window).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="completion-date" className="text-slate-300">
+                  Completion Date
+                </Label>
+                <Input
+                  id="completion-date"
+                  type="date"
+                  value={completionDate}
+                  onChange={(e) => setCompletionDate(e.target.value)}
+                  className="bg-slate-700 border-slate-600 text-white"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                <p className="text-sm text-blue-300 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  <span>Lien rights expire 90 days after completion. Invoice before the deadline!</span>
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleCancelCompletion}
+                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmCompletion}
+                disabled={!completionDate}
+                className="bg-[#00d4aa] text-black hover:bg-[#00b894]"
+              >
+                Confirm Completion
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </CRMLayout>
   );
