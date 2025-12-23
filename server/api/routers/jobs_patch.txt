@@ -1,0 +1,3 @@
+After line 271 (supplementNumbers line), add these two lines:
+        phone: z.string().nullable().optional(),
+        email: z.string().nullable().optional(),

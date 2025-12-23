@@ -250,6 +250,7 @@ export function JobPhotosTab({
                       alt={photo.fileName}
                       className="w-full h-full object-cover"
                       loading="lazy"
+                      decoding="async"
                     />
                   </div>
 
@@ -351,6 +352,8 @@ export function JobPhotosTab({
                   src={photos[lightboxIndex].fileUrl} 
                   alt={photos[lightboxIndex].fileName}
                   className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
 

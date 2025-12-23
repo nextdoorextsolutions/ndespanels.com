@@ -218,6 +218,8 @@ export default function FieldUpload() {
                     src={URL.createObjectURL(file)}
                     alt={file.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                   <button
                     onClick={() => removeFile(index)}

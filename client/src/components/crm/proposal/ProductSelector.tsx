@@ -43,6 +43,8 @@ export function ProductSelector({ selectedProductId, onChange }: ProductSelector
                     src={selectedProduct.imageUrl} 
                     alt={selectedProduct.color || ''} 
                     className="h-10 w-10 rounded object-cover border border-slate-600"
+                    loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       e.currentTarget.src = BRAND_LOGO_URL;
                       e.currentTarget.onerror = null;
@@ -86,6 +88,8 @@ export function ProductSelector({ selectedProductId, onChange }: ProductSelector
                         src={shingle.imageUrl} 
                         alt={shingle.color || ''} 
                         className="h-10 w-10 rounded object-cover border border-slate-600 flex-shrink-0"
+                        loading="lazy"
+                        decoding="async"
                         onError={(e) => {
                           e.currentTarget.src = BRAND_LOGO_URL;
                           e.currentTarget.onerror = null;

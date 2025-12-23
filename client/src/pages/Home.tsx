@@ -271,6 +271,8 @@ export default function Home() {
             src="/images/hero-drone-scan.jpg"
             alt="Drone scanning roof"
             className="w-full h-full object-cover opacity-60"
+            loading="lazy"
+            decoding="async"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
@@ -345,7 +347,7 @@ export default function Home() {
               </div>
               
               <div className="relative aspect-video bg-black">
-                <img src="/images/noaa-data-viz.jpg" alt="Data Viz" className="w-full h-full object-cover opacity-80" />
+                <img src="/images/noaa-data-viz.jpg" alt="Data Viz" className="w-full h-full object-cover opacity-80" loading="lazy" decoding="async" />
                 
                 {/* Data Points Overlay */}
                 <div className="absolute top-1/4 left-1/4 p-2 border border-primary/50 bg-black/60 backdrop-blur text-[10px] font-mono text-primary">
@@ -498,6 +500,8 @@ export default function Home() {
                   src="/images/report-mockup.jpg" 
                   alt="Report Preview" 
                   className="rounded-lg shadow-2xl border border-white/10 transform rotate-2 hover:rotate-0 transition-transform duration-500"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <div className="absolute -bottom-6 -left-6 bg-background border border-white/10 p-4 rounded-lg shadow-xl flex items-center gap-4">
                   <div className="text-right">
@@ -892,7 +896,7 @@ export default function Home() {
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-full border border-primary/50 overflow-hidden">
-                   <img src="/images/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+                   <img src="/images/logo.jpg" alt="Logo" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 </div>
                 <span className="font-heading font-bold text-lg text-white">NextDoor Exterior Solutions</span>
               </div>

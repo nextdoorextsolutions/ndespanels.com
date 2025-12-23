@@ -59,6 +59,8 @@ export function ManusDialog({
                 src={logo}
                 alt="Dialog graphic"
                 className="w-10 h-10 rounded-md"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           ) : null}

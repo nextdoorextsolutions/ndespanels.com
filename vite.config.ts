@@ -29,6 +29,21 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core vendor libraries
+          vendor: ['react', 'react-dom', 'wouter'],
+          // UI component libraries
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip'],
+          // Charts and visualization
+          charts: ['recharts'],
+          // tRPC and data fetching
+          trpc: ['@trpc/client', '@trpc/react-query', '@tanstack/react-query'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     host: true,

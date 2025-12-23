@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -9,41 +10,53 @@ import { OwnerRoute } from "./components/shared/OwnerRoute";
 import { GlobalChatWidget } from "./components/GlobalChatWidget";
 import { GlobalErrorWatcher } from "./components/GlobalErrorWatcher";
 
-// Auth pages
+// Auth pages (keep eager loaded - small and critical)
 import Login from "./pages/auth/Login";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 
-// CRM pages
-import CRMDashboard from "./pages/crm/Dashboard";
-import CRMLeads from "./pages/crm/Leads";
-import CRMPipeline from "./pages/crm/Pipeline";
-import CRMTeam from "./pages/crm/Team";
-import CRMCalendar from "./pages/crm/Calendar";
-import CRMReports from "./pages/crm/Reports";
-import JobDetail from "./pages/crm/JobDetail";
+// CRM pages - lazy loaded for code splitting
+const CRMDashboard = lazy(() => import("./pages/crm/Dashboard"));
+const CRMLeads = lazy(() => import("./pages/crm/Leads"));
+const CRMPipeline = lazy(() => import("./pages/crm/Pipeline"));
+const CRMTeam = lazy(() => import("./pages/crm/Team"));
+const CRMCalendar = lazy(() => import("./pages/crm/Calendar"));
+const CRMReports = lazy(() => import("./pages/crm/Reports"));
+const JobDetail = lazy(() => import("./pages/crm/JobDetail"));
 
-// Finance pages
-import Finance from "./pages/finance/Finance";
-import Invoices from "./pages/finance/Invoices";
-import Jobs from "./pages/finance/Jobs";
-import Clients from "./pages/finance/Clients";
+// Finance pages - lazy loaded
+const Finance = lazy(() => import("./pages/finance/Finance"));
+const Invoices = lazy(() => import("./pages/finance/Invoices"));
+const Jobs = lazy(() => import("./pages/finance/Jobs"));
+const Clients = lazy(() => import("./pages/finance/Clients"));
 
-// Settings pages
-import ProfileSettings from "./pages/settings/ProfileSettings";
-import GeneralSettings from "./pages/settings/GeneralSettings";
+// Settings pages - lazy loaded
+const ProfileSettings = lazy(() => import("./pages/settings/ProfileSettings"));
+const GeneralSettings = lazy(() => import("./pages/settings/GeneralSettings"));
 
-// Admin pages
-import ErrorLogsPage from "./pages/admin/ErrorLogsPage";
-import PerformanceDashboard from "./pages/admin/PerformanceDashboard";
-import BonusApprovals from "./pages/admin/BonusApprovals";
+// Admin pages - lazy loaded
+const ErrorLogsPage = lazy(() => import("./pages/admin/ErrorLogsPage"));
+const PerformanceDashboard = lazy(() => import("./pages/admin/PerformanceDashboard"));
+const BonusApprovals = lazy(() => import("./pages/admin/BonusApprovals"));
 
-// CRM pages - Commissions
-import CommissionsPage from "./pages/crm/CommissionsPage";
+// CRM pages - Commissions - lazy loaded
+const CommissionsPage = lazy(() => import("./pages/crm/CommissionsPage"));
 
-// Public pages
-import CustomerPortal from "./pages/CustomerPortal";
-import FieldUpload from "./pages/FieldUpload";
+// Public pages - lazy loaded
+const CustomerPortal = lazy(() => import("./pages/CustomerPortal"));
+const FieldUpload = lazy(() => import("./pages/FieldUpload"));
+
+// Loading spinner component
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-900">
+      <div className="flex flex-col items-center gap-4">
+        <div className="animate-spin w-12 h-12 border-4 border-[#00d4aa] border-t-transparent rounded-full" />
+        <p className="text-slate-400 animate-pulse text-sm">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 function Router() {
   return (
@@ -57,84 +70,114 @@ function Router() {
       <Route path={"/reset-password"} component={ResetPassword} />
       
       {/* Public utility routes */}
-      <Route path={"/portal"} component={CustomerPortal} />
-      <Route path={"/upload"} component={FieldUpload} />
+      <Route path="/portal">
+        <Suspense fallback={<LoadingSpinner />}>
+          <CustomerPortal />
+        </Suspense>
+      </Route>
+      <Route path="/upload">
+        <Suspense fallback={<LoadingSpinner />}>
+          <FieldUpload />
+        </Suspense>
+      </Route>
       
       {/* CRM routes - protected with Supabase Auth */}
-      <Route path={"/crm"}>
+      <Route path="/crm">
         <ProtectedRoute>
           <ErrorBoundary>
-            <CRMDashboard />
+            <Suspense fallback={<LoadingSpinner />}>
+              <CRMDashboard />
+            </Suspense>
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
-      <Route path={"/crm/leads"}>
+      <Route path="/crm/leads">
         <ProtectedRoute>
           <ErrorBoundary>
-            <CRMLeads />
+            <Suspense fallback={<LoadingSpinner />}>
+              <CRMLeads />
+            </Suspense>
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
-      <Route path={"/crm/pipeline"}>
+      <Route path="/crm/pipeline">
         <ProtectedRoute>
           <ErrorBoundary>
-            <CRMPipeline />
+            <Suspense fallback={<LoadingSpinner />}>
+              <CRMPipeline />
+            </Suspense>
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
-      <Route path={"/crm/team"}>
+      <Route path="/crm/team">
         <ProtectedRoute>
           <ErrorBoundary>
-            <CRMTeam />
+            <Suspense fallback={<LoadingSpinner />}>
+              <CRMTeam />
+            </Suspense>
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
-      <Route path={"/crm/calendar"}>
+      <Route path="/crm/calendar">
         <ProtectedRoute>
           <ErrorBoundary>
-            <CRMCalendar />
+            <Suspense fallback={<LoadingSpinner />}>
+              <CRMCalendar />
+            </Suspense>
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
-      <Route path={"/crm/reports"}>
+      <Route path="/crm/reports">
         <ProtectedRoute>
           <ErrorBoundary>
-            <CRMReports />
+            <Suspense fallback={<LoadingSpinner />}>
+              <CRMReports />
+            </Suspense>
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
-      <Route path={"/crm/job/:id"}>
+      <Route path="/crm/job/:id">
         <ProtectedRoute>
           <ErrorBoundary>
-            <JobDetail />
+            <Suspense fallback={<LoadingSpinner />}>
+              <JobDetail />
+            </Suspense>
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
-      <Route path={"/finance"}>
+      <Route path="/finance">
         <OwnerRoute>
           <ErrorBoundary>
-            <Finance />
+            <Suspense fallback={<LoadingSpinner />}>
+              <Finance />
+            </Suspense>
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
-      <Route path={"/invoices"}>
+      <Route path="/invoices">
         <OwnerRoute>
           <ErrorBoundary>
-            <Invoices />
+            <Suspense fallback={<LoadingSpinner />}>
+              <Invoices />
+            </Suspense>
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
-      <Route path={"/jobs"}>
+      <Route path="/jobs">
         <OwnerRoute>
           <ErrorBoundary>
-            <Jobs />
+            <Suspense fallback={<LoadingSpinner />}>
+              <Jobs />
+            </Suspense>
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
-      <Route path={"/clients"}>
+      <Route path="/clients">
         <OwnerRoute>
           <ErrorBoundary>
-            <Clients />
+            <Suspense fallback={<LoadingSpinner />}>
+              <Clients />
+            </Suspense>
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
@@ -143,21 +186,27 @@ function Router() {
       <Route path="/admin/dashboard">
         <OwnerRoute>
           <ErrorBoundary>
-            <PerformanceDashboard />
+            <Suspense fallback={<LoadingSpinner />}>
+              <PerformanceDashboard />
+            </Suspense>
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
       <Route path="/admin/bonus-approvals">
         <OwnerRoute>
           <ErrorBoundary>
-            <BonusApprovals />
+            <Suspense fallback={<LoadingSpinner />}>
+              <BonusApprovals />
+            </Suspense>
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
-      <Route path={"/admin/error-logs"}>
+      <Route path="/admin/error-logs">
         <OwnerRoute>
           <ErrorBoundary>
-            <ErrorLogsPage />
+            <Suspense fallback={<LoadingSpinner />}>
+              <ErrorLogsPage />
+            </Suspense>
           </ErrorBoundary>
         </OwnerRoute>
       </Route>
@@ -166,20 +215,26 @@ function Router() {
       <Route path="/commissions">
         <ProtectedRoute>
           <ErrorBoundary>
-            <CommissionsPage />
+            <Suspense fallback={<LoadingSpinner />}>
+              <CommissionsPage />
+            </Suspense>
           </ErrorBoundary>
         </ProtectedRoute>
       </Route>
       
       {/* Settings routes - protected */}
-      <Route path={"/settings/profile"}>
+      <Route path="/settings/profile">
         <ProtectedRoute>
-          <ProfileSettings />
+          <Suspense fallback={<LoadingSpinner />}>
+            <ProfileSettings />
+          </Suspense>
         </ProtectedRoute>
       </Route>
-      <Route path={"/settings"}>
+      <Route path="/settings">
         <ProtectedRoute>
-          <GeneralSettings />
+          <Suspense fallback={<LoadingSpinner />}>
+            <GeneralSettings />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       

@@ -48,6 +48,8 @@ export function RoofMeasurementGuide() {
             ref={imgRef}
             src="https://mkmdffzjkttsklzsrdbv.supabase.co/storage/v1/object/public/Roof%20measurement%20diagram/roof-measurement-guide.png.jpg" 
             alt="Roof Measurement Guide showing color-coded roof components"
+            loading="lazy"
+            decoding="async"
             className="w-full h-auto rounded select-none"
             draggable={false}
           />

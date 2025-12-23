@@ -145,7 +145,7 @@ export default function BrandingCard({ user, onUpdate }: BrandingCardProps) {
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center overflow-hidden">
               {photoPreview ? (
-                <img src={photoPreview} alt="Profile" className="w-full h-full object-cover" />
+                <img src={photoPreview} alt="Profile" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               ) : (
                 <ImageIcon className="w-8 h-8 text-slate-500" />
               )}

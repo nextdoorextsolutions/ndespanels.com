@@ -314,6 +314,8 @@ export default function PerformanceDashboard() {
                                       src={user.userImage} 
                                       alt={user.userName}
                                       className="w-8 h-8 rounded-full"
+                                      loading="lazy"
+                                      decoding="async"
                                     />
                                   ) : (
                                     <div className="w-8 h-8 rounded-full bg-[#00d4aa] flex items-center justify-center">

@@ -76,6 +76,8 @@ export default function SignatureCard() {
                 src={signatureImage}
                 alt="Signature"
                 className="max-h-[120px] max-w-full object-contain"
+                loading="lazy"
+                decoding="async"
               />
             ) : (
               <div className="text-center text-slate-500">
