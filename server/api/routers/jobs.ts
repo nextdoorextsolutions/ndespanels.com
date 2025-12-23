@@ -295,8 +295,12 @@ export const jobsRouter = router({
           const allowedWithoutData = ['lead', 'appointment_set'];
           
           if (!allowedWithoutData.includes(input.status)) {
-            const hasPhone = currentLead.phone && currentLead.phone.trim() !== '';
-            const hasEmail = currentLead.email && currentLead.email.trim() !== '';
+            // Check incoming data first, then fall back to current database values
+            const phoneToCheck = input.phone !== undefined ? input.phone : currentLead.phone;
+            const emailToCheck = input.email !== undefined ? input.email : currentLead.email;
+            
+            const hasPhone = phoneToCheck && phoneToCheck.trim() !== '';
+            const hasEmail = emailToCheck && emailToCheck.trim() !== '';
             
             if (!hasPhone || !hasEmail) {
               throw new TRPCError({
@@ -380,6 +384,17 @@ export const jobsRouter = router({
         if (input.supplementNumbers !== undefined && input.supplementNumbers !== currentLead.supplementNumbers) {
           updateData.supplementNumbers = input.supplementNumbers;
           await logEditHistory(db, input.id, user!.id, "supplementNumbers", currentLead.supplementNumbers || "", input.supplementNumbers || "", "update", ctx);
+        }
+        
+        // Handle phone and email updates
+        if (input.phone !== undefined && input.phone !== currentLead.phone) {
+          updateData.phone = input.phone;
+          await logEditHistory(db, input.id, user!.id, "phone", currentLead.phone || "", input.phone, "update", ctx);
+        }
+        
+        if (input.email !== undefined && input.email !== currentLead.email) {
+          updateData.email = input.email;
+          await logEditHistory(db, input.id, user!.id, "email", currentLead.email || "", input.email, "update", ctx);
         }
 
         if (Object.keys(updateData).length > 0) {
