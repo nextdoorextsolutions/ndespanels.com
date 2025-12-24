@@ -5,6 +5,7 @@ import { QuickActions } from "./overview/QuickActions";
 import { InsuranceInfoCard } from "../InsuranceInfoCard";
 import { ApprovedAmountCard } from "./overview/ApprovedAmountCard";
 import { ChangeOrderCard } from "./overview/ChangeOrderCard";
+import AIInsightsBanner from "../analytics/AIInsightsBanner";
 import type { Job, JobStatus } from "@/types";
 
 interface JobOverviewTabProps {
@@ -31,6 +32,9 @@ export function JobOverviewTab({
 
   return (
     <div className="space-y-6">
+      {/* AI Insights Banner */}
+      <AIInsightsBanner />
+
       {/* Pipeline Status */}
       <JobPipeline
         currentStatus={job.status}

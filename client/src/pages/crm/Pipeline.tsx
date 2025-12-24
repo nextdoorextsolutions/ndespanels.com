@@ -271,7 +271,7 @@ export default function CRMPipeline() {
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Sales Pipeline</h1>
-          <p className="text-sm text-slate-400">Drag and drop jobs between stages to update their status</p>
+          <p className="text-sm text-slate-400">Drag and drop jobs between stages to update their status • Scroll horizontally to see all stages →</p>
         </div>
 
         {/* Lien Rights Alert Banner */}
@@ -292,7 +292,7 @@ export default function CRMPipeline() {
         )}
 
         {/* Kanban Board */}
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800" style={{ minWidth: 'min-content' }}>
           {PIPELINE_STAGES.map((stage) => {
             const leads = getLeadsForStage(stage.key);
             const totalValue = getTotalValue(leads);
