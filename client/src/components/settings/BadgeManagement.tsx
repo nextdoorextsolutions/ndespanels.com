@@ -22,18 +22,22 @@ const BADGE_TEMPLATES = [
   { id: "veteran", name: "Veteran", emoji: "🎖️", color: "#34495E" },
 ];
 
-interface User {
+interface TeamMember {
   id: number;
   name: string | null;
   email: string | null;
   image: string | null;
   nickname: string | null;
-  badges: any[] | null;
+  badges: unknown;
+  selectedBadge: string | null;
   role: string;
+  roleDisplayName: string;
+  teamLeadName: string | null;
+  teamMemberCount: number;
 }
 
 export function BadgeManagement() {
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [customBadge, setCustomBadge] = useState({
     name: "",
@@ -108,7 +112,7 @@ export function BadgeManagement() {
 
           {/* User List */}
           <div className="space-y-3">
-            {users.map((user: User) => {
+            {users.map((user: TeamMember) => {
               const userBadges = (user.badges || []) as any[];
               return (
                 <Card key={user.id} className="bg-slate-700 border-slate-600">
