@@ -91,21 +91,20 @@ export function JobMessagesTab({
   const otherDocuments = documents.filter(doc => !doc.fileType?.startsWith('image/'));
 
   return (
-    <div className="flex gap-6">
-      <div className="flex-1">
-        {/* Header with Search and Asset Sidebar Toggle */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Notes & Messages ({messages.length})</h2>
-          <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-            <SheetTrigger asChild>
-              <Button 
-                variant="outline"
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
-              >
-                <FolderOpen className="w-4 h-4 mr-2" />
-                Job Assets
-              </Button>
-            </SheetTrigger>
+    <div>
+      {/* Header with Job Assets Toggle */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-white">Notes & Messages ({messages.length})</h2>
+        <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+          <SheetTrigger asChild>
+            <Button 
+              variant="outline"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              <FolderOpen className="w-4 h-4 mr-2" />
+              Job Assets
+            </Button>
+          </SheetTrigger>
             <SheetContent className="bg-slate-800 border-slate-700 w-[400px] sm:w-[540px] overflow-y-auto">
               <SheetHeader>
                 <SheetTitle className="text-white">Job Assets</SheetTitle>
@@ -197,100 +196,100 @@ export function JobMessagesTab({
                 </div>
               </div>
             </SheetContent>
-          </Sheet>
+        </Sheet>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            type="text"
+            placeholder="Search messages..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
+          />
         </div>
+      </div>
 
-        {/* Search Bar */}
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="Search messages..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
-            />
-          </div>
-        </div>
+      {/* Filter Pills */}
+      <div className="flex gap-2 mb-6">
+        <Button
+          variant={filterType === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilterType('all')}
+          className={filterType === 'all' 
+            ? 'bg-[#00d4aa] hover:bg-[#00b894] text-black' 
+            : 'border-slate-600 text-slate-300 hover:bg-slate-700'
+          }
+        >
+          All
+        </Button>
+        <Button
+          variant={filterType === 'files' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilterType('files')}
+          className={filterType === 'files' 
+            ? 'bg-[#00d4aa] hover:bg-[#00b894] text-black' 
+            : 'border-slate-600 text-slate-300 hover:bg-slate-700'
+          }
+        >
+          <FileText className="w-3 h-3 mr-1" />
+          Files
+        </Button>
+        <Button
+          variant={filterType === 'images' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilterType('images')}
+          className={filterType === 'images' 
+            ? 'bg-[#00d4aa] hover:bg-[#00b894] text-black' 
+            : 'border-slate-600 text-slate-300 hover:bg-slate-700'
+          }
+        >
+          <ImageIcon className="w-3 h-3 mr-1" />
+          Images
+        </Button>
+      </div>
 
-        {/* Filter Pills */}
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant={filterType === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterType('all')}
-            className={filterType === 'all' 
-              ? 'bg-[#00d4aa] hover:bg-[#00b894] text-black' 
-              : 'border-slate-600 text-slate-300 hover:bg-slate-700'
-            }
-          >
-            All
-          </Button>
-          <Button
-            variant={filterType === 'files' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterType('files')}
-            className={filterType === 'files' 
-              ? 'bg-[#00d4aa] hover:bg-[#00b894] text-black' 
-              : 'border-slate-600 text-slate-300 hover:bg-slate-700'
-            }
-          >
-            <FileText className="w-3 h-3 mr-1" />
-            Files
-          </Button>
-          <Button
-            variant={filterType === 'images' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterType('images')}
-            className={filterType === 'images' 
-              ? 'bg-[#00d4aa] hover:bg-[#00b894] text-black' 
-              : 'border-slate-600 text-slate-300 hover:bg-slate-700'
-            }
-          >
-            <ImageIcon className="w-3 h-3 mr-1" />
-            Images
-          </Button>
-        </div>
+      {/* New Message Input */}
+      {canEdit && (
+        <Card className="bg-slate-800 border-slate-700 mb-6">
+          <CardContent className="pt-4">
+            {/* Tag Selector */}
+            <div className="mb-3">
+              <TagSelector 
+                selectedTags={selectedTags}
+                onChange={onTagsChange}
+              />
+            </div>
+            
+            {/* Message Input */}
+            <div className="flex gap-3">
+              <MentionInput
+                placeholder="Add a note or message... (Type @ to mention someone)"
+                value={newMessage}
+                onChange={onMessageChange}
+                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 flex-1"
+                minHeight="80px"
+              />
+              <Button 
+                onClick={onSendMessage}
+                disabled={!newMessage.trim() || isSending}
+                className="bg-[#00d4aa] hover:bg-[#00b894] text-black self-end"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Send
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* New Message Input */}
-        {canEdit && (
-          <Card className="bg-slate-800 border-slate-700 mb-6">
-            <CardContent className="pt-4">
-              {/* Tag Selector */}
-              <div className="mb-3">
-                <TagSelector 
-                  selectedTags={selectedTags}
-                  onChange={onTagsChange}
-                />
-              </div>
-              
-              {/* Message Input */}
-              <div className="flex gap-3">
-                <MentionInput
-                  placeholder="Add a note or message... (Type @ to mention someone)"
-                  value={newMessage}
-                  onChange={onMessageChange}
-                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 flex-1"
-                  minHeight="80px"
-                />
-                <Button 
-                  onClick={onSendMessage}
-                  disabled={!newMessage.trim() || isSending}
-                  className="bg-[#00d4aa] hover:bg-[#00b894] text-black self-end"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Messages List */}
-        {filteredMessages.length > 0 ? (
-          <div className="space-y-4">
-            {filteredMessages.map((msg) => {
+      {/* Messages List */}
+      {filteredMessages.length > 0 ? (
+        <div className="space-y-4">
+          {filteredMessages.map((msg) => {
             const isCustomerMessage = msg.activityType === "customer_message";
             const isCallbackRequest = msg.activityType === "callback_requested";
             const isFromCustomer = isCustomerMessage || isCallbackRequest;
@@ -388,36 +387,35 @@ export function JobMessagesTab({
               </Card>
             );
           })}
-          </div>
-        ) : (
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="py-12 text-center">
-              <MessageSquare className="w-12 h-12 mx-auto mb-3 text-slate-500" />
-              <p className="text-slate-400">
-                {searchQuery || filterType !== 'all' 
-                  ? 'No messages match your filters' 
-                  : 'No messages yet'
-                }
-              </p>
-              {canEdit && !searchQuery && filterType === 'all' && (
-                <p className="text-sm text-slate-500 mt-1">Start the conversation by adding a note above</p>
-              )}
-              {(searchQuery || filterType !== 'all') && (
-                <Button 
-                  variant="link" 
-                  className="mt-2 text-[#00d4aa]"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setFilterType('all');
-                  }}
-                >
-                  Clear filters
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
+        </div>
+      ) : (
+        <Card className="bg-slate-800 border-slate-700">
+          <CardContent className="py-12 text-center">
+            <MessageSquare className="w-12 h-12 mx-auto mb-3 text-slate-500" />
+            <p className="text-slate-400">
+              {searchQuery || filterType !== 'all' 
+                ? 'No messages match your filters' 
+                : 'No messages yet'
+              }
+            </p>
+            {canEdit && !searchQuery && filterType === 'all' && (
+              <p className="text-sm text-slate-500 mt-1">Start the conversation by adding a note above</p>
+            )}
+            {(searchQuery || filterType !== 'all') && (
+              <Button 
+                variant="link" 
+                className="mt-2 text-[#00d4aa]"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterType('all');
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
