@@ -519,4 +519,170 @@ export const usersRouter = router({
         avatarUrl: input.avatarUrl,
       };
     }),
+
+  // Update user nickname
+  updateNickname: protectedProcedure
+    .input(z.object({
+      nickname: z.string().max(100).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const userId = ctx.user!.id;
+
+      await db.update(users)
+        .set({ 
+          nickname: input.nickname || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+
+      console.log(`[UpdateNickname] User ${ctx.user?.name} (${userId}) updated nickname to: ${input.nickname}`);
+
+      return { 
+        success: true, 
+        message: "Nickname updated successfully",
+        nickname: input.nickname,
+      };
+    }),
+
+  // Assign badge to user (Owner only)
+  assignBadge: protectedProcedure
+    .input(z.object({
+      userId: z.number(),
+      badge: z.object({
+        id: z.string(),
+        name: z.string(),
+        emoji: z.string(),
+        color: z.string(),
+      }),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      if (!isOwner(ctx.user)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only owners can assign badges" });
+      }
+
+      // Get current badges
+      const [user] = await db.select({ badges: users.badges }).from(users).where(eq(users.id, input.userId));
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+      const currentBadges = (user.badges as any[]) || [];
+      
+      // Check if badge already exists
+      const badgeExists = currentBadges.some((b: any) => b.id === input.badge.id);
+      if (badgeExists) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Badge already assigned to user" });
+      }
+
+      // Add new badge with metadata
+      const newBadge = {
+        ...input.badge,
+        assignedBy: ctx.user!.id,
+        assignedAt: new Date().toISOString(),
+      };
+      const updatedBadges = [...currentBadges, newBadge];
+
+      await db.update(users)
+        .set({ 
+          badges: updatedBadges,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, input.userId));
+
+      console.log(`[AssignBadge] Owner ${ctx.user?.name} assigned badge ${input.badge.name} to user ${input.userId}`);
+
+      return { 
+        success: true, 
+        message: "Badge assigned successfully",
+        badges: updatedBadges,
+      };
+    }),
+
+  // Remove badge from user (Owner only)
+  removeBadge: protectedProcedure
+    .input(z.object({
+      userId: z.number(),
+      badgeId: z.string(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      if (!isOwner(ctx.user)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only owners can remove badges" });
+      }
+
+      // Get current badges
+      const [user] = await db.select({ badges: users.badges, selectedBadge: users.selectedBadge }).from(users).where(eq(users.id, input.userId));
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+      const currentBadges = (user.badges as any[]) || [];
+      const updatedBadges = currentBadges.filter((b: any) => b.id !== input.badgeId);
+
+      const updateData: any = { 
+        badges: updatedBadges,
+        updatedAt: new Date(),
+      };
+
+      // If the removed badge was selected, clear selection
+      if (user.selectedBadge === input.badgeId) {
+        updateData.selectedBadge = null;
+      }
+
+      await db.update(users)
+        .set(updateData)
+        .where(eq(users.id, input.userId));
+
+      console.log(`[RemoveBadge] Owner ${ctx.user?.name} removed badge ${input.badgeId} from user ${input.userId}`);
+
+      return { 
+        success: true, 
+        message: "Badge removed successfully",
+        badges: updatedBadges,
+      };
+    }),
+
+  // Select which badge to display
+  selectBadge: protectedProcedure
+    .input(z.object({
+      badgeId: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const userId = ctx.user!.id;
+
+      // Verify badge exists in user's badges if badgeId provided
+      if (input.badgeId) {
+        const [user] = await db.select({ badges: users.badges }).from(users).where(eq(users.id, userId));
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+        const currentBadges = (user.badges as any[]) || [];
+        const badgeExists = currentBadges.some((b: any) => b.id === input.badgeId);
+        
+        if (!badgeExists) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Badge not found in your collection" });
+        }
+      }
+
+      await db.update(users)
+        .set({ 
+          selectedBadge: input.badgeId || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+
+      console.log(`[SelectBadge] User ${ctx.user?.name} (${userId}) selected badge: ${input.badgeId || 'none'}`);
+
+      return { 
+        success: true, 
+        message: input.badgeId ? "Badge selected successfully" : "Badge display cleared",
+        selectedBadge: input.badgeId,
+      };
+    }),
 });

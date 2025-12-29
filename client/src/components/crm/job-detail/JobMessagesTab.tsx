@@ -16,6 +16,10 @@ interface Message {
   user?: {
     name?: string | null;
     email?: string | null;
+    image?: string | null;
+    nickname?: string | null;
+    badges?: any[];
+    selectedBadge?: string | null;
   } | null;
   attachments?: {
     id: number;
@@ -290,6 +294,10 @@ export function JobMessagesTab({
             const isCustomerMessage = msg.activityType === "customer_message";
             const isCallbackRequest = msg.activityType === "callback_requested";
             const isFromCustomer = isCustomerMessage || isCallbackRequest;
+            const isSystemMessage = !msg.user && !isFromCustomer;
+            const displayName = msg.user?.nickname || msg.user?.name || msg.user?.email || "System";
+            const userAvatar = msg.user?.image;
+            const selectedBadge = msg.user?.selectedBadge ? (msg.user?.badges as any[])?.find((b: any) => b.id === msg.user?.selectedBadge) : null;
             
             return (
               <Card 
@@ -298,20 +306,46 @@ export function JobMessagesTab({
               >
                 <CardContent className="pt-4">
                   <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      isFromCustomer 
-                        ? 'bg-gradient-to-br from-amber-500 to-orange-500' 
-                        : 'bg-gradient-to-br from-[#00d4aa] to-[#00b894]'
-                    }`}>
-                      <span className={`font-semibold text-sm ${isFromCustomer ? 'text-white' : 'text-black'}`}>
-                        {isFromCustomer ? 'C' : (msg.user?.name?.charAt(0) || msg.user?.email?.charAt(0) || "?")}
-                      </span>
-                    </div>
+                    {/* Avatar */}
+                    {userAvatar ? (
+                      <img 
+                        src={userAvatar} 
+                        alt={displayName}
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : isSystemMessage ? (
+                      <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0 border-2 border-[#00d4aa]">
+                        <span className="font-bold text-xs text-[#00d4aa]">NDES</span>
+                      </div>
+                    ) : (
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        isFromCustomer 
+                          ? 'bg-gradient-to-br from-amber-500 to-orange-500' 
+                          : 'bg-gradient-to-br from-[#00d4aa] to-[#00b894]'
+                      }`}>
+                        <span className={`font-semibold text-sm ${isFromCustomer ? 'text-white' : 'text-black'}`}>
+                          {isFromCustomer ? 'C' : (displayName.charAt(0).toUpperCase())}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <p className="font-medium text-white">
-                          {isFromCustomer ? 'Customer' : (msg.user?.name || msg.user?.email || "System")}
+                          {isFromCustomer ? 'Customer' : displayName}
                         </p>
+                        {/* Badge Display */}
+                        {selectedBadge && (
+                          <span 
+                            className="text-xs px-2 py-0.5 rounded-full font-medium border"
+                            style={{ 
+                              backgroundColor: `${selectedBadge.color}20`,
+                              color: selectedBadge.color,
+                              borderColor: `${selectedBadge.color}50`
+                            }}
+                          >
+                            {selectedBadge.emoji} {selectedBadge.name}
+                          </span>
+                        )}
                         {isFromCustomer && (
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                             isCallbackRequest 
