@@ -41,7 +41,7 @@ export function BadgeManagement() {
     color: "#00d4aa",
   });
 
-  const { data: users = [] } = trpc.users.getAllUsers.useQuery();
+  const { data: users = [] } = trpc.users.getTeam.useQuery();
   const utils = trpc.useUtils();
 
   const assignBadge = trpc.users.assignBadge.useMutation({
