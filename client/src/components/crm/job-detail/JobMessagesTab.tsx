@@ -249,39 +249,39 @@ export function JobMessagesTab({
           </Button>
         </div>
 
-      {/* New Message Input */}
-      {canEdit && (
-        <Card className="bg-slate-800 border-slate-700 mb-6">
-          <CardContent className="pt-4">
-            {/* Tag Selector */}
-            <div className="mb-3">
-              <TagSelector 
-                selectedTags={selectedTags}
-                onChange={onTagsChange}
-              />
-            </div>
-            
-            {/* Message Input */}
-            <div className="flex gap-3">
-              <MentionInput
-                placeholder="Add a note or message... (Type @ to mention someone)"
-                value={newMessage}
-                onChange={onMessageChange}
-                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 flex-1"
-                minHeight="80px"
-              />
-              <Button 
-                onClick={onSendMessage}
-                disabled={!newMessage.trim() || isSending}
-                className="bg-[#00d4aa] hover:bg-[#00b894] text-black self-end"
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Send
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* New Message Input */}
+        {canEdit && (
+          <Card className="bg-slate-800 border-slate-700 mb-6">
+            <CardContent className="pt-4">
+              {/* Tag Selector */}
+              <div className="mb-3">
+                <TagSelector 
+                  selectedTags={selectedTags}
+                  onChange={onTagsChange}
+                />
+              </div>
+              
+              {/* Message Input */}
+              <div className="flex gap-3">
+                <MentionInput
+                  placeholder="Add a note or message... (Type @ to mention someone)"
+                  value={newMessage}
+                  onChange={onMessageChange}
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 flex-1"
+                  minHeight="80px"
+                />
+                <Button 
+                  onClick={onSendMessage}
+                  disabled={!newMessage.trim() || isSending}
+                  className="bg-[#00d4aa] hover:bg-[#00b894] text-black self-end"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Send
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Messages List */}
         {filteredMessages.length > 0 ? (
