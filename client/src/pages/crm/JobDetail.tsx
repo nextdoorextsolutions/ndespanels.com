@@ -257,6 +257,7 @@ export default function JobDetail() {
           {activeTab === "messages" && (
             <JobMessagesTab
               messages={filteredMessages}
+              documents={documents}
               canEdit={canEdit}
               newMessage={newMessage}
               onMessageChange={setNewMessage}

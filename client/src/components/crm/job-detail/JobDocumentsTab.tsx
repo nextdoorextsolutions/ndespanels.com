@@ -32,18 +32,26 @@ export function JobDocumentsTab({
   onPreviewDocument,
 }: JobDocumentsTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (canEdit) setIsDragging(true);
+    dragCounter.current++;
+    if (canEdit && e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -54,13 +62,13 @@ export function JobDocumentsTab({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounter.current = 0;
     setIsDragging(false);
 
     if (!canEdit) return;
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      // Create a synthetic event to pass to onFileUpload
       const syntheticEvent = {
         target: { files },
       } as React.ChangeEvent<HTMLInputElement>;
@@ -101,14 +109,18 @@ export function JobDocumentsTab({
         )}
       </div>
 
-      {isDragging && documents.length > 0 && (
-        <div className="mb-4 p-4 border-2 border-dashed border-[#00d4aa] bg-[#00d4aa]/10 rounded-lg text-center">
-          <p className="text-[#00d4aa] font-semibold">Drop files here to upload</p>
-        </div>
-      )}
-      
       {documents.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="relative">
+          {isDragging && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/95 backdrop-blur-sm border-4 border-dashed border-[#00d4aa] rounded-lg">
+              <div className="text-center">
+                <Upload className="w-16 h-16 mx-auto mb-4 text-[#00d4aa] animate-bounce" />
+                <p className="text-2xl font-bold text-[#00d4aa] mb-2">Drop files here to upload</p>
+                <p className="text-slate-400">Release to add documents to this job</p>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {documents.map((doc) => (
             <Card 
               key={doc.id} 
@@ -161,6 +173,7 @@ export function JobDocumentsTab({
               </CardContent>
             </Card>
           ))}
+        </div>
         </div>
       ) : (
         <Card 
