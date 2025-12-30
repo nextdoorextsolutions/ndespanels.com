@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
-import { db } from "@/drizzle/db";
-import { bankAccounts, bankTransactions } from "@/drizzle/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
+import { protectedProcedure, router } from "../../_core/trpc";
+import { getDb } from "../../db";
+import { bankAccounts, bankTransactions, BankAccount } from "../../../drizzle/schema";
 
 export const bankAccountsRouter = router({
   // Get all bank accounts
@@ -10,7 +10,9 @@ export const bankAccountsRouter = router({
     .input(z.object({
       includeInactive: z.boolean().optional().default(false),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input }: { input: { includeInactive: boolean } }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
       const accounts = await db
         .select()
         .from(bankAccounts)
@@ -25,7 +27,9 @@ export const bankAccountsRouter = router({
     .input(z.object({
       id: z.number(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input }: { input: { id: number } }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
       const account = await db
         .select()
         .from(bankAccounts)
@@ -64,11 +68,19 @@ export const bankAccountsRouter = router({
       currentBalance: z.number().optional(),
       notes: z.string().optional(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input, ctx }: { input: { accountName: string; accountType: "checking" | "savings" | "credit_card" | "line_of_credit"; accountNumberLast4?: string; institutionName?: string; creditLimit?: number; currentBalance?: number; notes?: string }; ctx: { user: { id: number } } }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
       const [account] = await db
         .insert(bankAccounts)
         .values({
-          ...input,
+          accountName: input.accountName,
+          accountType: input.accountType,
+          accountNumberLast4: input.accountNumberLast4,
+          institutionName: input.institutionName,
+          creditLimit: input.creditLimit?.toString(),
+          currentBalance: input.currentBalance?.toString(),
+          notes: input.notes,
           createdBy: ctx.user.id,
         })
         .returning();
@@ -89,13 +101,22 @@ export const bankAccountsRouter = router({
       isActive: z.boolean().optional(),
       notes: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }: { input: { id: number; accountName?: string; accountType?: "checking" | "savings" | "credit_card" | "line_of_credit"; accountNumberLast4?: string; institutionName?: string; creditLimit?: number; currentBalance?: number; isActive?: boolean; notes?: string } }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
       const { id, ...data } = input;
 
       const [account] = await db
         .update(bankAccounts)
         .set({
-          ...data,
+          accountName: data.accountName,
+          accountType: data.accountType,
+          accountNumberLast4: data.accountNumberLast4,
+          institutionName: data.institutionName,
+          creditLimit: data.creditLimit?.toString(),
+          currentBalance: data.currentBalance?.toString(),
+          isActive: data.isActive,
+          notes: data.notes,
           updatedAt: new Date(),
         })
         .where(eq(bankAccounts.id, id))
@@ -109,7 +130,9 @@ export const bankAccountsRouter = router({
     .input(z.object({
       id: z.number(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }: { input: { id: number } }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
       // Check if account has transactions
       const txCount = await db
         .select({ count: sql<number>`count(*)::int` })
@@ -134,6 +157,8 @@ export const bankAccountsRouter = router({
 
   // Get account statistics
   getStats: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
     const accounts = await db
       .select()
       .from(bankAccounts)
@@ -142,16 +167,16 @@ export const bankAccountsRouter = router({
     const stats = {
       totalAccounts: accounts.length,
       byType: {
-        checking: accounts.filter(a => a.accountType === "checking").length,
-        savings: accounts.filter(a => a.accountType === "savings").length,
-        credit_card: accounts.filter(a => a.accountType === "credit_card").length,
-        line_of_credit: accounts.filter(a => a.accountType === "line_of_credit").length,
+        checking: accounts.filter((a: BankAccount) => a.accountType === "checking").length,
+        savings: accounts.filter((a: BankAccount) => a.accountType === "savings").length,
+        credit_card: accounts.filter((a: BankAccount) => a.accountType === "credit_card").length,
+        line_of_credit: accounts.filter((a: BankAccount) => a.accountType === "line_of_credit").length,
       },
       totalCreditLimit: accounts
-        .filter(a => a.creditLimit)
-        .reduce((sum, a) => sum + Number(a.creditLimit || 0), 0),
+        .filter((a: BankAccount) => a.creditLimit)
+        .reduce((sum: number, a: BankAccount) => sum + Number(a.creditLimit || 0), 0),
       totalBalance: accounts
-        .reduce((sum, a) => sum + Number(a.currentBalance || 0), 0),
+        .reduce((sum: number, a: BankAccount) => sum + Number(a.currentBalance || 0), 0),
     };
 
     return stats;
@@ -162,7 +187,9 @@ export const bankAccountsRouter = router({
     .input(z.object({
       id: z.number(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }: { input: { id: number } }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
       const result = await db
         .select({
           balance: sql<number>`sum(amount)`,

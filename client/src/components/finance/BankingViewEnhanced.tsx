@@ -60,6 +60,18 @@ const YEARS = ['2024', '2025', '2026', '2027'];
 
 type ViewMode = 'summary' | 'detailed' | 'category' | 'monthly' | 'accounts';
 
+interface BankAccountType {
+  id: number;
+  accountName: string;
+  accountType: string;
+  accountNumberLast4?: string | null;
+  institutionName?: string | null;
+  creditLimit?: string | null;
+  currentBalance?: string | null;
+  notes?: string | null;
+  isActive?: boolean | null;
+}
+
 export function BankingViewEnhanced() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Record<number, string>>({});
@@ -673,7 +685,7 @@ export function BankingViewEnhanced() {
                   <div className="text-right">
                     <p className="text-xs text-slate-400">Bank Accounts</p>
                     <p className="text-2xl font-bold text-white">
-                      {accountStats?.byType.checking + accountStats?.byType.savings || 0}
+                      {(accountStats?.byType?.checking || 0) + (accountStats?.byType?.savings || 0)}
                     </p>
                   </div>
                 </div>
@@ -681,8 +693,8 @@ export function BankingViewEnhanced() {
                   <p className="text-xs text-slate-400">Total Balance</p>
                   <p className="text-lg font-bold text-emerald-400">
                     ${accounts
-                      .filter(a => a.accountType === 'checking' || a.accountType === 'savings')
-                      .reduce((sum, a) => sum + Number(a.currentBalance || 0), 0)
+                      .filter((a: BankAccountType) => a.accountType === 'checking' || a.accountType === 'savings')
+                      .reduce((sum: number, a: BankAccountType) => sum + Number(a.currentBalance || 0), 0)
                       .toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </p>
                 </div>
@@ -706,8 +718,8 @@ export function BankingViewEnhanced() {
                   <p className="text-xs text-slate-400">Available Credit</p>
                   <p className="text-lg font-bold text-cyan-400">
                     ${accounts
-                      .filter(a => a.accountType === 'credit_card')
-                      .reduce((sum, a) => sum + (Number(a.creditLimit || 0) - Math.abs(Number(a.currentBalance || 0))), 0)
+                      .filter((a: BankAccountType) => a.accountType === 'credit_card')
+                      .reduce((sum: number, a: BankAccountType) => sum + (Number(a.creditLimit || 0) - Math.abs(Number(a.currentBalance || 0))), 0)
                       .toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </p>
                 </div>
@@ -731,8 +743,8 @@ export function BankingViewEnhanced() {
                   <p className="text-xs text-slate-400">Available Credit</p>
                   <p className="text-lg font-bold text-cyan-400">
                     ${accounts
-                      .filter(a => a.accountType === 'line_of_credit')
-                      .reduce((sum, a) => sum + (Number(a.creditLimit || 0) - Math.abs(Number(a.currentBalance || 0))), 0)
+                      .filter((a: BankAccountType) => a.accountType === 'line_of_credit')
+                      .reduce((sum: number, a: BankAccountType) => sum + (Number(a.creditLimit || 0) - Math.abs(Number(a.currentBalance || 0))), 0)
                       .toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </p>
                 </div>
@@ -741,7 +753,7 @@ export function BankingViewEnhanced() {
           </div>
 
           {/* Credit Cards Section */}
-          {accounts.filter(a => a.accountType === 'credit_card').length > 0 && (
+          {accounts.filter((a: BankAccountType) => a.accountType === 'credit_card').length > 0 && (
             <div className="space-y-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-purple-400" />
@@ -749,8 +761,8 @@ export function BankingViewEnhanced() {
               </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {accounts
-                  .filter(a => a.accountType === 'credit_card')
-                  .map((account) => {
+                  .filter((a: BankAccountType) => a.accountType === 'credit_card')
+                  .map((account: BankAccountType) => {
                     const balance = Math.abs(Number(account.currentBalance || 0));
                     const limit = Number(account.creditLimit || 0);
                     const available = limit - balance;
@@ -817,7 +829,7 @@ export function BankingViewEnhanced() {
           )}
 
           {/* Lines of Credit Section */}
-          {accounts.filter(a => a.accountType === 'line_of_credit').length > 0 && (
+          {accounts.filter((a: BankAccountType) => a.accountType === 'line_of_credit').length > 0 && (
             <div className="space-y-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-cyan-400" />
@@ -825,8 +837,8 @@ export function BankingViewEnhanced() {
               </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {accounts
-                  .filter(a => a.accountType === 'line_of_credit')
-                  .map((account) => {
+                  .filter((a: BankAccountType) => a.accountType === 'line_of_credit')
+                  .map((account: BankAccountType) => {
                     const balance = Math.abs(Number(account.currentBalance || 0));
                     const limit = Number(account.creditLimit || 0);
                     const available = limit - balance;

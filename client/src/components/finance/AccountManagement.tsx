@@ -63,7 +63,7 @@ export function AccountManagement() {
       setShowDialog(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: { message?: string }) => {
       toast.error(error.message || 'Failed to create account');
     },
   });
@@ -75,7 +75,7 @@ export function AccountManagement() {
       setShowDialog(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: { message?: string }) => {
       toast.error(error.message || 'Failed to update account');
     },
   });
@@ -85,7 +85,7 @@ export function AccountManagement() {
       toast.success('Account deleted successfully');
       utils.bankAccounts.invalidate();
     },
-    onError: (error) => {
+    onError: (error: { message?: string }) => {
       toast.error(error.message || 'Failed to delete account');
     },
   });
@@ -213,7 +213,7 @@ export function AccountManagement() {
                 No accounts yet. Click "Add Account" to create one.
               </div>
             ) : (
-              accounts.map((account) => {
+              accounts.map((account: { id: number; accountName: string; accountType: string; accountNumberLast4?: string | null; institutionName?: string | null; creditLimit?: string | null; currentBalance?: string | null; notes?: string | null }) => {
                 const Icon = ACCOUNT_TYPE_ICONS[account.accountType as AccountType];
                 const isCredit = account.accountType === 'credit_card' || account.accountType === 'line_of_credit';
                 
