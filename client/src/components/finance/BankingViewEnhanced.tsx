@@ -538,7 +538,12 @@ export function BankingViewEnhanced() {
         {/* Header with Filters */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-white">Banking & Statements</h2>
+          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+            Banking & Statements
+            <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full border border-purple-500/30">
+              v2.1
+            </span>
+          </h2>
           <p className="text-slate-400 mt-1">Manage and analyze your financial transactions</p>
         </div>
         
