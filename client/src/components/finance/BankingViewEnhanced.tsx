@@ -42,6 +42,8 @@ import {
 const CATEGORIES = ['Materials', 'Labor', 'Fuel', 'Permit Fees', 'Marketing', 'Rent', 'Insurance', 'Miscellaneous', 'Income'];
 
 const MONTHS = [
+  { value: 'all', label: 'All Months' },
+  { value: 'ytd', label: 'Year to Date' },
   { value: '1', label: 'January' },
   { value: '2', label: 'February' },
   { value: '3', label: 'March' },
@@ -77,7 +79,7 @@ export function BankingViewEnhanced() {
   const [selectedCategory, setSelectedCategory] = useState<Record<number, string>>({});
   const [selectedProject, setSelectedProject] = useState<Record<number, number | undefined>>({});
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-  const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString());
+  const [selectedMonth, setSelectedMonth] = useState('ytd');
   const [viewMode, setViewMode] = useState<ViewMode>('summary');
   const [searchQuery, setSearchQuery] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -107,6 +109,8 @@ export function BankingViewEnhanced() {
       toast.success(`Successfully imported ${data.count} transactions`);
       utils.banking.invalidate();
       setIsUploading(false);
+      // Switch to detailed view to show imported transactions
+      setViewMode('detailed');
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to import transactions');
@@ -123,7 +127,24 @@ export function BankingViewEnhanced() {
       const txMonth = (txDate.getMonth() + 1).toString();
       
       const matchesYear = txYear === selectedYear;
-      const matchesMonth = txMonth === selectedMonth;
+      
+      // Handle different month filter modes
+      let matchesMonth = true;
+      if (selectedMonth === 'all') {
+        matchesMonth = true; // Show all months
+      } else if (selectedMonth === 'ytd') {
+        // Year to date: show all transactions from Jan 1 to today of selected year
+        const today = new Date();
+        const currentYear = today.getFullYear().toString();
+        if (txYear === currentYear) {
+          matchesMonth = txDate <= today;
+        } else {
+          matchesMonth = false;
+        }
+      } else {
+        matchesMonth = txMonth === selectedMonth;
+      }
+      
       const matchesSearch = searchQuery === '' || 
         tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tx.category?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -279,6 +300,7 @@ export function BankingViewEnhanced() {
           }).filter((t): t is { transactionDate: string; description: string; amount: number; bankAccount: string; referenceNumber: undefined } => t !== null && t.amount !== 0);
 
           console.log('Parsed transactions:', transactions.length);
+          console.log('Sample dates:', transactions.slice(0, 3).map(t => t.transactionDate));
           
           if (transactions.length === 0) {
             toast.error('No valid transactions found in CSV. Check console for details.');
@@ -286,7 +308,7 @@ export function BankingViewEnhanced() {
             return;
           }
 
-          toast.success(`Found ${transactions.length} transactions, importing...`);
+          // Import silently, success toast will show after mutation completes
           bulkImport.mutate({ transactions });
         } catch (error) {
           console.error('CSV parsing error:', error);
