@@ -19,6 +19,21 @@ import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const CATEGORIES = ['Materials', 'Labor', 'Fuel', 'Permit Fees', 'Marketing', 'Rent', 'Insurance', 'Miscellaneous', 'Income'];
 
@@ -50,6 +65,10 @@ export function BankingViewEnhanced() {
   const [viewMode, setViewMode] = useState<ViewMode>('summary');
   const [searchQuery, setSearchQuery] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [showDateDialog, setShowDateDialog] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [statementYear, setStatementYear] = useState(new Date().getFullYear().toString());
+  const [statementMonth, setStatementMonth] = useState((new Date().getMonth() + 1).toString());
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
   const { data: jobs = [] } = trpc.crm.getLeads.useQuery({});
@@ -144,12 +163,19 @@ export function BankingViewEnhanced() {
     });
   };
 
-  const processFile = (file: File) => {
+  const processFile = (file: File, year?: string, month?: string) => {
     const isCSV = file.name.endsWith('.csv');
     const isPDF = file.name.endsWith('.pdf');
 
     if (!isCSV && !isPDF) {
       toast.error('Please upload a CSV or PDF file');
+      return;
+    }
+
+    // For PDF files, ask for month/year if not provided
+    if (isPDF && (!year || !month)) {
+      setPendingFile(file);
+      setShowDateDialog(true);
       return;
     }
 
@@ -196,8 +222,6 @@ export function BankingViewEnhanced() {
 
       reader.readAsText(file);
     } else if (isPDF) {
-      // For PDF files, we'll use a simple text extraction approach
-      // Note: Full PDF parsing would require a library like pdf.js
       toast.info('PDF parsing: Extracting transactions...');
       
       const reader = new FileReader();
@@ -205,52 +229,84 @@ export function BankingViewEnhanced() {
         try {
           const arrayBuffer = e.target?.result as ArrayBuffer;
           const text = new TextDecoder().decode(arrayBuffer);
-          
-          // Simple pattern matching for common bank statement formats
-          // This is a basic implementation - you may need to adjust based on your bank's PDF format
-          const lines = text.split('\n').filter(line => line.trim());
+          const lines = text.split('\n').map(line => line.trim()).filter(line => line);
           const transactions: any[] = [];
           
-          // Look for lines with date patterns (MM/DD/YYYY or YYYY-MM-DD) followed by description and amount
-          const datePattern = /(\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})/;
-          const amountPattern = /[-+]?\$?([\d,]+\.\d{2})/;
+          // Parse Chase bank statement format
+          // Look for date pattern: MM/DD (without year, we'll add it from the dialog)
+          const datePattern = /^(\d{2}\/\d{2})\s+(.+?)\s+([\d,]+\.\d{2})$/;
           
-          for (const line of lines) {
-            const dateMatch = line.match(datePattern);
-            const amountMatch = line.match(amountPattern);
+          // Determine if we're in deposits or checks section
+          let isDepositsSection = false;
+          let isChecksSection = false;
+          
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
             
-            if (dateMatch && amountMatch) {
-              const date = dateMatch[0];
-              const amountStr = amountMatch[1].replace(/,/g, '');
-              const amount = parseFloat(amountStr) * (line.includes('-') ? -1 : 1);
+            // Track which section we're in
+            if (line.includes('DEPOSITS AND ADDITIONS')) {
+              isDepositsSection = true;
+              isChecksSection = false;
+              continue;
+            }
+            if (line.includes('CHECKS PAID') || line.includes('WITHDRAWALS')) {
+              isDepositsSection = false;
+              isChecksSection = true;
+              continue;
+            }
+            if (line.includes('Total Deposits') || line.includes('Total Checks') || line.includes('DAILY BALANCE')) {
+              isDepositsSection = false;
+              isChecksSection = false;
+              continue;
+            }
+            
+            // Try to match transaction line
+            const match = line.match(datePattern);
+            if (match) {
+              const [, dateStr, description, amountStr] = match;
+              const amount = parseFloat(amountStr.replace(/,/g, ''));
               
-              // Extract description (text between date and amount)
-              const dateIndex = line.indexOf(dateMatch[0]);
-              const amountIndex = line.indexOf(amountMatch[0]);
-              const description = line.substring(dateIndex + dateMatch[0].length, amountIndex).trim();
+              // Build full date with year from dialog
+              const [monthDay, day] = dateStr.split('/');
+              const fullDate = `${year}-${monthDay.padStart(2, '0')}-${day.padStart(2, '0')}`;
               
-              if (description && amount !== 0) {
+              if (amount > 0) {
                 transactions.push({
-                  transactionDate: date,
-                  description: description || 'PDF Transaction',
-                  amount: amount,
-                  bankAccount: 'PDF Import',
+                  transactionDate: fullDate,
+                  description: description.trim(),
+                  amount: isChecksSection ? -amount : amount,
+                  bankAccount: 'Chase Business Checking',
                   referenceNumber: undefined,
                 });
+              }
+            } else {
+              // Handle multi-line descriptions (Chase format)
+              // If previous line was a date and this line doesn't start with a date, it's a continuation
+              if (i > 0 && transactions.length > 0) {
+                const prevLine = lines[i - 1];
+                if (prevLine.match(/^\d{2}\/\d{2}/)) {
+                  // Check if current line is a continuation (no date pattern)
+                  if (!line.match(/^\d{2}\/\d{2}/) && !line.match(/^[A-Z\s]+$/)) {
+                    // Append to last transaction description
+                    const lastTx = transactions[transactions.length - 1];
+                    lastTx.description += ' ' + line;
+                  }
+                }
               }
             }
           }
           
           if (transactions.length === 0) {
-            toast.error('No valid transactions found in PDF. Try CSV format for better accuracy.');
+            toast.error('No valid transactions found in PDF. Please check the format.');
             setIsUploading(false);
             return;
           }
           
-          toast.success(`Extracted ${transactions.length} transactions from PDF`);
+          toast.success(`Extracted ${transactions.length} transactions from ${MONTHS.find(m => m.value === month)?.label} ${year}`);
           bulkImport.mutate({ transactions });
         } catch (error) {
-          toast.error('Failed to parse PDF file. Please try CSV format.');
+          console.error('PDF parsing error:', error);
+          toast.error('Failed to parse PDF file. Please try again or use CSV format.');
           setIsUploading(false);
         }
       };
@@ -268,6 +324,14 @@ export function BankingViewEnhanced() {
     const file = event.target.files?.[0];
     if (!file) return;
     processFile(file);
+  };
+
+  const handleDateConfirm = () => {
+    if (pendingFile) {
+      setShowDateDialog(false);
+      processFile(pendingFile, statementYear, statementMonth);
+      setPendingFile(null);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -293,6 +357,12 @@ export function BankingViewEnhanced() {
     }
   };
 
+  const handleDialogCancel = () => {
+    setShowDateDialog(false);
+    setPendingFile(null);
+    setIsUploading(false);
+  };
+
   const handleUpload = () => {
     document.getElementById('bank-statement-upload')?.click();
   };
@@ -306,8 +376,71 @@ export function BankingViewEnhanced() {
   }
 
   return (
-    <div className="mt-6 space-y-6">
-      {/* Header with Filters */}
+    <>
+      {/* Month/Year Selection Dialog for PDF Upload */}
+      <Dialog open={showDateDialog} onOpenChange={setShowDateDialog}>
+        <DialogContent className="bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Select Statement Period</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Which month and year does this bank statement belong to?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm text-slate-300">Month</label>
+              <Select value={statementMonth} onValueChange={setStatementMonth}>
+                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  {MONTHS.map((month) => (
+                    <SelectItem key={month.value} value={month.value} className="text-white">
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm text-slate-300">Year</label>
+              <Select value={statementYear} onValueChange={setStatementYear}>
+                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  {YEARS.map((year) => (
+                    <SelectItem key={year} value={year} className="text-white">
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleDialogCancel}
+              className="border-slate-700 text-slate-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDateConfirm}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              Import Transactions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="mt-6 space-y-6">
+        {/* Header with Filters */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold text-white">Banking & Statements</h2>
@@ -742,6 +875,7 @@ export function BankingViewEnhanced() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </>
   );
 }
