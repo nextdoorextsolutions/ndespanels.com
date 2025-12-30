@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -26,6 +26,8 @@ const Clients: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<number | null>(null);
+  const [clientLocations, setClientLocations] = useState<Array<{id: number, lat: number, lng: number, name: string, address: string}>>([]);
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   // Fetch real jobs data and filter to client stages only
   const { data: allJobs, isLoading } = trpc.crm.getLeads.useQuery({});
@@ -90,9 +92,48 @@ const Clients: React.FC = () => {
     }
   ];
 
+  // Geocode client addresses to get coordinates
+  useEffect(() => {
+    const geocodeClients = async () => {
+      if (!clients.length || !window.google?.maps) return;
+      
+      setIsGeocoding(true);
+      const geocoder = new google.maps.Geocoder();
+      const locations: Array<{id: number, lat: number, lng: number, name: string, address: string}> = [];
+      
+      for (const client of clients) {
+        try {
+          const result = await geocoder.geocode({ address: client.address });
+          if (result.results[0]) {
+            const location = result.results[0].geometry.location;
+            locations.push({
+              id: client.id,
+              lat: location.lat(),
+              lng: location.lng(),
+              name: client.fullName,
+              address: client.address
+            });
+          }
+        } catch (error) {
+          console.error(`Failed to geocode address for ${client.fullName}:`, error);
+        }
+      }
+      
+      setClientLocations(locations);
+      setIsGeocoding(false);
+    };
+    
+    geocodeClients();
+  }, [clients]);
+
   // Calculate map center from clients with coordinates
   const getMapCenter = () => {
-    // Default center - jobs don't have lat/lng yet, will need geocoding in future
+    if (clientLocations.length > 0) {
+      // Calculate center from all client locations
+      const avgLat = clientLocations.reduce((sum, loc) => sum + loc.lat, 0) / clientLocations.length;
+      const avgLng = clientLocations.reduce((sum, loc) => sum + loc.lng, 0) / clientLocations.length;
+      return { lat: avgLat, lng: avgLng };
+    }
     return { lat: 39.8, lng: -89.65 }; // Default to Springfield, IL
   };
 
@@ -285,23 +326,43 @@ const Clients: React.FC = () => {
           `}>
               <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}>
                 <Map
-                  defaultCenter={getMapCenter()}
-                  defaultZoom={12}
+                  center={getMapCenter()}
+                  zoom={clientLocations.length > 1 ? 10 : 12}
                   mapId="dark-map"
                   styles={darkMapStyle}
                   disableDefaultUI={true}
                   gestureHandling="greedy"
                   className="w-full h-full"
                 >
-                  {/* TODO: Add geocoding to get lat/lng from addresses, then render markers */}
-                  {/* Jobs don't have latitude/longitude fields yet - will need geocoding service */}
+                  {clientLocations.map((location) => (
+                    <AdvancedMarker
+                      key={location.id}
+                      position={{ lat: location.lat, lng: location.lng }}
+                      onClick={() => setSelectedClient(location.id)}
+                    >
+                      <Pin
+                        background={selectedClient === location.id ? '#06b6d4' : '#8b5cf6'}
+                        borderColor={selectedClient === location.id ? '#0891b2' : '#7c3aed'}
+                        glyphColor={'#fff'}
+                      />
+                    </AdvancedMarker>
+                  ))}
                 </Map>
               </APIProvider>
 
               {/* Map Controls Overlay */}
-              <div className="absolute top-4 right-4 flex flex-col gap-2 z-10 pointer-events-none">
-                  <div className="bg-[#1e293b]/90 backdrop-blur-sm p-2 rounded-lg border border-gray-700 text-gray-300 shadow-lg">
+              <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+                  <div className="bg-[#1e293b]/90 backdrop-blur-sm p-2 rounded-lg border border-gray-700 text-gray-300 shadow-lg pointer-events-none">
                       <Navigation className="w-5 h-5" />
+                  </div>
+                  {isGeocoding && (
+                    <div className="bg-[#1e293b]/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-gray-700 text-gray-300 shadow-lg text-xs flex items-center gap-2">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Locating clients...
+                    </div>
+                  )}
+                  <div className="bg-[#1e293b]/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-gray-700 text-gray-300 shadow-lg text-xs">
+                    {clientLocations.length} of {clients.length} located
                   </div>
               </div>
           </div>
