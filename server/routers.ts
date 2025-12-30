@@ -40,6 +40,7 @@ import { leadsRouter } from "./api/routers/leads";
 import { eventsRouter } from "./api/routers/events";
 import { paymentsRouter } from "./api/routers/payments";
 import { bankingRouter } from "./api/routers/banking";
+import { bankAccountsRouter } from "./api/routers/bankAccounts";
 import { inventoryRouter } from "./api/routers/inventory";
 import { billsRouter } from "./api/routers/bills";
 import { reportsRouter } from "./api/routers/reports";
@@ -66,6 +67,7 @@ export const appRouter = router({
   commissions: commissionsRouter,
   payments: paymentsRouter,
   banking: bankingRouter,
+  bankAccounts: bankAccountsRouter,
   inventory: inventoryRouter,
   bills: billsRouter,
   reports: reportsRouter,

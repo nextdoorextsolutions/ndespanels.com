@@ -12,6 +12,7 @@ export const bankingRouter = router({
       startDate: z.string().optional(),
       endDate: z.string().optional(),
       category: z.string().optional(),
+      accountId: z.number().optional(),
     }).optional())
     .query(async ({ input }) => {
       const db = await getDb();
@@ -33,6 +34,10 @@ export const bankingRouter = router({
       
       if (input?.category) {
         conditions.push(eq(bankTransactions.category, input.category));
+      }
+      
+      if (input?.accountId) {
+        conditions.push(eq(bankTransactions.accountId, input.accountId));
       }
 
       const transactions = await db

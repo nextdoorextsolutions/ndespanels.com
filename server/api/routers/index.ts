@@ -36,6 +36,7 @@ export { analyticsRouter } from "./analytics";
 export { commissionsRouter } from "./commissions";
 export { reportsRouter } from "./reports";
 export { bankingRouter } from "./banking";
+export { bankAccountsRouter } from "./bankAccounts";
 export { inventoryRouter } from "./inventory";
 export { billsRouter } from "./bills";
 

@@ -758,6 +758,29 @@ export type SystemCache = typeof systemCache.$inferSelect;
 export type InsertSystemCache = typeof systemCache.$inferInsert;
 
 /**
+ * Bank Accounts - For managing checking, savings, credit cards, and lines of credit
+ */
+export const bankAccountTypeEnum = pgEnum("bank_account_type", ["checking", "savings", "credit_card", "line_of_credit"]);
+
+export const bankAccounts = pgTable("bank_accounts", {
+  id: serial("id").primaryKey(),
+  accountName: varchar("account_name", { length: 255 }).notNull(),
+  accountType: bankAccountTypeEnum("account_type").notNull().default("checking"),
+  accountNumberLast4: varchar("account_number_last4", { length: 4 }),
+  institutionName: varchar("institution_name", { length: 255 }),
+  creditLimit: numeric("credit_limit", { precision: 12, scale: 2 }),
+  currentBalance: numeric("current_balance", { precision: 12, scale: 2 }).default("0"),
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type BankAccount = typeof bankAccounts.$inferSelect;
+export type InsertBankAccount = typeof bankAccounts.$inferInsert;
+
+/**
  * Bank Transactions - For tracking bank statement imports and reconciliation
  */
 export const bankTransactionStatusEnum = pgEnum("bank_transaction_status", ["pending", "reconciled", "ignored"]);
@@ -769,6 +792,7 @@ export const bankTransactions = pgTable("bank_transactions", {
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   category: varchar("category", { length: 100 }),
   projectId: integer("project_id").references(() => reportRequests.id, { onDelete: "set null" }),
+  accountId: integer("account_id").references(() => bankAccounts.id, { onDelete: "set null" }),
   status: bankTransactionStatusEnum("status").default("pending"),
   bankAccount: varchar("bank_account", { length: 100 }),
   referenceNumber: varchar("reference_number", { length: 100 }),

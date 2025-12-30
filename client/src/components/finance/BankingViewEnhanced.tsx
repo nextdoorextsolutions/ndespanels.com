@@ -13,8 +13,12 @@ import {
   PieChart,
   BarChart3,
   List,
-  Filter
+  Filter,
+  CreditCard,
+  Wallet,
+  Building2
 } from 'lucide-react';
+import { AccountManagement } from './AccountManagement';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,7 +58,7 @@ const MONTHS = [
 
 const YEARS = ['2024', '2025', '2026', '2027'];
 
-type ViewMode = 'summary' | 'detailed' | 'category' | 'monthly';
+type ViewMode = 'summary' | 'detailed' | 'category' | 'monthly' | 'accounts';
 
 export function BankingViewEnhanced() {
   const [isUploading, setIsUploading] = useState(false);
@@ -72,6 +76,8 @@ export function BankingViewEnhanced() {
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
   const { data: jobs = [] } = trpc.crm.getLeads.useQuery({});
+  const { data: accounts = [] } = trpc.bankAccounts.getAll.useQuery({});
+  const { data: accountStats } = trpc.bankAccounts.getStats.useQuery();
   const utils = trpc.useUtils();
 
   const reconcile = trpc.banking.reconcile.useMutation({
@@ -164,11 +170,18 @@ export function BankingViewEnhanced() {
   };
 
   const processFile = (file: File, year?: string, month?: string) => {
-    const isCSV = file.name.endsWith('.csv');
-    const isPDF = file.name.endsWith('.pdf');
+    const fileName = file.name.toLowerCase();
+    console.log('Processing file:', file.name, '| Lowercase:', fileName);
+    
+    const isCSV = fileName.endsWith('.csv');
+    const isPDF = fileName.endsWith('.pdf');
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    
+    console.log('File type detection:', { isCSV, isPDF, isExcel });
 
-    if (!isCSV && !isPDF) {
-      toast.error('Please upload a CSV or PDF file');
+    if (!isCSV && !isPDF && !isExcel) {
+      console.log('File rejected - extension not recognized');
+      toast.error(`File "${file.name}" not recognized. Please upload a CSV, Excel, or PDF file.`);
       return;
     }
 
@@ -181,7 +194,7 @@ export function BankingViewEnhanced() {
 
     setIsUploading(true);
 
-    if (isCSV) {
+    if (isCSV || isExcel) {
       const reader = new FileReader();
 
       reader.onload = (e) => {
@@ -556,7 +569,7 @@ export function BankingViewEnhanced() {
           <input
             id="bank-statement-upload"
             type="file"
-            accept=".csv,.pdf"
+            accept=".csv,.xlsx,.xls,.pdf"
             onChange={handleFileUpload}
             className="hidden"
           />
@@ -588,10 +601,21 @@ export function BankingViewEnhanced() {
       </div>
 
       {/* View Mode Tabs */}
-      <div className="flex gap-2 border-b border-slate-700 pb-2">
+      <div className="flex gap-2 border-b border-slate-700 pb-2 overflow-x-auto">
+        <button
+          onClick={() => setViewMode('accounts')}
+          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+            viewMode === 'accounts' 
+              ? 'bg-slate-800 text-cyan-400 border-b-2 border-cyan-400' 
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Wallet size={16} />
+          Accounts
+        </button>
         <button
           onClick={() => setViewMode('summary')}
-          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
             viewMode === 'summary' 
               ? 'bg-slate-800 text-cyan-400 border-b-2 border-cyan-400' 
               : 'text-slate-400 hover:text-white'
@@ -602,7 +626,7 @@ export function BankingViewEnhanced() {
         </button>
         <button
           onClick={() => setViewMode('detailed')}
-          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
             viewMode === 'detailed' 
               ? 'bg-slate-800 text-cyan-400 border-b-2 border-cyan-400' 
               : 'text-slate-400 hover:text-white'
@@ -613,7 +637,7 @@ export function BankingViewEnhanced() {
         </button>
         <button
           onClick={() => setViewMode('category')}
-          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
             viewMode === 'category' 
               ? 'bg-slate-800 text-cyan-400 border-b-2 border-cyan-400' 
               : 'text-slate-400 hover:text-white'
@@ -624,7 +648,7 @@ export function BankingViewEnhanced() {
         </button>
         <button
           onClick={() => setViewMode('monthly')}
-          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
             viewMode === 'monthly' 
               ? 'bg-slate-800 text-cyan-400 border-b-2 border-cyan-400' 
               : 'text-slate-400 hover:text-white'
@@ -634,6 +658,250 @@ export function BankingViewEnhanced() {
           Monthly Trends
         </button>
       </div>
+
+      {/* Accounts View */}
+      {viewMode === 'accounts' && (
+        <div className="space-y-6">
+          {/* Account Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-3 bg-cyan-500/10 rounded-xl">
+                    <Building2 className="w-6 h-6 text-cyan-400" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Bank Accounts</p>
+                    <p className="text-2xl font-bold text-white">
+                      {accountStats?.byType.checking + accountStats?.byType.savings || 0}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                  <p className="text-xs text-slate-400">Total Balance</p>
+                  <p className="text-lg font-bold text-emerald-400">
+                    ${accounts
+                      .filter(a => a.accountType === 'checking' || a.accountType === 'savings')
+                      .reduce((sum, a) => sum + Number(a.currentBalance || 0), 0)
+                      .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-900/30 to-slate-800 border-purple-700/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-3 bg-purple-500/10 rounded-xl">
+                    <CreditCard className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Credit Cards</p>
+                    <p className="text-2xl font-bold text-white">
+                      {accountStats?.byType.credit_card || 0}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                  <p className="text-xs text-slate-400">Available Credit</p>
+                  <p className="text-lg font-bold text-cyan-400">
+                    ${accounts
+                      .filter(a => a.accountType === 'credit_card')
+                      .reduce((sum, a) => sum + (Number(a.creditLimit || 0) - Math.abs(Number(a.currentBalance || 0))), 0)
+                      .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-cyan-900/30 to-slate-800 border-cyan-700/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-3 bg-cyan-500/10 rounded-xl">
+                    <TrendingUp className="w-6 h-6 text-cyan-400" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Lines of Credit</p>
+                    <p className="text-2xl font-bold text-white">
+                      {accountStats?.byType.line_of_credit || 0}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                  <p className="text-xs text-slate-400">Available Credit</p>
+                  <p className="text-lg font-bold text-cyan-400">
+                    ${accounts
+                      .filter(a => a.accountType === 'line_of_credit')
+                      .reduce((sum, a) => sum + (Number(a.creditLimit || 0) - Math.abs(Number(a.currentBalance || 0))), 0)
+                      .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Credit Cards Section */}
+          {accounts.filter(a => a.accountType === 'credit_card').length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-purple-400" />
+                Credit Cards
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {accounts
+                  .filter(a => a.accountType === 'credit_card')
+                  .map((account) => {
+                    const balance = Math.abs(Number(account.currentBalance || 0));
+                    const limit = Number(account.creditLimit || 0);
+                    const available = limit - balance;
+                    const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+                    const utilizationColor = utilization > 80 ? 'text-red-400' : utilization > 50 ? 'text-yellow-400' : 'text-emerald-400';
+                    const barColor = utilization > 80 ? 'bg-red-500' : utilization > 50 ? 'bg-yellow-500' : 'bg-emerald-500';
+
+                    return (
+                      <Card key={account.id} className="bg-gradient-to-br from-purple-900/20 to-slate-900 border-purple-700/30 hover:border-purple-600/50 transition-all">
+                        <CardContent className="pt-6">
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="text-lg font-bold text-white">{account.accountName}</h4>
+                                <p className="text-sm text-slate-400">
+                                  {account.institutionName}
+                                  {account.accountNumberLast4 && ` •••• ${account.accountNumberLast4}`}
+                                </p>
+                              </div>
+                              <div className="p-2 bg-purple-500/10 rounded-lg">
+                                <CreditCard className="w-5 h-5 text-purple-400" />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-xs text-slate-400">Current Balance</p>
+                                <p className="text-xl font-bold text-red-400">
+                                  ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Available Credit</p>
+                                <p className="text-xl font-bold text-emerald-400">
+                                  ${available.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <p className="text-xs text-slate-400">Credit Utilization</p>
+                                <p className={`text-sm font-bold ${utilizationColor}`}>
+                                  {utilization.toFixed(1)}%
+                                </p>
+                              </div>
+                              <div className="w-full bg-slate-800 rounded-full h-2">
+                                <div 
+                                  className={`${barColor} h-2 rounded-full transition-all`}
+                                  style={{ width: `${Math.min(utilization, 100)}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-slate-500 mt-1">
+                                ${limit.toLocaleString(undefined, { minimumFractionDigits: 2 })} limit
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Lines of Credit Section */}
+          {accounts.filter(a => a.accountType === 'line_of_credit').length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-cyan-400" />
+                Lines of Credit
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {accounts
+                  .filter(a => a.accountType === 'line_of_credit')
+                  .map((account) => {
+                    const balance = Math.abs(Number(account.currentBalance || 0));
+                    const limit = Number(account.creditLimit || 0);
+                    const available = limit - balance;
+                    const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+                    const utilizationColor = utilization > 80 ? 'text-red-400' : utilization > 50 ? 'text-yellow-400' : 'text-emerald-400';
+                    const barColor = utilization > 80 ? 'bg-red-500' : utilization > 50 ? 'bg-yellow-500' : 'bg-emerald-500';
+
+                    return (
+                      <Card key={account.id} className="bg-gradient-to-br from-cyan-900/20 to-slate-900 border-cyan-700/30 hover:border-cyan-600/50 transition-all">
+                        <CardContent className="pt-6">
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="text-lg font-bold text-white">{account.accountName}</h4>
+                                <p className="text-sm text-slate-400">
+                                  {account.institutionName}
+                                  {account.accountNumberLast4 && ` •••• ${account.accountNumberLast4}`}
+                                </p>
+                              </div>
+                              <div className="p-2 bg-cyan-500/10 rounded-lg">
+                                <TrendingUp className="w-5 h-5 text-cyan-400" />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-xs text-slate-400">Amount Drawn</p>
+                                <p className="text-xl font-bold text-red-400">
+                                  ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Available</p>
+                                <p className="text-xl font-bold text-emerald-400">
+                                  ${available.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <p className="text-xs text-slate-400">Line Utilization</p>
+                                <p className={`text-sm font-bold ${utilizationColor}`}>
+                                  {utilization.toFixed(1)}%
+                                </p>
+                              </div>
+                              <div className="w-full bg-slate-800 rounded-full h-2">
+                                <div 
+                                  className={`${barColor} h-2 rounded-full transition-all`}
+                                  style={{ width: `${Math.min(utilization, 100)}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-slate-500 mt-1">
+                                ${limit.toLocaleString(undefined, { minimumFractionDigits: 2 })} total line
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Full Account Management */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-cyan-400" />
+              All Accounts
+            </h3>
+            <AccountManagement />
+          </div>
+        </div>
+      )}
 
       {/* Summary View */}
       {viewMode === 'summary' && (
