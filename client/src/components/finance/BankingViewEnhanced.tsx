@@ -49,6 +49,7 @@ export function BankingViewEnhanced() {
   const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString());
   const [viewMode, setViewMode] = useState<ViewMode>('summary');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
   const { data: jobs = [] } = trpc.crm.getLeads.useQuery({});
@@ -143,55 +144,153 @@ export function BankingViewEnhanced() {
     });
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const processFile = (file: File) => {
+    const isCSV = file.name.endsWith('.csv');
+    const isPDF = file.name.endsWith('.pdf');
 
-    if (!file.name.endsWith('.csv')) {
-      toast.error('Please upload a CSV file');
+    if (!isCSV && !isPDF) {
+      toast.error('Please upload a CSV or PDF file');
       return;
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
 
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const lines = text.split('\n').filter(line => line.trim());
-        
-        // Skip header row and parse CSV
-        const transactions = lines.slice(1).map(line => {
-          const [date, description, amount, account, reference] = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+    if (isCSV) {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const lines = text.split('\n').filter(line => line.trim());
           
-          return {
-            transactionDate: date,
-            description: description || 'Unknown',
-            amount: parseFloat(amount) || 0,
-            bankAccount: account,
-            referenceNumber: reference,
-          };
-        }).filter(t => t.amount !== 0);
+          // Skip header row and parse CSV
+          const transactions = lines.slice(1).map(line => {
+            const [date, description, amount, account, reference] = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+            
+            return {
+              transactionDate: date,
+              description: description || 'Unknown',
+              amount: parseFloat(amount) || 0,
+              bankAccount: account,
+              referenceNumber: reference,
+            };
+          }).filter(t => t.amount !== 0);
 
-        if (transactions.length === 0) {
-          toast.error('No valid transactions found in CSV');
+          if (transactions.length === 0) {
+            toast.error('No valid transactions found in CSV');
+            setIsUploading(false);
+            return;
+          }
+
+          bulkImport.mutate({ transactions });
+        } catch (error) {
+          toast.error('Failed to parse CSV file. Please check the format.');
           setIsUploading(false);
-          return;
         }
+      };
 
-        bulkImport.mutate({ transactions });
-      } catch (error) {
-        toast.error('Failed to parse CSV file. Please check the format.');
+      reader.onerror = () => {
+        toast.error('Failed to read file');
         setIsUploading(false);
-      }
-    };
+      };
 
-    reader.onerror = () => {
-      toast.error('Failed to read file');
-      setIsUploading(false);
-    };
+      reader.readAsText(file);
+    } else if (isPDF) {
+      // For PDF files, we'll use a simple text extraction approach
+      // Note: Full PDF parsing would require a library like pdf.js
+      toast.info('PDF parsing: Extracting transactions...');
+      
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const text = new TextDecoder().decode(arrayBuffer);
+          
+          // Simple pattern matching for common bank statement formats
+          // This is a basic implementation - you may need to adjust based on your bank's PDF format
+          const lines = text.split('\n').filter(line => line.trim());
+          const transactions: any[] = [];
+          
+          // Look for lines with date patterns (MM/DD/YYYY or YYYY-MM-DD) followed by description and amount
+          const datePattern = /(\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})/;
+          const amountPattern = /[-+]?\$?([\d,]+\.\d{2})/;
+          
+          for (const line of lines) {
+            const dateMatch = line.match(datePattern);
+            const amountMatch = line.match(amountPattern);
+            
+            if (dateMatch && amountMatch) {
+              const date = dateMatch[0];
+              const amountStr = amountMatch[1].replace(/,/g, '');
+              const amount = parseFloat(amountStr) * (line.includes('-') ? -1 : 1);
+              
+              // Extract description (text between date and amount)
+              const dateIndex = line.indexOf(dateMatch[0]);
+              const amountIndex = line.indexOf(amountMatch[0]);
+              const description = line.substring(dateIndex + dateMatch[0].length, amountIndex).trim();
+              
+              if (description && amount !== 0) {
+                transactions.push({
+                  transactionDate: date,
+                  description: description || 'PDF Transaction',
+                  amount: amount,
+                  bankAccount: 'PDF Import',
+                  referenceNumber: undefined,
+                });
+              }
+            }
+          }
+          
+          if (transactions.length === 0) {
+            toast.error('No valid transactions found in PDF. Try CSV format for better accuracy.');
+            setIsUploading(false);
+            return;
+          }
+          
+          toast.success(`Extracted ${transactions.length} transactions from PDF`);
+          bulkImport.mutate({ transactions });
+        } catch (error) {
+          toast.error('Failed to parse PDF file. Please try CSV format.');
+          setIsUploading(false);
+        }
+      };
+      
+      reader.onerror = () => {
+        toast.error('Failed to read PDF file');
+        setIsUploading(false);
+      };
+      
+      reader.readAsArrayBuffer(file);
+    }
+  };
 
-    reader.readAsText(file);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    processFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
   };
 
   const handleUpload = () => {
@@ -254,20 +353,34 @@ export function BankingViewEnhanced() {
           <input
             id="bank-statement-upload"
             type="file"
-            accept=".csv"
+            accept=".csv,.pdf"
             onChange={handleFileUpload}
             className="hidden"
           />
 
-          {/* Upload Button */}
-          <Button 
-            onClick={handleUpload}
-            disabled={isUploading}
-            className="bg-purple-600 hover:bg-purple-700"
+          {/* Upload Button with Drag & Drop */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`relative transition-all ${
+              isDragging ? 'scale-105' : ''
+            }`}
           >
-            <Upload size={16} className="mr-2" />
-            {isUploading ? 'Uploading...' : 'Upload Statement'}
-          </Button>
+            <Button 
+              onClick={handleUpload}
+              disabled={isUploading}
+              className={`bg-purple-600 hover:bg-purple-700 transition-all ${
+                isDragging ? 'ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-900' : ''
+              }`}
+            >
+              <Upload size={16} className="mr-2" />
+              {isUploading ? 'Uploading...' : isDragging ? 'Drop File Here' : 'Upload Statement'}
+            </Button>
+            {isDragging && (
+              <div className="absolute inset-0 border-2 border-dashed border-purple-400 rounded-lg pointer-events-none" />
+            )}
+          </div>
         </div>
       </div>
 
