@@ -251,7 +251,7 @@ export function BankingViewEnhanced() {
               console.error('Error parsing line', idx, ':', err);
               return null;
             }
-          }).filter(t => t !== null && t.amount !== 0);
+          }).filter((t): t is { transactionDate: string; description: string; amount: number; bankAccount: string; referenceNumber: undefined } => t !== null && t.amount !== 0);
 
           console.log('Parsed transactions:', transactions.length);
           
