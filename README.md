@@ -4,6 +4,48 @@ A comprehensive roofing CRM platform with job management, proposals, material or
 
 ## 🎨 Recent Updates (December 2024)
 
+### 👤 User Profile System & Messaging Enhancements (December 29, 2024)
+**Personalized User Experience with Avatars, Nicknames & Badges**
+
+#### User Profile Features
+- **Avatar Upload** - Users can set profile photos via URL (Imgur, Gravatar, etc.)
+- **Nickname System** - Custom display names shown in messages instead of full names
+- **Badge System** - Owner assigns achievement badges, users select which to display
+- **Profile Settings Component** - Dedicated UI for managing profile customization
+- **Badge Management** - Owner-only interface for assigning/removing badges
+
+#### Badge System
+- **10 Predefined Templates** - Top Performer 🏆, Team Player 🤝, Innovator 💡, Mentor 🎓, etc.
+- **Custom Badges** - Owners can create custom badges with emoji, name, and color
+- **User Selection** - Users choose which badge displays next to their name
+- **Badge Metadata** - Tracks who assigned badge and when
+- **Visual Display** - Badges show in messages with emoji, name, and custom colors
+
+#### Enhanced Message Display
+- **User Avatars** - Profile photos displayed in message threads
+- **NDES Logo** - System messages show branded "NDES" badge instead of generic "System"
+- **Badge Display** - Selected badges appear next to usernames with emoji and color
+- **Nickname Priority** - Shows nickname → name → email for user identification
+
+#### Messaging UI Improvements
+- **Filter Pills** - Quick filters for All, Files, Images message types
+- **Search Bar** - Real-time message text filtering
+- **Job Assets Sidebar** - Collapsible Sheet with grouped photos and documents
+- **Inline Attachments** - File previews directly in message cards
+- **Seamless Layout** - Single-column design, no horizontal scrolling
+
+#### Database Schema
+- **New User Fields**: `nickname` (varchar), `badges` (JSONB), `selectedBadge` (varchar)
+- **Migration**: `add_user_profiles_badges.sql`
+- **Badge Structure**: JSON objects with id, name, emoji, color, assignedBy, assignedAt
+
+#### New API Endpoints
+- `users.updateNickname` - Set custom display name
+- `users.updateAvatar` - Upload profile photo URL
+- `users.assignBadge` - Owner assigns badges to users
+- `users.removeBadge` - Owner removes badges from users
+- `users.selectBadge` - User selects which badge to display
+
 ### ⚡ Performance Optimizations (December 23, 2024)
 **60-70% Faster Load Times & Smoother Scrolling**
 
