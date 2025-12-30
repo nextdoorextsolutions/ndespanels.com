@@ -378,22 +378,14 @@ export default function ReportsNew() {
                 <div className="flex bg-slate-800 border border-slate-700 rounded-lg p-1">
                   <button
                     onClick={() => setActiveTab('analytics')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                      activeTab === 'analytics' 
-                        ? 'bg-[#00d4aa] text-black' 
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 bg-[#00d4aa] text-black"
                   >
                     <BarChart3 className="w-4 h-4" />
                     Analytics
                   </button>
                   <button
                     onClick={() => setActiveTab('financial')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                      activeTab === 'financial' 
-                        ? 'bg-[#00d4aa] text-black' 
-                        : 'text-slate-400 hover:text-white'
-                    }`}
+                    className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-slate-400 hover:text-white"
                   >
                     <Receipt className="w-4 h-4" />
                     Financial Reports
