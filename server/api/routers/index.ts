@@ -34,6 +34,10 @@ export { invoicesRouter } from "./invoices";
 export { messagingRouter } from "./messaging";
 export { analyticsRouter } from "./analytics";
 export { commissionsRouter } from "./commissions";
+export { reportsRouter } from "./reports";
+export { bankingRouter } from "./banking";
+export { inventoryRouter } from "./inventory";
+export { billsRouter } from "./bills";
 
 // Re-export the main router (assembled in server/routers.ts)
 // The 'jobs' router is exposed as 'crm' for frontend compatibility
