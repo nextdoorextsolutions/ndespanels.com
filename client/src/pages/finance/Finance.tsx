@@ -9,7 +9,13 @@ import {
   MoreVertical,
   Wallet,
   Loader2,
-  LucideIcon
+  LucideIcon,
+  LayoutGrid,
+  FileText,
+  Landmark,
+  Package,
+  Receipt,
+  BarChart3
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -22,6 +28,10 @@ import {
 } from 'recharts';
 import { useFinanceMetrics } from '@/hooks/useFinanceMetrics';
 import { Sidebar } from '@/components/finance/Sidebar';
+import { InvoicesViewNDES } from '@/components/finance/InvoicesViewNDES';
+import { BankingViewNDES } from '@/components/finance/BankingViewNDES';
+import { InventoryViewNDES } from '@/components/finance/InventoryViewNDES';
+import { BillsViewNDES } from '@/components/finance/BillsViewNDES';
 
 // TypeScript Interfaces
 type InvoiceStatus = 'Paid' | 'Overdue' | 'Sent' | 'Draft';
@@ -58,6 +68,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
 
 export default function OwnerFinanceDashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'banking' | 'inventory' | 'bills'>('dashboard');
   const { data: metrics, isLoading, error } = useFinanceMetrics();
 
   // Calculate KPIs from real data
