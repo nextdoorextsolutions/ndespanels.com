@@ -296,7 +296,7 @@ SELECT
   -- Days since last contact
   CASE 
     WHEN last_contact_date IS NOT NULL 
-    THEN EXTRACT(DAY FROM (CURRENT_DATE - last_contact_date::date))::integer
+    THEN EXTRACT(DAY FROM (CURRENT_DATE - DATE(last_contact_date)))::integer
     ELSE NULL 
   END as days_since_contact
   
