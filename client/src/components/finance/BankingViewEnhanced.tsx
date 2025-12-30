@@ -228,76 +228,91 @@ export function BankingViewEnhanced() {
       reader.onload = async (e) => {
         try {
           const arrayBuffer = e.target?.result as ArrayBuffer;
-          const text = new TextDecoder().decode(arrayBuffer);
-          const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+          
+          // Extract text from PDF - PDFs contain binary data with text streams
+          // We'll look for text patterns in the binary data
+          const uint8Array = new Uint8Array(arrayBuffer);
+          let text = '';
+          
+          // Try to extract readable text from PDF binary
+          for (let i = 0; i < uint8Array.length; i++) {
+            const char = uint8Array[i];
+            // Only include printable ASCII characters and common whitespace
+            if ((char >= 32 && char <= 126) || char === 10 || char === 13) {
+              text += String.fromCharCode(char);
+            }
+          }
+          
+          console.log('Extracted text length:', text.length);
+          console.log('First 500 chars:', text.substring(0, 500));
+          
+          const lines = text.split(/[\r\n]+/).map(line => line.trim()).filter(line => line.length > 0);
           const transactions: any[] = [];
           
-          // Parse Chase bank statement format
-          // Look for date pattern: MM/DD (without year, we'll add it from the dialog)
-          const datePattern = /^(\d{2}\/\d{2})\s+(.+?)\s+([\d,]+\.\d{2})$/;
+          // More flexible pattern matching for Chase statements
+          // Pattern 1: Date at start with amount at end
+          const pattern1 = /(\d{2}\/\d{2})\s+(.+?)\s+([\d,]+\.\d{2})\s*$/;
+          // Pattern 2: Date followed by text with amount somewhere
+          const pattern2 = /(\d{2}\/\d{2})\s+(.+?)([\d,]+\.\d{2})/;
           
-          // Determine if we're in deposits or checks section
           let isDepositsSection = false;
           let isChecksSection = false;
+          
+          console.log('Total lines to parse:', lines.length);
           
           for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             
-            // Track which section we're in
-            if (line.includes('DEPOSITS AND ADDITIONS')) {
+            // Track sections
+            if (line.includes('DEPOSITS') && line.includes('ADDITIONS')) {
               isDepositsSection = true;
               isChecksSection = false;
+              console.log('Found DEPOSITS section at line', i);
               continue;
             }
-            if (line.includes('CHECKS PAID') || line.includes('WITHDRAWALS')) {
+            if (line.includes('CHECKS') && line.includes('PAID')) {
               isDepositsSection = false;
               isChecksSection = true;
+              console.log('Found CHECKS section at line', i);
               continue;
             }
-            if (line.includes('Total Deposits') || line.includes('Total Checks') || line.includes('DAILY BALANCE')) {
+            if (line.includes('Total Deposits') || line.includes('Total Checks')) {
               isDepositsSection = false;
               isChecksSection = false;
               continue;
             }
             
-            // Try to match transaction line
-            const match = line.match(datePattern);
+            // Skip if not in a transaction section
+            if (!isDepositsSection && !isChecksSection) continue;
+            
+            // Try both patterns
+            let match = line.match(pattern1) || line.match(pattern2);
+            
             if (match) {
               const [, dateStr, description, amountStr] = match;
               const amount = parseFloat(amountStr.replace(/,/g, ''));
               
-              // Build full date with year from dialog
-              const [monthDay, day] = dateStr.split('/');
-              const fullDate = `${year}-${monthDay.padStart(2, '0')}-${day.padStart(2, '0')}`;
-              
-              if (amount > 0) {
+              if (amount > 0 && dateStr.match(/^\d{2}\/\d{2}$/)) {
+                const [monthPart, day] = dateStr.split('/');
+                const fullDate = `${year}-${monthPart.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                
                 transactions.push({
                   transactionDate: fullDate,
-                  description: description.trim(),
+                  description: description.trim().substring(0, 200), // Limit description length
                   amount: isChecksSection ? -amount : amount,
                   bankAccount: 'Chase Business Checking',
                   referenceNumber: undefined,
                 });
-              }
-            } else {
-              // Handle multi-line descriptions (Chase format)
-              // If previous line was a date and this line doesn't start with a date, it's a continuation
-              if (i > 0 && transactions.length > 0) {
-                const prevLine = lines[i - 1];
-                if (prevLine.match(/^\d{2}\/\d{2}/)) {
-                  // Check if current line is a continuation (no date pattern)
-                  if (!line.match(/^\d{2}\/\d{2}/) && !line.match(/^[A-Z\s]+$/)) {
-                    // Append to last transaction description
-                    const lastTx = transactions[transactions.length - 1];
-                    lastTx.description += ' ' + line;
-                  }
-                }
+                
+                console.log('Found transaction:', { date: fullDate, desc: description.substring(0, 50), amount });
               }
             }
           }
           
+          console.log('Total transactions found:', transactions.length);
+          
           if (transactions.length === 0) {
-            toast.error('No valid transactions found in PDF. Please check the format.');
+            toast.error('No valid transactions found in PDF. Please check the format or try CSV.');
             setIsUploading(false);
             return;
           }
