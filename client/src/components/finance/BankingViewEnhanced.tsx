@@ -283,11 +283,21 @@ export function BankingViewEnhanced() {
               const description = cols[descIdx] || 'Unknown Transaction';
               const amountStr = cols[amountIdx] || '0';
               
+              // Parse date from MM/DD/YYYY to YYYY-MM-DD
+              let parsedDate = date;
+              if (date && date.includes('/')) {
+                const dateParts = date.split('/');
+                if (dateParts.length === 3) {
+                  const [month, day, year] = dateParts;
+                  parsedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                }
+              }
+              
               // Parse amount (remove $ and commas)
               const amount = parseFloat(amountStr.replace(/[$,]/g, '')) || 0;
               
               return {
-                transactionDate: date,
+                transactionDate: parsedDate,
                 description: description.replace(/^"|"$/g, ''),
                 amount: amount,
                 bankAccount: 'Chase Business Checking',
