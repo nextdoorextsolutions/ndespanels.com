@@ -64,6 +64,18 @@ export function BankingViewEnhanced() {
     },
   });
 
+  const bulkImport = trpc.banking.bulkImport.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Successfully imported ${data.count} transactions`);
+      utils.banking.invalidate();
+      setIsUploading(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to import transactions');
+      setIsUploading(false);
+    },
+  });
+
   // Filter transactions by year, month, and search
   const filteredTransactions = useMemo(() => {
     return transactions.filter((item) => {
@@ -131,12 +143,59 @@ export function BankingViewEnhanced() {
     });
   };
 
-  const handleUpload = () => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please upload a CSV file');
+      return;
+    }
+
     setIsUploading(true);
-    setTimeout(() => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        // Skip header row and parse CSV
+        const transactions = lines.slice(1).map(line => {
+          const [date, description, amount, account, reference] = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+          
+          return {
+            transactionDate: date,
+            description: description || 'Unknown',
+            amount: parseFloat(amount) || 0,
+            bankAccount: account,
+            referenceNumber: reference,
+          };
+        }).filter(t => t.amount !== 0);
+
+        if (transactions.length === 0) {
+          toast.error('No valid transactions found in CSV');
+          setIsUploading(false);
+          return;
+        }
+
+        bulkImport.mutate({ transactions });
+      } catch (error) {
+        toast.error('Failed to parse CSV file. Please check the format.');
+        setIsUploading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      toast.error('Failed to read file');
       setIsUploading(false);
-      toast.info('Bank statement upload feature coming soon');
-    }, 1500);
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleUpload = () => {
+    document.getElementById('bank-statement-upload')?.click();
   };
 
   if (isLoading) {
@@ -190,6 +249,15 @@ export function BankingViewEnhanced() {
               className="bg-slate-800 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-cyan-500 text-white w-64" 
             />
           </div>
+
+          {/* Hidden File Input */}
+          <input
+            id="bank-statement-upload"
+            type="file"
+            accept=".csv"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
 
           {/* Upload Button */}
           <Button 
