@@ -756,3 +756,107 @@ export const systemCache = pgTable("system_cache", {
 
 export type SystemCache = typeof systemCache.$inferSelect;
 export type InsertSystemCache = typeof systemCache.$inferInsert;
+
+/**
+ * Bank Transactions - For tracking bank statement imports and reconciliation
+ */
+export const bankTransactionStatusEnum = pgEnum("bank_transaction_status", ["pending", "reconciled", "ignored"]);
+
+export const bankTransactions = pgTable("bank_transactions", {
+  id: serial("id").primaryKey(),
+  transactionDate: timestamp("transaction_date").notNull(),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  category: varchar("category", { length: 100 }),
+  projectId: integer("project_id").references(() => reportRequests.id, { onDelete: "set null" }),
+  status: bankTransactionStatusEnum("status").default("pending"),
+  bankAccount: varchar("bank_account", { length: 100 }),
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  notes: text("notes"),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type BankTransaction = typeof bankTransactions.$inferSelect;
+export type InsertBankTransaction = typeof bankTransactions.$inferInsert;
+
+/**
+ * Inventory - Materials and supplies tracking
+ */
+export const inventory = pgTable("inventory", {
+  id: serial("id").primaryKey(),
+  itemName: varchar("item_name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }).notNull(),
+  sku: varchar("sku", { length: 100 }).unique(),
+  quantity: integer("quantity").default(0),
+  unitOfMeasure: varchar("unit_of_measure", { length: 50 }).default("unit"),
+  unitCost: numeric("unit_cost", { precision: 10, scale: 2 }),
+  reorderLevel: integer("reorder_level").default(0),
+  supplierName: varchar("supplier_name", { length: 255 }),
+  supplierContact: text("supplier_contact"),
+  location: varchar("location", { length: 255 }),
+  lastRestocked: timestamp("last_restocked"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Inventory = typeof inventory.$inferSelect;
+export type InsertInventory = typeof inventory.$inferInsert;
+
+/**
+ * Inventory Transactions - Track stock movements
+ */
+export const inventoryTransactionTypeEnum = pgEnum("inventory_transaction_type", ["purchase", "usage", "adjustment", "return"]);
+
+export const inventoryTransactions = pgTable("inventory_transactions", {
+  id: serial("id").primaryKey(),
+  inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+  transactionType: inventoryTransactionTypeEnum("transaction_type").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitCost: numeric("unit_cost", { precision: 10, scale: 2 }),
+  projectId: integer("project_id").references(() => reportRequests.id, { onDelete: "set null" }),
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  notes: text("notes"),
+  transactionDate: timestamp("transaction_date").defaultNow().notNull(),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type InventoryTransaction = typeof inventoryTransactions.$inferSelect;
+export type InsertInventoryTransaction = typeof inventoryTransactions.$inferInsert;
+
+/**
+ * Bills Payable - Vendor bills and payables management
+ */
+export const billStatusEnum = pgEnum("bill_status", ["pending", "approved", "paid", "overdue", "cancelled"]);
+
+export const billsPayable = pgTable("bills_payable", {
+  id: serial("id").primaryKey(),
+  billNumber: varchar("bill_number", { length: 100 }).unique(),
+  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
+  vendorEmail: varchar("vendor_email", { length: 320 }),
+  vendorPhone: varchar("vendor_phone", { length: 50 }),
+  billDate: timestamp("bill_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }).default("0"),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  status: billStatusEnum("status").default("pending"),
+  category: varchar("category", { length: 100 }),
+  projectId: integer("project_id").references(() => reportRequests.id, { onDelete: "set null" }),
+  paymentMethod: varchar("payment_method", { length: 50 }),
+  paymentDate: timestamp("payment_date"),
+  paymentReference: varchar("payment_reference", { length: 100 }),
+  lineItems: jsonb("line_items"),
+  notes: text("notes"),
+  attachmentUrl: text("attachment_url"),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type BillPayable = typeof billsPayable.$inferSelect;
+export type InsertBillPayable = typeof billsPayable.$inferInsert;
