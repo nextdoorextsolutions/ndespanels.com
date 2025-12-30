@@ -40,6 +40,8 @@ export const bankingRouter = router({
         conditions.push(eq(bankTransactions.accountId, input.accountId));
       }
 
+      console.log('[getAll] Querying transactions with conditions:', conditions.length);
+
       const transactions = await db
         .select({
           transaction: bankTransactions,
@@ -52,6 +54,11 @@ export const bankingRouter = router({
         .leftJoin(reportRequests, eq(bankTransactions.projectId, reportRequests.id))
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(bankTransactions.transactionDate));
+
+      console.log('[getAll] Retrieved', transactions.length, 'transactions');
+      if (transactions.length > 0) {
+        console.log('[getAll] Sample transaction:', transactions[0]);
+      }
 
       return transactions;
     }),
@@ -185,6 +192,10 @@ export const bankingRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      console.log('[bulkImport] Inserting', input.transactions.length, 'transactions');
+      console.log('[bulkImport] Sample transaction:', input.transactions[0]);
+      console.log('[bulkImport] User ID:', ctx.user.id);
+
       const transactions = await db
         .insert(bankTransactions)
         .values(
@@ -199,6 +210,9 @@ export const bankingRouter = router({
           }))
         )
         .returning();
+
+      console.log('[bulkImport] Successfully inserted', transactions.length, 'transactions');
+      console.log('[bulkImport] Sample inserted transaction:', transactions[0]);
 
       return { count: transactions.length, transactions };
     }),
