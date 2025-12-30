@@ -27,6 +27,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { useFinanceMetrics } from '@/hooks/useFinanceMetrics';
+import { useAuth } from '@/_core/hooks/useAuth';
 import { Sidebar } from '@/components/finance/Sidebar';
 import { InvoicesViewNDES } from '@/components/finance/InvoicesViewNDES';
 import { BankingViewNDES } from '@/components/finance/BankingViewNDES';
@@ -70,6 +71,10 @@ export default function OwnerFinanceDashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'banking' | 'inventory' | 'bills'>('dashboard');
   const { data: metrics, isLoading, error } = useFinanceMetrics();
+  const { user } = useAuth();
+  
+  // Check if user is owner
+  const isOwner = user?.role === 'owner';
 
   // Calculate KPIs from real data
   const KPIS = metrics ? [
@@ -212,40 +217,46 @@ export default function OwnerFinanceDashboard() {
               <FileText className="w-4 h-4" />
               Invoices
             </button>
-            <button 
-              onClick={() => setActiveTab('banking')} 
-              className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'banking' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-              }`}
-            >
-              <Landmark className="w-4 h-4" />
-              Banking
-            </button>
-            <button 
-              onClick={() => setActiveTab('inventory')} 
-              className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'inventory' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-              }`}
-            >
-              <Package className="w-4 h-4" />
-              Inventory
-            </button>
-            <button 
-              onClick={() => setActiveTab('bills')} 
-              className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'bills' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-              }`}
-            >
-              <Receipt className="w-4 h-4" />
-              Bills
-            </button>
+            {isOwner && (
+              <button 
+                onClick={() => setActiveTab('banking')} 
+                className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'banking' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                }`}
+              >
+                <Landmark className="w-4 h-4" />
+                Banking
+              </button>
+            )}
+            {isOwner && (
+              <button 
+                onClick={() => setActiveTab('inventory')} 
+                className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'inventory' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                Inventory
+              </button>
+            )}
+            {isOwner && (
+              <button 
+                onClick={() => setActiveTab('bills')} 
+                className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'bills' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                }`}
+              >
+                <Receipt className="w-4 h-4" />
+                Bills
+              </button>
+            )}
           </div>
 
           {/* Tab Content */}
           {activeTab === 'invoices' && <InvoicesViewNDES />}
-          {activeTab === 'banking' && <BankingViewNDES />}
-          {activeTab === 'inventory' && <InventoryViewNDES />}
-          {activeTab === 'bills' && <BillsViewNDES />}
+          {activeTab === 'banking' && isOwner && <BankingViewNDES />}
+          {activeTab === 'inventory' && isOwner && <InventoryViewNDES />}
+          {activeTab === 'bills' && isOwner && <BillsViewNDES />}
           
           {activeTab === 'dashboard' && (
             <>
