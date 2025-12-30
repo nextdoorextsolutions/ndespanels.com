@@ -14,7 +14,9 @@ import {
   Filter,
   Loader2,
   Calendar,
-  Zap
+  Zap,
+  BarChart3,
+  Receipt
 } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
@@ -24,6 +26,7 @@ import RevenueTypeChart from "@/components/crm/analytics/RevenueTypeChart";
 import TopSalesRepsChart from "@/components/crm/analytics/TopSalesRepsChart";
 import ActivityFeed from "@/components/crm/analytics/ActivityFeed";
 import AIInsightsBanner from "@/components/crm/analytics/AIInsightsBanner";
+import ReportsEnhanced from "./ReportsEnhanced";
 
 // Pipeline stages matching your 10-stage workflow
 const PIPELINE_STAGES = [
@@ -50,6 +53,7 @@ const CHART_COLORS = {
 };
 
 export default function ReportsNew() {
+  const [activeTab, setActiveTab] = useState<'analytics' | 'financial'>('analytics');
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -352,6 +356,11 @@ export default function ReportsNew() {
     );
   }
 
+  // If financial tab is active, render the enhanced reports component
+  if (activeTab === 'financial') {
+    return <ReportsEnhanced />;
+  }
+
   return (
     <CRMLayout>
       <div className="min-h-screen bg-slate-900 text-slate-100 relative">
@@ -365,6 +374,31 @@ export default function ReportsNew() {
               </div>
 
               <div className="flex items-center gap-3">
+                {/* Tab Switcher */}
+                <div className="flex bg-slate-800 border border-slate-700 rounded-lg p-1">
+                  <button
+                    onClick={() => setActiveTab('analytics')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                      activeTab === 'analytics' 
+                        ? 'bg-[#00d4aa] text-black' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Analytics
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('financial')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                      activeTab === 'financial' 
+                        ? 'bg-[#00d4aa] text-black' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Receipt className="w-4 h-4" />
+                    Financial Reports
+                  </button>
+                </div>
                 <Button 
                   onClick={exportToCSV} 
                   variant="outline" 
