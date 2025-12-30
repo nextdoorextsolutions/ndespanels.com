@@ -225,7 +225,7 @@ export function BillsViewNDES() {
                     </div>
                   </td>
                   <td className="px-8 py-6">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusColor(bill.status)}`}>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusColor(bill.status ?? 'pending')}`}>
                       {bill.status}
                     </span>
                   </td>

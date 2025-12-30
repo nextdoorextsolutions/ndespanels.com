@@ -11,7 +11,7 @@ export function BankingViewNDES() {
   const [selectedProject, setSelectedProject] = useState<Record<number, number | undefined>>({});
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
-  const { data: jobs = [] } = trpc.crm.getAll.useQuery();
+  const { data: jobs = [] } = trpc.crm.getLeads.useQuery({});
   const utils = trpc.useUtils();
 
   const reconcile = trpc.banking.reconcile.useMutation({
@@ -155,7 +155,7 @@ export function BankingViewNDES() {
                               className="w-full bg-zinc-900 border border-white/5 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500/50"
                             >
                               <option value="">No project</option>
-                              {jobs.map((job) => (
+                              {jobs.map((job: any) => (
                                 <option key={job.id} value={job.id}>
                                   {job.fullName} - {job.address}
                                 </option>

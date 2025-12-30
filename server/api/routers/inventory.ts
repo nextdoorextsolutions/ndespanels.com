@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eq, desc, and, sql, lt } from "drizzle-orm";
-import { protectedProcedure, router } from "../trpc";
+import { protectedProcedure, router } from "../../_core/trpc";
 import { getDb } from "../../db";
 import { inventory, inventoryTransactions, reportRequests } from "../../../drizzle/schema";
 
