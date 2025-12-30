@@ -79,7 +79,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   /**
@@ -141,7 +141,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   // ============================================================================
@@ -237,7 +237,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   // ============================================================================
@@ -318,7 +318,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   /**
@@ -380,7 +380,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   /**
@@ -437,7 +437,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   // ============================================================================
@@ -516,7 +516,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   /**
@@ -589,7 +589,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   // ============================================================================
@@ -646,8 +646,8 @@ export const reportsRouter = router({
         FROM current_cash cc, weekly_expenses we
       `;
 
-      const result = await db.execute(query);
-      return result.rows[0] || { current_bank_balance: 0, avg_weekly_expenses: 0, weeks_of_runway: 0 };
+      const result = await db.execute(query) as any[];
+      return result[0] || { current_bank_balance: 0, avg_weekly_expenses: 0, weeks_of_runway: 0 };
     }),
 
   /**
@@ -706,7 +706,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   /**
@@ -751,7 +751,7 @@ export const reportsRouter = router({
       `;
 
       const result = await db.execute(query);
-      return result.rows;
+      return result as any[];
     }),
 
   /**
@@ -779,7 +779,7 @@ export const reportsRouter = router({
         FROM completed_unbilled
       `;
 
-      const result = await db.execute(query);
-      return result.rows[0] || { unbilled_job_count: 0, total_unbilled_revenue: 0 };
+      const result = await db.execute(query) as any[];
+      return result[0] || { unbilled_job_count: 0, total_unbilled_revenue: 0 };
     }),
 });
