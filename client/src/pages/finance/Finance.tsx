@@ -192,153 +192,70 @@ export default function OwnerFinanceDashboard() {
             ))}
           </div>
 
-          {/* Main Chart Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-[#151a21] border border-gray-800 rounded-2xl p-6 shadow-lg">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-lg font-bold text-white">Income vs Expenses</h2>
-                  <p className="text-sm text-gray-400">Last 6 Months Performance</p>
-                </div>
-                <div className="flex gap-2">
-                    <select className="bg-gray-900 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 outline-none focus:border-cyan-500">
-                        <option>Last 6 Months</option>
-                        <option>YTD</option>
-                    </select>
-                </div>
-              </div>
-              
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={metrics?.revenueData || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#22d3ee" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2d3748" vertical={false} />
-                    <XAxis dataKey="name" stroke="#718096" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                    <YAxis stroke="#718096" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value/1000}k`} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', borderRadius: '8px', color: '#fff' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Area type="monotone" dataKey="income" stroke="#22d3ee" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
-                    <Area type="monotone" dataKey="expenses" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExp)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Quick Stats / Cash Flow Mini Widget */}
-            <div className="bg-[#151a21] border border-gray-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between">
-               <div>
-                 <h2 className="text-lg font-bold text-white mb-2">Profit Breakdown</h2>
-                 <p className="text-sm text-gray-400 mb-6">Net profit by job type</p>
-               </div>
-               
-               <div className="relative h-48 flex items-center justify-center">
-                   {/* Abstract representation of a pie chart or gauge */}
-                   <div className="w-40 h-40 rounded-full border-[12px] border-gray-800 border-t-cyan-400 border-r-cyan-400 border-b-purple-500 border-l-emerald-500 rotate-45 relative shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-                     <div className="absolute inset-0 flex flex-col items-center justify-center -rotate-45">
-                        <span className="text-2xl font-bold text-white">68%</span>
-                        <span className="text-xs text-gray-500 uppercase font-semibold">Goal Hit</span>
-                     </div>
-                   </div>
-               </div>
-
-               <div className="space-y-3 mt-4">
-                  <div className="flex justify-between items-center text-sm">
-                      <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></div>
-                          <span className="text-gray-300">Residential</span>
-                      </div>
-                      <span className="font-bold text-white">$45.2k</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                      <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
-                          <span className="text-gray-300">Commercial</span>
-                      </div>
-                      <span className="font-bold text-white">$12.8k</span>
-                  </div>
-               </div>
-            </div>
+          {/* Tab Navigation */}
+          <div className="flex gap-2 bg-[#151a21] border border-gray-800 rounded-2xl p-2 overflow-x-auto">
+            <button 
+              onClick={() => setActiveTab('dashboard')} 
+              className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'dashboard' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Dashboard
+            </button>
+            <button 
+              onClick={() => setActiveTab('invoices')} 
+              className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'invoices' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Invoices
+            </button>
+            <button 
+              onClick={() => setActiveTab('banking')} 
+              className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'banking' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              <Landmark className="w-4 h-4" />
+              Banking
+            </button>
+            <button 
+              onClick={() => setActiveTab('inventory')} 
+              className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'inventory' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              Inventory
+            </button>
+            <button 
+              onClick={() => setActiveTab('bills')} 
+              className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'bills' ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              <Receipt className="w-4 h-4" />
+              Bills
+            </button>
           </div>
 
-          {/* Recent Invoices Table */}
-          <div className="bg-[#151a21] border border-gray-800 rounded-2xl shadow-lg overflow-hidden">
-            <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-white">Recent Invoicing</h2>
-                <p className="text-sm text-gray-400">Manage billing and collection status</p>
+          {/* Tab Content */}
+          {activeTab === 'invoices' && <InvoicesViewNDES />}
+          {activeTab === 'banking' && <BankingViewNDES />}
+          {activeTab === 'inventory' && <InventoryViewNDES />}
+          {activeTab === 'bills' && <BillsViewNDES />}
+          
+          {activeTab === 'dashboard' && (
+            <>
+              {/* Dashboard content continues here... */}
+              <div className="text-center text-zinc-500 py-20">
+                <p>Dashboard charts and tables will appear here</p>
+                <p className="text-sm mt-2">Click the tabs above to view Invoices, Banking, Inventory, or Bills</p>
               </div>
-              <div className="flex gap-2">
-                <button className="px-4 py-2 bg-gray-900 border border-gray-700 text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
-                  Filter
-                </button>
-                <button className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-black text-sm font-bold rounded-lg shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all">
-                  + New Invoice
-                </button>
-              </div>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-900/50 text-gray-400 text-xs uppercase tracking-wider">
-                    <th className="px-6 py-4 font-semibold">Invoice ID</th>
-                    <th className="px-6 py-4 font-semibold">Client Name</th>
-                    <th className="px-6 py-4 font-semibold">Job Address</th>
-                    <th className="px-6 py-4 font-semibold">Amount</th>
-                    <th className="px-6 py-4 font-semibold">Date</th>
-                    <th className="px-6 py-4 font-semibold">Status</th>
-                    <th className="px-6 py-4 font-semibold text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {(metrics?.recentInvoices || []).length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
-                        No invoices yet. Create your first invoice to get started.
-                      </td>
-                    </tr>
-                  ) : (
-                    metrics?.recentInvoices.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-gray-800/50 transition-colors group">
-                        <td className="px-6 py-4 text-sm font-medium text-cyan-400">{inv.invoiceNumber}</td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-white">{inv.clientName}</div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-400">
-                          {inv.address}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-bold text-white">
-                          ${inv.amount.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-400">
-                          {inv.invoiceDate}
-                        </td>
-                        <td className="px-6 py-4">
-                          <StatusBadge status={inv.status as InvoiceStatus} />
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button className="p-2 text-gray-500 hover:text-white rounded-lg hover:bg-gray-700 transition-colors">
-                            <MoreVertical size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            </>
+          )}
 
         </div>
       </main>
