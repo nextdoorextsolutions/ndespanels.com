@@ -106,6 +106,7 @@ export function BankingViewEnhanced() {
 
   const bulkImport = trpc.banking.bulkImport.useMutation({
     onSuccess: (data) => {
+      console.log('[bulkImport SUCCESS]', data);
       toast.success(`Successfully imported ${data.count} transactions`);
       utils.banking.invalidate();
       setIsUploading(false);
@@ -113,7 +114,9 @@ export function BankingViewEnhanced() {
       setViewMode('detailed');
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to import transactions');
+      console.error('[bulkImport ERROR]', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      toast.error(`Import failed: ${error.message || 'Unknown error'}`);
       setIsUploading(false);
     },
   });
@@ -311,6 +314,7 @@ export function BankingViewEnhanced() {
 
           console.log('Parsed transactions:', transactions.length);
           console.log('Sample dates:', transactions.slice(0, 3).map(t => t.transactionDate));
+          console.log('Sample transactions:', transactions.slice(0, 3));
           
           if (transactions.length === 0) {
             toast.error('No valid transactions found in CSV. Check console for details.');
@@ -318,6 +322,7 @@ export function BankingViewEnhanced() {
             return;
           }
 
+          console.log('[CLIENT] About to call bulkImport with', transactions.length, 'transactions');
           // Import silently, success toast will show after mutation completes
           bulkImport.mutate({ transactions });
         } catch (error) {
