@@ -358,7 +358,7 @@ export default function ReportsNew() {
 
   // If financial tab is active, render the enhanced reports component
   if (activeTab === 'financial') {
-    return <ReportsEnhanced />;
+    return <ReportsEnhanced onTabChange={setActiveTab} />;
   }
 
   return (

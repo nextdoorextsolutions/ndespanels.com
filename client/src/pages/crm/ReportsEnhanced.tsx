@@ -17,13 +17,18 @@ import {
   Target,
   Flame,
   AlertCircle,
-  Receipt
+  Receipt,
+  BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import CRMLayout from "@/components/crm/CRMLayout";
 import AIInsightsBanner from "@/components/crm/analytics/AIInsightsBanner";
 
-export default function ReportsEnhanced() {
+interface ReportsEnhancedProps {
+  onTabChange?: (tab: 'analytics' | 'financial') => void;
+}
+
+export default function ReportsEnhanced({ onTabChange }: ReportsEnhancedProps) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -63,6 +68,24 @@ export default function ReportsEnhanced() {
             <p className="text-slate-400 mt-1">Advanced financial analytics and insights</p>
           </div>
           <div className="flex gap-3">
+            {/* Tab Switcher */}
+            {onTabChange && (
+              <div className="flex bg-slate-800 border border-slate-700 rounded-lg p-1">
+                <button
+                  onClick={() => onTabChange('analytics')}
+                  className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-slate-400 hover:text-white"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Analytics
+                </button>
+                <button
+                  className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 bg-[#00d4aa] text-black"
+                >
+                  <Receipt className="w-4 h-4" />
+                  Financial Reports
+                </button>
+              </div>
+            )}
             <Button variant="outline" className="border-slate-700 text-slate-300">
               <Download className="w-4 h-4 mr-2" />
               Export All
