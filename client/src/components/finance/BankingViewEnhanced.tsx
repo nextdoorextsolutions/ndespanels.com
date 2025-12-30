@@ -189,28 +189,83 @@ export function BankingViewEnhanced() {
           const text = e.target?.result as string;
           const lines = text.split('\n').filter(line => line.trim());
           
-          // Skip header row and parse CSV
-          const transactions = lines.slice(1).map(line => {
-            const [date, description, amount, account, reference] = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-            
-            return {
-              transactionDate: date,
-              description: description || 'Unknown',
-              amount: parseFloat(amount) || 0,
-              bankAccount: account,
-              referenceNumber: reference,
-            };
-          }).filter(t => t.amount !== 0);
+          if (lines.length < 2) {
+            toast.error('CSV file is empty or invalid');
+            setIsUploading(false);
+            return;
+          }
+          
+          console.log('CSV lines:', lines.length);
+          console.log('First line (header):', lines[0]);
+          console.log('Second line (sample):', lines[1]);
+          
+          // Parse header to find column indices
+          const header = lines[0].toLowerCase();
+          const headerCols = header.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+          
+          console.log('Header columns:', headerCols);
+          
+          // Find column indices (Chase CSV typically has: Details, Posting Date, Description, Amount, Type, Balance, Check or Slip #)
+          const dateIdx = headerCols.findIndex(h => h.includes('date') || h.includes('posting'));
+          const descIdx = headerCols.findIndex(h => h.includes('description') || h.includes('details'));
+          const amountIdx = headerCols.findIndex(h => h.includes('amount'));
+          
+          console.log('Column indices - Date:', dateIdx, 'Description:', descIdx, 'Amount:', amountIdx);
+          
+          // Parse transactions
+          const transactions = lines.slice(1).map((line, idx) => {
+            try {
+              // Handle CSV with quoted fields
+              const cols: string[] = [];
+              let current = '';
+              let inQuotes = false;
+              
+              for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                  inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                  cols.push(current.trim());
+                  current = '';
+                } else {
+                  current += char;
+                }
+              }
+              cols.push(current.trim());
+              
+              const date = cols[dateIdx] || '';
+              const description = cols[descIdx] || 'Unknown Transaction';
+              const amountStr = cols[amountIdx] || '0';
+              
+              // Parse amount (remove $ and commas)
+              const amount = parseFloat(amountStr.replace(/[$,]/g, '')) || 0;
+              
+              return {
+                transactionDate: date,
+                description: description.replace(/^"|"$/g, ''),
+                amount: amount,
+                bankAccount: 'Chase Business Checking',
+                referenceNumber: undefined,
+              };
+            } catch (err) {
+              console.error('Error parsing line', idx, ':', err);
+              return null;
+            }
+          }).filter(t => t !== null && t.amount !== 0);
 
+          console.log('Parsed transactions:', transactions.length);
+          
           if (transactions.length === 0) {
-            toast.error('No valid transactions found in CSV');
+            toast.error('No valid transactions found in CSV. Check console for details.');
             setIsUploading(false);
             return;
           }
 
+          toast.success(`Found ${transactions.length} transactions, importing...`);
           bulkImport.mutate({ transactions });
         } catch (error) {
-          toast.error('Failed to parse CSV file. Please check the format.');
+          console.error('CSV parsing error:', error);
+          toast.error('Failed to parse CSV file. Check console for details.');
           setIsUploading(false);
         }
       };
