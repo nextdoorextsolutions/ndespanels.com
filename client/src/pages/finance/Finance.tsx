@@ -30,7 +30,7 @@ import { useFinanceMetrics } from '@/hooks/useFinanceMetrics';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { Sidebar } from '@/components/finance/Sidebar';
 import { InvoicesViewNDES } from '@/components/finance/InvoicesViewNDES';
-import { BankingViewNDES } from '@/components/finance/BankingViewNDES';
+import { BankingViewEnhanced } from '@/components/finance/BankingViewEnhanced';
 import { InventoryViewNDES } from '@/components/finance/InventoryViewNDES';
 import { BillsViewNDES } from '@/components/finance/BillsViewNDES';
 
@@ -254,7 +254,7 @@ export default function OwnerFinanceDashboard() {
 
           {/* Tab Content */}
           {activeTab === 'invoices' && <InvoicesViewNDES />}
-          {activeTab === 'banking' && isOwner && <BankingViewNDES />}
+          {activeTab === 'banking' && isOwner && <BankingViewEnhanced />}
           {activeTab === 'inventory' && isOwner && <InventoryViewNDES />}
           {activeTab === 'bills' && isOwner && <BillsViewNDES />}
           
