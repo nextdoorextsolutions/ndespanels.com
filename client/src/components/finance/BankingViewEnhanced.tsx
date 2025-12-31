@@ -1233,8 +1233,8 @@ export function BankingViewEnhanced() {
                 return (
                   <Card key={tx.id} className="bg-slate-900 border-slate-700">
                     <CardContent className="pt-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
+                      <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+                        <div className="flex-1 w-full">
                           <div className="flex items-center gap-3 mb-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                               isExpense ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'
@@ -1323,10 +1323,11 @@ export function BankingViewEnhanced() {
                           </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full md:w-auto justify-end">
                           <Button
                             onClick={() => handleDelete(tx.id)}
                             variant="outline"
+                            size="sm"
                             className="border-red-600 text-red-400 hover:bg-red-600/10"
                           >
                             <Trash2 size={16} />
@@ -1334,6 +1335,7 @@ export function BankingViewEnhanced() {
                           <Button
                             onClick={() => handleReconcile(tx.id)}
                             disabled={!selectedCategory[tx.id] || reconcile.isPending}
+                            size="sm"
                             className="bg-emerald-600 hover:bg-emerald-700"
                           >
                             <Check size={16} className="mr-2" />
