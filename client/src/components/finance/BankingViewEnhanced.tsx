@@ -1416,7 +1416,9 @@ export function BankingViewEnhanced() {
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-slate-500">{new Date(tx.transactionDate).toLocaleDateString()}</span>
                               {tx.category && (
-                                <span className="text-xs px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded-full">
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  isExpense ? 'bg-purple-500/10 text-purple-400' : 'bg-emerald-500/10 text-emerald-400'
+                                }`}>
                                   {tx.category}
                                 </span>
                               )}
