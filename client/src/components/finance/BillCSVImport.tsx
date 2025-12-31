@@ -322,11 +322,19 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       });
 
       setMatchedBills(result.matched || []);
-      toast.success(`Matched ${result.matchedCount || 0} bills with existing bank transactions`);
+      
+      if (result.matchedCount > 0) {
+        toast.success(`Matched ${result.matchedCount} bills with existing bank transactions`);
+      } else {
+        toast.info('No matching bank transactions found. Bills will be imported as unpaid.');
+      }
+      
       setIsProcessing(false);
+      setStep('preview'); // Go back to preview to show results
     } catch (error: any) {
       toast.error(error.message || 'Failed to match bills');
       setIsProcessing(false);
+      setStep('preview'); // Go back to preview on error
     }
   };
 
