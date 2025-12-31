@@ -210,25 +210,40 @@ export const bankingRouter = router({
       console.log('[bulkImport] Sample transaction:', input.transactions[0]);
       console.log('[bulkImport] User ID:', ctx.user.id);
 
-      const transactions = await db
-        .insert(bankTransactions)
-        .values(
-          input.transactions.map((t) => ({
-            transactionDate: new Date(t.transactionDate),
+      try {
+        // Validate and transform data before insertion
+        const valuesToInsert = input.transactions.map((t, idx) => {
+          const date = new Date(t.transactionDate);
+          if (isNaN(date.getTime())) {
+            throw new Error(`Invalid date at index ${idx}: ${t.transactionDate}`);
+          }
+          
+          return {
+            transactionDate: date,
             description: t.description,
             amount: t.amount.toString(),
             bankAccount: t.bankAccount,
             referenceNumber: t.referenceNumber,
             status: "pending" as const,
             createdBy: ctx.user.id,
-          }))
-        )
-        .returning();
+          };
+        });
 
-      console.log('[bulkImport] Successfully inserted', transactions.length, 'transactions');
-      console.log('[bulkImport] Sample inserted transaction:', transactions[0]);
+        console.log('[bulkImport] Sample value to insert:', valuesToInsert[0]);
 
-      return { count: transactions.length, transactions };
+        const transactions = await db
+          .insert(bankTransactions)
+          .values(valuesToInsert)
+          .returning();
+
+        console.log('[bulkImport] Successfully inserted', transactions.length, 'transactions');
+        console.log('[bulkImport] Sample inserted transaction:', transactions[0]);
+
+        return { count: transactions.length, transactions };
+      } catch (error) {
+        console.error('[bulkImport] Error during insertion:', error);
+        throw error;
+      }
     }),
 
   // Delete transaction
