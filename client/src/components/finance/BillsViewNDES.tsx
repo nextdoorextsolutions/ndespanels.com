@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Search, Plus, Receipt, AlertCircle, DollarSign, Calendar, Trash2, CheckCircle } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { AddBillDialog } from './AddBillDialog';
 
 export function BillsViewNDES() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'paid' | 'overdue'>('all');
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
   const { data: bills = [], isLoading } = trpc.bills.getAll.useQuery();
   const { data: stats } = trpc.bills.getStats.useQuery();
@@ -170,6 +172,7 @@ export function BillsViewNDES() {
             ))}
           </div>
           <button 
+            onClick={() => setShowAddDialog(true)}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-purple-600 rounded-2xl font-bold hover:bg-purple-500 transition-all shadow-lg shadow-purple-500/20"
           >
             <Plus size={18} />
@@ -265,6 +268,12 @@ export function BillsViewNDES() {
           </tbody>
         </table>
       </div>
+
+      {/* Add Bill Dialog */}
+      <AddBillDialog 
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+      />
     </div>
   );
 }
