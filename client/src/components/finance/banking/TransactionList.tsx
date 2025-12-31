@@ -54,6 +54,7 @@ interface TransactionListProps {
   onSaveEdit: (txId: number) => void;
   onCancelEdit: () => void;
   onDescriptionChange: (description: string) => void;
+  onOpenMatchDialog: (tx: Transaction['transaction']) => void;
   
   // UI State
   selectedMonth: string;
@@ -79,6 +80,7 @@ export function TransactionList({
   onSaveEdit,
   onCancelEdit,
   onDescriptionChange,
+  onOpenMatchDialog,
   selectedMonth,
   selectedYear,
   isReconciling,
@@ -190,12 +192,11 @@ export function TransactionList({
                 <Trash2 size={16} />
               </Button>
               <Button
-                onClick={() => onReconcile(tx.id)}
-                disabled={!selectedCategory[tx.id] || isReconciling}
+                onClick={() => onOpenMatchDialog(tx)}
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="bg-cyan-600 hover:bg-cyan-700"
               >
-                <Check size={16} className="mr-2" />
+                <Tag size={16} className="mr-2" />
                 Reconcile
               </Button>
             </div>

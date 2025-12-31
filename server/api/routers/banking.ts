@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../../_core/trpc";
 import { getDb } from "../../db";
-import { bankTransactions, reportRequests } from "../../../drizzle/schema";
+import { bankTransactions, reportRequests, billsPayable } from "../../../drizzle/schema";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
@@ -387,17 +387,57 @@ Return ONLY valid JSON:
       return transaction;
     }),
 
-  // Reconcile transaction
+  // Reconcile transaction (with optional bill matching)
   reconcile: protectedProcedure
     .input(z.object({
       id: z.number(),
-      category: z.string(),
+      category: z.string().optional(),
       projectId: z.number().optional(),
+      billId: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      // If matching to a bill, mark the bill as paid
+      if (input.billId) {
+        const [transaction] = await db
+          .select()
+          .from(bankTransactions)
+          .where(eq(bankTransactions.id, input.id))
+          .limit(1);
+
+        if (!transaction) {
+          throw new Error("Transaction not found");
+        }
+
+        // Update the bill to mark as paid
+        await db
+          .update(billsPayable)
+          .set({
+            status: "paid",
+            paymentMethod: transaction.bankAccount || "bank_transfer",
+            paymentDate: transaction.transactionDate,
+            paymentReference: `Bank Tx #${transaction.id}`,
+          })
+          .where(eq(billsPayable.id, input.billId));
+
+        // Update transaction with bill reference
+        const [updatedTransaction] = await db
+          .update(bankTransactions)
+          .set({
+            category: "bill_payment",
+            projectId: input.projectId,
+            status: "reconciled",
+            notes: sql`COALESCE(${bankTransactions.notes}, '') || ' [Matched to Bill #' || ${input.billId} || ']'`,
+          })
+          .where(eq(bankTransactions.id, input.id))
+          .returning();
+
+        return updatedTransaction;
+      }
+
+      // Normal categorization without bill matching
       const [transaction] = await db
         .update(bankTransactions)
         .set({

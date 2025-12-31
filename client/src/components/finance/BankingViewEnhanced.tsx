@@ -35,6 +35,7 @@ import { TransactionList } from './banking/TransactionList';
 import { ReconcileDialog } from './banking/dialogs/ReconcileDialog';
 import { EditTransactionDialog } from './banking/dialogs/EditTransactionDialog';
 import { QuickAddDialog } from './banking/dialogs/QuickAddDialog';
+import { MatchTransactionDialog } from './banking/dialogs/MatchTransactionDialog';
 
 import {
   Dialog,
@@ -69,6 +70,8 @@ export function BankingViewEnhanced() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteTransactionId, setDeleteTransactionId] = useState<number | null>(null);
+  const [showMatchDialog, setShowMatchDialog] = useState(false);
+  const [matchingTransaction, setMatchingTransaction] = useState<any>(null);
 
   // Transaction State
   const [newlyImportedIds, setNewlyImportedIds] = useState<number[]>([]);
@@ -299,6 +302,34 @@ export function BankingViewEnhanced() {
     }
   };
 
+  const handleOpenMatchDialog = (tx: any) => {
+    setMatchingTransaction(tx);
+    setShowMatchDialog(true);
+  };
+
+  const handleSaveMatch = (data: { category?: string; projectId?: number; billId?: number }) => {
+    if (!matchingTransaction) return;
+    
+    reconcile.mutate(
+      { 
+        id: matchingTransaction.id, 
+        category: data.category,
+        projectId: data.projectId,
+        billId: data.billId,
+      },
+      {
+        onSuccess: () => {
+          toast.success(data.billId ? 'Transaction matched to bill and marked as paid' : 'Transaction reconciled');
+          setShowMatchDialog(false);
+          setMatchingTransaction(null);
+        },
+        onError: (error) => {
+          toast.error(error.message || 'Failed to reconcile transaction');
+        }
+      }
+    );
+  };
+
   // Filtered transaction lists
   const pendingTransactions = filteredTransactions.filter(t => t.transaction.status === 'pending');
   const reconciledTransactions = filteredTransactions.filter(t => t.transaction.status === 'reconciled');
@@ -406,6 +437,7 @@ export function BankingViewEnhanced() {
             onSaveEdit={saveDescription}
             onCancelEdit={cancelEdit}
             onDescriptionChange={setEditedDescription}
+            onOpenMatchDialog={handleOpenMatchDialog}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
             isReconciling={reconcile.isPending}
@@ -556,6 +588,16 @@ export function BankingViewEnhanced() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Match Transaction Dialog */}
+      <MatchTransactionDialog
+        open={showMatchDialog}
+        onOpenChange={setShowMatchDialog}
+        transaction={matchingTransaction}
+        categories={allCategories}
+        jobs={jobs}
+        onSave={handleSaveMatch}
+      />
     </>
   );
 }
