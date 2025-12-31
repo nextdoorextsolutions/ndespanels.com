@@ -96,6 +96,49 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
     });
   };
 
+  // Smart category mapping based on item descriptions
+  const categorizeMaterial = (description: string): string => {
+    const desc = description.toLowerCase();
+    
+    // Roofing Materials
+    if (desc.includes('shingle') || desc.includes('underlayment') || desc.includes('felt') || 
+        desc.includes('ice & water') || desc.includes('ice and water') || desc.includes('starter')) {
+      return 'roofing_materials';
+    }
+    
+    // Fasteners
+    if (desc.includes('nail') || desc.includes('screw') || desc.includes('staple') || 
+        desc.includes('fastener') || desc.includes('coil')) {
+      return 'fasteners';
+    }
+    
+    // Flashing & Metal
+    if (desc.includes('flashing') || desc.includes('drip edge') || desc.includes('valley') || 
+        desc.includes('ridge vent') || desc.includes('pipe boot')) {
+      return 'flashing_metal';
+    }
+    
+    // Ventilation
+    if (desc.includes('vent') || desc.includes('soffit') || desc.includes('intake')) {
+      return 'ventilation';
+    }
+    
+    // Lumber & Decking
+    if (desc.includes('plywood') || desc.includes('osb') || desc.includes('lumber') || 
+        desc.includes('2x4') || desc.includes('2x6') || desc.includes('decking')) {
+      return 'lumber_decking';
+    }
+    
+    // Sealants & Adhesives
+    if (desc.includes('caulk') || desc.includes('sealant') || desc.includes('adhesive') || 
+        desc.includes('cement') || desc.includes('tar')) {
+      return 'sealants';
+    }
+    
+    // Default to general materials
+    return 'materials';
+  };
+
   const consolidateBills = (bills: ParsedBill[]) => {
     // Group by order number to consolidate line items
     const grouped = bills.reduce((acc, bill) => {
@@ -111,15 +154,22 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
           lineItems: [],
           totalAmount: 0,
           taxAmount: 0,
+          categoryBreakdown: {} as Record<string, number>,
         };
       }
+      
+      const category = categorizeMaterial(bill.itemDescription);
       
       acc[key].lineItems.push({
         description: bill.itemDescription,
         quantity: 1,
         unitPrice: bill.unitPrice,
         amount: bill.shippedExtendedTotal,
+        category,
       });
+      
+      // Track category breakdown
+      acc[key].categoryBreakdown[category] = (acc[key].categoryBreakdown[category] || 0) + bill.shippedExtendedTotal;
       
       acc[key].totalAmount += bill.total;
       acc[key].taxAmount += bill.tax;
@@ -127,25 +177,108 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       return acc;
     }, {} as Record<string, any>);
 
-    const consolidated = Object.values(grouped).map((group: any) => ({
-      billNumber: group.orderNumber,
-      vendorName: group.jobName.includes('MENCH') ? 'Menards' : 
-                  group.jobName.includes('CARCANA') ? 'Carcana' : 
-                  group.jobName.split(' ')[0],
-      billDate: group.orderPlacedDate,
-      dueDate: group.orderPlacedDate, // Same as bill date for now
-      amount: (group.totalAmount - group.taxAmount).toFixed(2),
-      taxAmount: group.taxAmount.toFixed(2),
-      totalAmount: group.totalAmount.toFixed(2),
-      category: 'materials',
-      status: group.orderStatus.toLowerCase() === 'invoiced' ? 'pending' : 
-              group.orderStatus.toLowerCase() === 'pending' ? 'pending' : 'approved',
-      lineItems: group.lineItems,
-      notes: `Imported from Beacon CSV. PO: ${group.vendorPO}. Address: ${group.shippingAddress}`,
-    }));
+    const consolidated = Object.values(grouped).map((group: any) => {
+      // Determine primary category (most expensive category in the bill)
+      const primaryCategory = Object.entries(group.categoryBreakdown)
+        .sort(([, a]: any, [, b]: any) => b - a)[0]?.[0] || 'materials';
+
+      return {
+        billNumber: group.orderNumber,
+        vendorName: group.jobName.includes('MENCH') ? 'Menards' : 
+                    group.jobName.includes('CARCANA') ? 'Carcana' : 
+                    group.jobName.split(' ')[0],
+        billDate: group.orderPlacedDate,
+        dueDate: group.orderPlacedDate,
+        amount: (group.totalAmount - group.taxAmount).toFixed(2),
+        taxAmount: group.taxAmount.toFixed(2),
+        totalAmount: group.totalAmount.toFixed(2),
+        category: primaryCategory,
+        categoryBreakdown: group.categoryBreakdown,
+        status: group.orderStatus.toLowerCase() === 'invoiced' ? 'pending' : 
+                group.orderStatus.toLowerCase() === 'pending' ? 'pending' : 'approved',
+        lineItems: group.lineItems,
+        notes: `Imported from Beacon CSV. PO: ${group.vendorPO}. Address: ${group.shippingAddress}`,
+      };
+    });
 
     setConsolidatedBills(consolidated);
+    detectPriceSpikes(consolidated);
   };
+
+  const detectPriceSpikes = async (bills: any[]) => {
+    // Get historical bills for price comparison
+    const allBills = await utils.bills.getAll.fetch();
+    
+    const alerts: any[] = [];
+    
+    bills.forEach(newBill => {
+      newBill.lineItems.forEach((item: any) => {
+        // Find historical prices for similar items
+        const historicalPrices: number[] = [];
+        
+        allBills?.forEach((existingBillData: any) => {
+          const existingBill = existingBillData.bill;
+          if (existingBill.lineItems) {
+            try {
+              const lineItems = typeof existingBill.lineItems === 'string' 
+                ? JSON.parse(existingBill.lineItems) 
+                : existingBill.lineItems;
+              
+              lineItems.forEach((existingItem: any) => {
+                // Match by similar description (fuzzy match)
+                const similarity = calculateSimilarity(
+                  item.description.toLowerCase(), 
+                  existingItem.description?.toLowerCase() || ''
+                );
+                
+                if (similarity > 0.6 && existingItem.unitPrice) {
+                  historicalPrices.push(parseFloat(existingItem.unitPrice));
+                }
+              });
+            } catch (e) {
+              // Skip invalid line items
+            }
+          }
+        });
+        
+        if (historicalPrices.length >= 3) {
+          const avgPrice = historicalPrices.reduce((a, b) => a + b, 0) / historicalPrices.length;
+          const recentPrice = historicalPrices[historicalPrices.length - 1];
+          const currentPrice = item.unitPrice;
+          
+          // Alert if price is 15% higher than average OR 20% higher than most recent
+          const avgIncrease = ((currentPrice - avgPrice) / avgPrice) * 100;
+          const recentIncrease = ((currentPrice - recentPrice) / recentPrice) * 100;
+          
+          if (avgIncrease > 15 || recentIncrease > 20) {
+            alerts.push({
+              billNumber: newBill.billNumber,
+              item: item.description,
+              currentPrice: currentPrice,
+              avgPrice: avgPrice.toFixed(2),
+              recentPrice: recentPrice.toFixed(2),
+              increase: Math.max(avgIncrease, recentIncrease).toFixed(1),
+              type: avgIncrease > recentIncrease ? 'avg' : 'recent',
+            });
+          }
+        }
+      });
+    });
+    
+    if (alerts.length > 0) {
+      setPriceAlerts(alerts);
+    }
+  };
+
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    // Simple word-based similarity
+    const words1 = str1.split(/\s+/);
+    const words2 = str2.split(/\s+/);
+    const commonWords = words1.filter(w => words2.includes(w));
+    return commonWords.length / Math.max(words1.length, words2.length);
+  };
+
+  const [priceAlerts, setPriceAlerts] = useState<any[]>([]);
 
   const handleMatchWithTransactions = async () => {
     setIsProcessing(true);
@@ -260,11 +393,59 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
                 </div>
               </div>
 
+              {/* Price Spike Alerts */}
+              {priceAlerts.length > 0 && (
+                <div className="bg-rose-500/10 border-2 border-rose-500/50 rounded-xl p-4 animate-pulse">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="text-rose-400 flex-shrink-0 mt-1" size={24} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-bold text-rose-400 text-lg">⚠️ Price Spike Alert</span>
+                        <span className="px-2 py-1 bg-rose-500/20 rounded-full text-xs font-bold text-rose-300">
+                          {priceAlerts.length} {priceAlerts.length === 1 ? 'item' : 'items'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-rose-300 mb-3">
+                        The following materials have abnormally high prices compared to your historical purchases:
+                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {priceAlerts.map((alert, idx) => (
+                          <div key={idx} className="bg-rose-500/5 border border-rose-500/20 rounded-lg p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <p className="font-medium text-white text-sm mb-1">{alert.item}</p>
+                                <p className="text-xs text-rose-300">Bill #{alert.billNumber}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-rose-400">
+                                  +{alert.increase}%
+                                </p>
+                                <p className="text-xs text-rose-300">
+                                  ${alert.currentPrice} vs ${alert.type === 'avg' ? alert.avgPrice : alert.recentPrice} {alert.type === 'avg' ? 'avg' : 'recent'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-rose-500/20">
+                        <p className="text-xs text-rose-300">
+                          💡 <strong>Recommendation:</strong> Review these items before importing. Consider contacting vendors about pricing or checking for data entry errors.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4">
                 <div className="flex items-center gap-2 text-cyan-400 mb-2">
                   <AlertCircle size={18} />
-                  <span className="font-medium text-sm">AI Bill Matching Available</span>
+                  <span className="font-medium text-sm">Smart Category Mapping & AI Matching</span>
                 </div>
+                <p className="text-xs text-cyan-300 ml-6 mb-2">
+                  ✓ Materials automatically categorized by type (Shingles→Roofing Materials, Nails→Fasteners, etc.)
+                </p>
                 <p className="text-xs text-cyan-300 ml-6">
                   Click "Match with Bank Transactions" to have AI check if any of these bills have already been paid via your bank account. 
                   Matched bills will be automatically marked as "Paid" during import.
@@ -280,26 +461,38 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
                         <th className="px-4 py-3">Bill #</th>
                         <th className="px-4 py-3">Vendor</th>
                         <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Category</th>
                         <th className="px-4 py-3">Items</th>
                         <th className="px-4 py-3">Amount</th>
                         <th className="px-4 py-3">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {consolidatedBills.map((bill, idx) => (
-                        <tr key={idx} className="text-white hover:bg-white/5">
-                          <td className="px-4 py-3 font-mono text-xs">{bill.billNumber}</td>
-                          <td className="px-4 py-3">{bill.vendorName}</td>
-                          <td className="px-4 py-3 text-zinc-400">{bill.billDate}</td>
-                          <td className="px-4 py-3 text-zinc-400">{bill.lineItems.length} items</td>
-                          <td className="px-4 py-3 font-mono">${parseFloat(bill.totalAmount).toFixed(2)}</td>
-                          <td className="px-4 py-3">
-                            <span className="px-2 py-1 rounded-full text-xs bg-blue-500/10 text-blue-400">
-                              {bill.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {consolidatedBills.map((bill, idx) => {
+                        const hasAlert = priceAlerts.some(a => a.billNumber === bill.billNumber);
+                        return (
+                          <tr key={idx} className={`text-white hover:bg-white/5 ${hasAlert ? 'bg-rose-500/5' : ''}`}>
+                            <td className="px-4 py-3 font-mono text-xs">
+                              {hasAlert && <span className="text-rose-400 mr-1">⚠️</span>}
+                              {bill.billNumber}
+                            </td>
+                            <td className="px-4 py-3">{bill.vendorName}</td>
+                            <td className="px-4 py-3 text-zinc-400">{bill.billDate}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 rounded-full text-xs bg-purple-500/10 text-purple-400 capitalize">
+                                {bill.category.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-400">{bill.lineItems.length} items</td>
+                            <td className="px-4 py-3 font-mono">${parseFloat(bill.totalAmount).toFixed(2)}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 rounded-full text-xs bg-blue-500/10 text-blue-400">
+                                {bill.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
