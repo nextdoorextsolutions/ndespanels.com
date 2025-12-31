@@ -17,18 +17,31 @@ export const bankingRouter = router({
     .input(z.object({
       transactionIds: z.array(z.number()).optional(),
       limit: z.number().default(50),
+      recategorize: z.boolean().default(false),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       try {
-        // Get uncategorized transactions (NULL or empty string)
-        let query = db
-          .select()
-          .from(bankTransactions)
-          .where(sql`(${bankTransactions.category} IS NULL OR ${bankTransactions.category} = '')`)
-          .limit(input.limit);
+        // Get transactions to categorize
+        let query;
+        
+        if (input.recategorize) {
+          // Recategorize all pending transactions regardless of current category
+          query = db
+            .select()
+            .from(bankTransactions)
+            .where(eq(bankTransactions.status, "pending"))
+            .limit(input.limit);
+        } else {
+          // Only categorize uncategorized transactions (NULL or empty string)
+          query = db
+            .select()
+            .from(bankTransactions)
+            .where(sql`(${bankTransactions.category} IS NULL OR ${bankTransactions.category} = '')`)
+            .limit(input.limit);
+        }
 
         if (input.transactionIds && input.transactionIds.length > 0) {
           query = db

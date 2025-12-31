@@ -832,7 +832,7 @@ export function BankingViewEnhanced() {
 
           {/* AI Categorize Button */}
           <Button
-            onClick={() => categorizeBatch.mutate({ limit: 50 })}
+            onClick={() => categorizeBatch.mutate({ limit: 50, recategorize: true })}
             disabled={categorizeBatch.isPending}
             variant="outline"
             className="border-purple-600 text-purple-400 hover:bg-purple-600/10"
