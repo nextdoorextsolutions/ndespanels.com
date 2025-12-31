@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
 import { protectedProcedure, router } from "../../_core/trpc";
 import { getDb } from "../../db";
 import { billsPayable, reportRequests, bankTransactions } from "../../../drizzle/schema";
@@ -244,7 +244,7 @@ export const billsRouter = router({
 
       await db
         .delete(billsPayable)
-        .where(sql`${billsPayable.id} = ANY(${input.ids})`);
+        .where(inArray(billsPayable.id, input.ids));
 
       return { 
         success: true,
