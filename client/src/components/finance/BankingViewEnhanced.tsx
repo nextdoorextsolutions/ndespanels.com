@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Sparkles, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { AccountManagement } from './AccountManagement';
@@ -74,6 +74,8 @@ export function BankingViewEnhanced() {
   const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
   const [editedDescription, setEditedDescription] = useState('');
   const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [showAIPrompt, setShowAIPrompt] = useState(false);
+  const [newlyImportedIds, setNewlyImportedIds] = useState<number[]>([]);
 
   // Data Queries
   const { data: transactions = [] } = trpc.banking.getAll.useQuery({ status: 'all' });
@@ -145,7 +147,9 @@ export function BankingViewEnhanced() {
         { transactions: result.transactions },
         {
           onSuccess: (data) => {
-            toast.success(`Successfully imported ${data.transactions.length} transactions! Use "Reconcile" button to match bills.`);
+            const importedIds = data.transactions.map((t: any) => t.id);
+            setNewlyImportedIds(importedIds);
+            setShowAIPrompt(true);
             setViewMode('detailed');
             setIsUploading(false);
           },
@@ -204,6 +208,30 @@ export function BankingViewEnhanced() {
     const month = selectedMonth !== 'all' && selectedMonth !== 'ytd' ? parseInt(selectedMonth) : undefined;
     bulkDelete.mutate({ year, month });
     setShowBulkDeleteDialog(false);
+  };
+
+  const handleAICategorize = () => {
+    categorizeBatch.mutate(
+      { 
+        transactionIds: newlyImportedIds,
+        limit: newlyImportedIds.length,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`AI categorized ${newlyImportedIds.length} transactions`);
+          setShowAIPrompt(false);
+          setNewlyImportedIds([]);
+        },
+        onError: (error: any) => {
+          toast.error(`Failed to AI categorize: ${error.message}`);
+        }
+      }
+    );
+  };
+
+  const handleSkipAI = () => {
+    setShowAIPrompt(false);
+    setNewlyImportedIds([]);
   };
 
 
@@ -324,6 +352,50 @@ export function BankingViewEnhanced() {
             ))}
           </select>
         </div>
+
+        {/* AI Categorization Prompt */}
+        {showAIPrompt && newlyImportedIds.length > 0 && (
+          <div className="bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border-2 border-purple-500/50 rounded-xl p-4 animate-pulse">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-purple-500/20 p-2 rounded-lg">
+                  <Sparkles className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-lg">AI Categorization Available</h3>
+                  <p className="text-sm text-slate-300">
+                    Let AI automatically categorize {newlyImportedIds.length} newly imported transactions
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSkipAI}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-all"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={handleAICategorize}
+                  disabled={categorizeBatch.isPending}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white rounded-lg font-bold transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {categorizeBatch.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      AI Categorize
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Control Bar */}
         <BankingControlBar
