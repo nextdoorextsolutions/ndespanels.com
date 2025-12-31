@@ -228,6 +228,25 @@ export function BankingViewEnhanced() {
     setNewlyImportedIds([]);
   };
 
+  const handleAIReconcileImported = () => {
+    categorizeBatch.mutate(
+      { 
+        transactionIds: newlyImportedIds,
+        limit: newlyImportedIds.length,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`AI categorized and reconciled ${newlyImportedIds.length} transactions`);
+          setShowReconcileDialog(false);
+          setNewlyImportedIds([]);
+        },
+        onError: (error) => {
+          toast.error(`Failed to AI categorize: ${error.message}`);
+        }
+      }
+    );
+  };
+
   const startEditingDescription = (txId: number, description: string) => {
     setEditingTransactionId(txId);
     setEditedDescription(description);
@@ -408,10 +427,12 @@ export function BankingViewEnhanced() {
         onOpenChange={setShowReconcileDialog}
         transactionCount={newlyImportedIds.length}
         onReconcile={bulkReconcileImported}
+        onAIReconcile={handleAIReconcileImported}
         onSkip={() => {
           setShowReconcileDialog(false);
           setNewlyImportedIds([]);
         }}
+        isAIProcessing={categorizeBatch.isPending}
       />
 
       <EditTransactionDialog
