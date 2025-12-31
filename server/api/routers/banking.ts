@@ -181,9 +181,9 @@ export const bankingRouter = router({
       const [transaction] = await db
         .update(bankTransactions)
         .set({
-          status: "reconciled",
           category: input.category,
           projectId: input.projectId,
+          status: "reconciled",
         })
         .where(eq(bankTransactions.id, input.id))
         .returning();

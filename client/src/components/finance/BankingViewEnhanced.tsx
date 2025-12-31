@@ -18,7 +18,11 @@ import {
   Wallet,
   Building2,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Edit2,
+  Save,
+  X,
+  BookOpen
 } from 'lucide-react';
 import { AccountManagement } from './AccountManagement';
 import { trpc } from '@/lib/trpc';
@@ -92,6 +96,9 @@ export function BankingViewEnhanced() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteTransactionId, setDeleteTransactionId] = useState<number | null>(null);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
+  const [editedDescription, setEditedDescription] = useState('');
+  const [showLegendDialog, setShowLegendDialog] = useState(false);
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
   const { data: transactionCount } = trpc.banking.getCount.useQuery();
@@ -151,6 +158,18 @@ export function BankingViewEnhanced() {
     },
     onError: (error: { message?: string }) => {
       toast.error(error.message || 'Failed to delete transactions');
+    },
+  });
+
+  const updateTransaction = trpc.banking.update.useMutation({
+    onSuccess: () => {
+      toast.success('Transaction updated');
+      utils.banking.invalidate();
+      setEditingTransactionId(null);
+      setEditedDescription('');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update transaction');
     },
   });
 
@@ -258,6 +277,32 @@ export function BankingViewEnhanced() {
     const month = selectedMonth === 'ytd' || selectedMonth === 'all' ? undefined : parseInt(selectedMonth);
     
     bulkDelete.mutate({ year, month });
+  };
+
+  const startEditingDescription = (txId: number, currentDescription: string) => {
+    setEditingTransactionId(txId);
+    setEditedDescription(currentDescription);
+  };
+
+  const saveDescription = (txId: number) => {
+    if (!editedDescription.trim()) {
+      toast.error('Description cannot be empty');
+      return;
+    }
+    updateTransaction.mutate({ id: txId, description: editedDescription });
+  };
+
+  const cancelEdit = () => {
+    setEditingTransactionId(null);
+    setEditedDescription('');
+  };
+
+  const updateCategory = (txId: number, category: string) => {
+    updateTransaction.mutate({ id: txId, category });
+  };
+
+  const updateProject = (txId: number, projectId: number | undefined) => {
+    updateTransaction.mutate({ id: txId, projectId });
   };
 
   const processFile = (file: File, year?: string, month?: string) => {
@@ -720,6 +765,16 @@ export function BankingViewEnhanced() {
               Delete {MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear}
             </Button>
           )}
+
+          {/* Legend/Mapping Button */}
+          <Button
+            onClick={() => setShowLegendDialog(true)}
+            variant="outline"
+            className="border-cyan-600 text-cyan-400 hover:bg-cyan-600/10"
+          >
+            <BookOpen size={16} className="mr-2" />
+            Legend
+          </Button>
         </div>
       </div>
 
@@ -1155,7 +1210,39 @@ export function BankingViewEnhanced() {
                               {isExpense ? '−' : '+'}
                             </div>
                             <div className="flex-1">
-                              <p className="font-bold text-white">{tx.description}</p>
+                              {editingTransactionId === tx.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    value={editedDescription}
+                                    onChange={(e) => setEditedDescription(e.target.value)}
+                                    className="flex-1 bg-slate-800 border border-cyan-500 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => saveDescription(tx.id)}
+                                    className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded"
+                                  >
+                                    <Save size={16} />
+                                  </button>
+                                  <button
+                                    onClick={cancelEdit}
+                                    className="p-1 text-red-400 hover:bg-red-500/10 rounded"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <p className="font-bold text-white">{tx.description}</p>
+                                  <button
+                                    onClick={() => startEditingDescription(tx.id, tx.description)}
+                                    className="p-1 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                </div>
+                              )}
                               <p className="text-xs text-slate-500">{new Date(tx.transactionDate).toLocaleDateString()}</p>
                             </div>
                             <p className={`text-xl font-bold font-mono ${
@@ -1316,10 +1403,10 @@ export function BankingViewEnhanced() {
                             ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
                         </div>
-                        <div className="w-full bg-slate-800 rounded-full h-2">
+                        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
                           <div 
                             className="bg-gradient-to-r from-purple-500 to-cyan-500 h-2 rounded-full transition-all"
-                            style={{ width: `${percentage}%` }}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
                           />
                         </div>
                         <p className="text-xs text-slate-500">{percentage.toFixed(1)}% of total expenses</p>
@@ -1404,6 +1491,109 @@ export function BankingViewEnhanced() {
               className="bg-red-600 hover:bg-red-700"
             >
               {bulkDelete.isPending ? 'Deleting...' : `Delete ${filteredTransactions.length} Transaction(s)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Legend/Mapping Dialog */}
+      <Dialog open={showLegendDialog} onOpenChange={setShowLegendDialog}>
+        <DialogContent className="bg-slate-900 border-slate-700 max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-cyan-400" />
+              Transaction Legend & Auto-Categorization
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Create rules to automatically categorize and assign projects to transactions based on description patterns.
+              For example, map "OPC* MAN" to Materials category and a specific project.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+              <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <Tag className="w-4 h-4 text-cyan-400" />
+                Quick Category Assignment
+              </h4>
+              <p className="text-sm text-slate-400 mb-3">
+                Select transactions by description pattern and assign categories/projects in bulk:
+              </p>
+              
+              <div className="space-y-3">
+                {/* Group transactions by similar descriptions */}
+                {Object.entries(
+                  transactions.reduce((acc, item) => {
+                    const desc = item.transaction.description;
+                    const key = desc.substring(0, 10); // Group by first 10 chars
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(item);
+                    return acc;
+                  }, {} as Record<string, typeof transactions>)
+                )
+                  .filter(([_, items]) => items.length > 1) // Only show patterns with multiple transactions
+                  .slice(0, 10) // Limit to top 10 patterns
+                  .map(([pattern, items]) => {
+                    const sampleTx = items[0].transaction;
+                    const count = items.length;
+                    
+                    return (
+                      <div key={pattern} className="bg-slate-900 border border-slate-600 rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <p className="text-white font-medium">{sampleTx.description}</p>
+                            <p className="text-xs text-slate-500">{count} transactions</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <select
+                              className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  items.forEach(item => updateCategory(item.transaction.id, e.target.value));
+                                }
+                              }}
+                            >
+                              <option value="">Category...</option>
+                              {CATEGORIES.map((cat) => (
+                                <option key={cat} value={cat}>{cat}</option>
+                              ))}
+                            </select>
+                            <select
+                              className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                              onChange={(e) => {
+                                const projectId = e.target.value ? Number(e.target.value) : undefined;
+                                items.forEach(item => updateProject(item.transaction.id, projectId));
+                              }}
+                            >
+                              <option value="">Project...</option>
+                              {jobs.map((job: any) => (
+                                <option key={job.id} value={job.id}>
+                                  {job.fullName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+              <p className="text-sm text-cyan-300">
+                <strong>Tip:</strong> Use the dropdowns above to quickly assign categories and projects to all transactions with similar descriptions. 
+                This is perfect for recurring vendors or transaction types.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => setShowLegendDialog(false)}
+              className="bg-cyan-600 hover:bg-cyan-700"
+            >
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>
