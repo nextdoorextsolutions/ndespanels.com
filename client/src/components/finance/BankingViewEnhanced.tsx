@@ -45,7 +45,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const CATEGORIES = ['Materials', 'Labor', 'Fuel', 'Permit Fees', 'Marketing', 'Rent', 'Insurance', 'Miscellaneous', 'Income'];
+const DEFAULT_CATEGORIES = ['Materials', 'Labor', 'Fuel', 'Permit Fees', 'Marketing', 'Rent', 'Insurance', 'Miscellaneous', 'Income'];
 
 const MONTHS = [
   { value: 'all', label: 'All Months' },
@@ -98,7 +98,12 @@ export function BankingViewEnhanced() {
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
   const [editedDescription, setEditedDescription] = useState('');
-  const [showLegendDialog, setShowLegendDialog] = useState(false);
+  const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
+  const [showReconcileDialog, setShowReconcileDialog] = useState(false);
+  const [newlyImportedIds, setNewlyImportedIds] = useState<number[]>([]);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [showAddCategoryInput, setShowAddCategoryInput] = useState(false);
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
   const { data: transactionCount } = trpc.banking.getCount.useQuery();
@@ -106,6 +111,9 @@ export function BankingViewEnhanced() {
   const { data: accounts = [] } = trpc.bankAccounts.getAll.useQuery({});
   const { data: accountStats } = trpc.bankAccounts.getStats.useQuery();
   const utils = trpc.useUtils();
+
+  // Combine default and custom categories
+  const allCategories = [...DEFAULT_CATEGORIES, ...customCategories, 'Legacy'];
 
   // Debug logging
   console.log('[BankingView] Transactions loaded:', transactions.length);
@@ -127,8 +135,11 @@ export function BankingViewEnhanced() {
       toast.success(`Successfully imported ${data.count} transactions`);
       utils.banking.invalidate();
       setIsUploading(false);
-      // Switch to detailed view to show imported transactions
+      // Store newly imported transaction IDs and show reconcile dialog
+      const importedIds = data.transactions.map((t: any) => t.id);
+      setNewlyImportedIds(importedIds);
       setViewMode('detailed');
+      setShowReconcileDialog(true);
     },
     onError: (error) => {
       console.error('[bulkImport ERROR]', error);
@@ -303,6 +314,27 @@ export function BankingViewEnhanced() {
 
   const updateProject = (txId: number, projectId: number | undefined) => {
     updateTransaction.mutate({ id: txId, projectId });
+  };
+
+  const addCustomCategory = () => {
+    if (newCategoryInput.trim() && !allCategories.includes(newCategoryInput.trim())) {
+      setCustomCategories([...customCategories, newCategoryInput.trim()]);
+      setNewCategoryInput('');
+      setShowAddCategoryInput(false);
+      toast.success(`Category "${newCategoryInput.trim()}" added`);
+    } else if (allCategories.includes(newCategoryInput.trim())) {
+      toast.error('Category already exists');
+    }
+  };
+
+  const bulkReconcileImported = (category: string, projectId?: number) => {
+    // Update all newly imported transactions
+    newlyImportedIds.forEach(id => {
+      updateTransaction.mutate({ id, category, projectId });
+    });
+    setShowReconcileDialog(false);
+    setNewlyImportedIds([]);
+    toast.success(`Reconciled ${newlyImportedIds.length} transactions`);
   };
 
   const processFile = (file: File, year?: string, month?: string) => {
@@ -766,14 +798,14 @@ export function BankingViewEnhanced() {
             </Button>
           )}
 
-          {/* Legacy/Mapping Button */}
+          {/* Quick Add Button */}
           <Button
-            onClick={() => setShowLegendDialog(true)}
+            onClick={() => setShowQuickAddDialog(true)}
             variant="outline"
             className="border-cyan-600 text-cyan-400 hover:bg-cyan-600/10"
           >
             <BookOpen size={16} className="mr-2" />
-            Legacy
+            Quick Add
           </Button>
         </div>
       </div>
@@ -1264,7 +1296,7 @@ export function BankingViewEnhanced() {
                                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
                               >
                                 <option value="">Select category...</option>
-                                {CATEGORIES.map((cat) => (
+                                {allCategories.map((cat) => (
                                   <option key={cat} value={cat}>{cat}</option>
                                 ))}
                               </select>
@@ -1496,17 +1528,17 @@ export function BankingViewEnhanced() {
         </DialogContent>
       </Dialog>
 
-      {/* Legacy/Mapping Dialog */}
-      <Dialog open={showLegendDialog} onOpenChange={setShowLegendDialog}>
+      {/* Quick Add Dialog */}
+      <Dialog open={showQuickAddDialog} onOpenChange={setShowQuickAddDialog}>
         <DialogContent className="bg-slate-900 border-slate-700 max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-cyan-400" />
-              Legacy Transaction Management
+              Quick Add Categories & Projects
             </DialogTitle>
             <DialogDescription className="text-slate-400">
-              Bulk categorize and assign projects to older transactions based on description patterns.
-              Perfect for managing legacy entries without projects or categories.
+              Quickly categorize and assign projects to multiple transactions based on description patterns.
+              Perfect for bulk updates and recurring transaction types.
             </DialogDescription>
           </DialogHeader>
           
@@ -1554,7 +1586,7 @@ export function BankingViewEnhanced() {
                               }}
                             >
                               <option value="">Category...</option>
-                              {CATEGORIES.map((cat) => (
+                              {allCategories.map((cat) => (
                                 <option key={cat} value={cat}>{cat}</option>
                               ))}
                             </select>
@@ -1590,10 +1622,83 @@ export function BankingViewEnhanced() {
 
           <DialogFooter>
             <Button
-              onClick={() => setShowLegendDialog(false)}
+              onClick={() => setShowQuickAddDialog(false)}
               className="bg-cyan-600 hover:bg-cyan-700"
             >
               Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CSV Reconciliation Dialog */}
+      <Dialog open={showReconcileDialog} onOpenChange={setShowReconcileDialog}>
+        <DialogContent className="bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-purple-400" />
+              Reconcile Imported Transactions
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              You've imported {newlyImportedIds.length} transactions. Quickly categorize them all as "Legacy" or assign to a project.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+              <p className="text-sm text-purple-300 mb-4">
+                <strong>Quick Reconcile:</strong> Mark all {newlyImportedIds.length} imported transactions as "Legacy" to categorize them later.
+              </p>
+              
+              <div className="space-y-3">
+                <Button
+                  onClick={() => bulkReconcileImported('Legacy')}
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  Mark All as Legacy
+                </Button>
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-slate-700" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-slate-900 px-2 text-slate-500">Or assign to project</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs text-slate-400">Assign to Project (Optional)</label>
+                  <select
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        bulkReconcileImported('Legacy', Number(e.target.value));
+                      }
+                    }}
+                  >
+                    <option value="">Select project...</option>
+                    {jobs.map((job: any) => (
+                      <option key={job.id} value={job.id}>
+                        {job.fullName} - {job.address}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowReconcileDialog(false);
+                setNewlyImportedIds([]);
+              }}
+              className="border-slate-600 text-slate-300"
+            >
+              Skip for Now
             </Button>
           </DialogFooter>
         </DialogContent>
