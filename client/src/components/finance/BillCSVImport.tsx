@@ -382,9 +382,17 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
 
     await bulkImport.mutateAsync({
       bills: consolidatedBills.map(bill => ({
-        ...bill,
-        // Mark as paid if matched with transaction
+        billNumber: bill.billNumber,
+        vendorName: bill.vendorName,
+        billDate: bill.billDate,
+        dueDate: bill.dueDate,
+        amount: bill.amount,
+        taxAmount: bill.taxAmount,
+        totalAmount: bill.totalAmount,
+        category: bill.category,
         status: matchedBills.some(m => m.billNumber === bill.billNumber) ? 'paid' : bill.status,
+        lineItems: bill.lineItems,
+        notes: bill.notes,
       })),
     });
   };
