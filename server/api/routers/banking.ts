@@ -108,6 +108,7 @@ Return ONLY valid JSON array in this exact format:
                     aiSuggestedCategory: cat.category,
                     aiConfidence: cat.confidence,
                     aiReasoning: cat.reasoning,
+                    status: "reconciled",
                   })
                   .where(eq(bankTransactions.id, transaction.id));
                 
@@ -196,6 +197,7 @@ Return ONLY valid JSON:
             aiSuggestedCategory: categorization.category,
             aiConfidence: categorization.confidence,
             aiReasoning: categorization.reasoning,
+            status: "reconciled",
           })
           .where(eq(bankTransactions.id, input.transactionId));
 
