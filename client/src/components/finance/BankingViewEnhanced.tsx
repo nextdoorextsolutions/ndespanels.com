@@ -22,7 +22,9 @@ import {
   Edit2,
   Save,
   X,
-  BookOpen
+  BookOpen,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { AccountManagement } from './AccountManagement';
 import { trpc } from '@/lib/trpc';
@@ -181,6 +183,16 @@ export function BankingViewEnhanced() {
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to update transaction');
+    },
+  });
+
+  const categorizeBatch = trpc.banking.categorizeBatch.useMutation({
+    onSuccess: (data) => {
+      toast.success(`AI categorized ${data.categorized} transactions!`);
+      utils.banking.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to categorize transactions');
     },
   });
 
@@ -816,6 +828,17 @@ export function BankingViewEnhanced() {
           >
             <BookOpen size={16} className="mr-2" />
             Quick Add
+          </Button>
+
+          {/* AI Categorize Button */}
+          <Button
+            onClick={() => categorizeBatch.mutate({ limit: 50 })}
+            disabled={categorizeBatch.isPending}
+            variant="outline"
+            className="border-purple-600 text-purple-400 hover:bg-purple-600/10"
+          >
+            <Sparkles size={16} className="mr-2" />
+            {categorizeBatch.isPending ? 'Categorizing...' : 'AI Categorize'}
           </Button>
         </div>
       </div>

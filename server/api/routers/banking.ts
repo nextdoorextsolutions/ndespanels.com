@@ -3,8 +3,209 @@ import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../../_core/trpc";
 import { getDb } from "../../db";
 import { bankTransactions, reportRequests } from "../../../drizzle/schema";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export const bankingRouter = router({
+  // ============ AI CATEGORIZATION ============
+  
+  /**
+   * AI-powered transaction categorization using Gemini
+   */
+  categorizeBatch: protectedProcedure
+    .input(z.object({
+      transactionIds: z.array(z.number()).optional(),
+      limit: z.number().default(50),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      try {
+        // Get uncategorized transactions
+        let query = db
+          .select()
+          .from(bankTransactions)
+          .where(sql`${bankTransactions.category} IS NULL`)
+          .limit(input.limit);
+
+        if (input.transactionIds && input.transactionIds.length > 0) {
+          query = db
+            .select()
+            .from(bankTransactions)
+            .where(sql`${bankTransactions.id} = ANY(${input.transactionIds})`);
+        }
+
+        const transactions = await query;
+
+        console.log('[AI Categorization] Processing', transactions.length, 'transactions');
+
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const categorized = [];
+
+        // Process in batches of 10 for efficiency
+        for (let i = 0; i < transactions.length; i += 10) {
+          const batch = transactions.slice(i, i + 10);
+          
+          const prompt = `You are a financial categorization AI for a roofing company. Categorize these bank transactions.
+
+Available Categories:
+- materials (lumber, shingles, roofing supplies)
+- labor (payroll, contractor payments)
+- equipment (tools, machinery)
+- vehicle (fuel, maintenance, insurance)
+- insurance (business insurance, bonds)
+- utilities (electric, water, internet)
+- marketing (ads, website, SEO)
+- office (supplies, software, rent)
+- professional_services (legal, accounting, consulting)
+- payroll (employee wages, benefits)
+- taxes (income tax, sales tax, property tax)
+- loan_payment (business loans, credit card payments)
+- transfer (internal transfers between accounts)
+- deposit (customer payments, revenue)
+- revenue (sales, income)
+- refund (returns, chargebacks)
+- other (miscellaneous)
+- uncategorized (unable to determine)
+
+Transactions to categorize:
+${batch.map((t, idx) => `${idx + 1}. Amount: $${t.amount}, Description: "${t.description}"`).join('\n')}
+
+Return ONLY valid JSON array in this exact format:
+[
+  {
+    "index": 1,
+    "category": "materials",
+    "confidence": 0.95,
+    "reasoning": "Purchase from roofing supplier"
+  },
+  ...
+]`;
+
+          try {
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
+            
+            const jsonMatch = text.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) {
+              console.error('[AI Categorization] No JSON found in response');
+              continue;
+            }
+            
+            const categories = JSON.parse(jsonMatch[0]);
+            
+            // Update transactions with AI suggestions
+            for (const cat of categories) {
+              const transaction = batch[cat.index - 1];
+              if (transaction) {
+                await db
+                  .update(bankTransactions)
+                  .set({
+                    category: cat.category,
+                  })
+                  .where(eq(bankTransactions.id, transaction.id));
+                
+                categorized.push({
+                  id: transaction.id,
+                  category: cat.category,
+                  confidence: cat.confidence,
+                  reasoning: cat.reasoning,
+                });
+              }
+            }
+          } catch (error) {
+            console.error('[AI Categorization] Error processing batch:', error);
+          }
+        }
+
+        console.log('[AI Categorization] Successfully categorized', categorized.length, 'transactions');
+
+        return {
+          success: true,
+          categorized: categorized.length,
+          results: categorized,
+        };
+      } catch (error) {
+        console.error('[AI Categorization] Error:', error);
+        throw new Error('Failed to categorize transactions');
+      }
+    }),
+
+  /**
+   * Categorize a single transaction with AI
+   */
+  categorizeSingle: protectedProcedure
+    .input(z.object({
+      transactionId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      try {
+        const [transaction] = await db
+          .select()
+          .from(bankTransactions)
+          .where(eq(bankTransactions.id, input.transactionId))
+          .limit(1);
+
+        if (!transaction) {
+          throw new Error('Transaction not found');
+        }
+
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        
+        const prompt = `Categorize this bank transaction for a roofing company.
+
+Transaction:
+Amount: $${transaction.amount}
+Description: "${transaction.description}"
+${transaction.bankAccount ? `Account: ${transaction.bankAccount}` : ''}
+
+Available Categories: materials, labor, equipment, vehicle, insurance, utilities, marketing, office, professional_services, payroll, taxes, loan_payment, transfer, deposit, revenue, refund, other, uncategorized
+
+Return ONLY valid JSON:
+{
+  "category": "materials",
+  "confidence": 0.95,
+  "reasoning": "Brief explanation"
+}`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('Invalid AI response');
+        }
+        
+        const categorization = JSON.parse(jsonMatch[0]);
+        
+        // Update transaction
+        await db
+          .update(bankTransactions)
+          .set({
+            category: categorization.category,
+          })
+          .where(eq(bankTransactions.id, input.transactionId));
+
+        return {
+          success: true,
+          category: categorization.category,
+          confidence: categorization.confidence,
+          reasoning: categorization.reasoning,
+        };
+      } catch (error) {
+        console.error('[AI Categorization] Error:', error);
+        throw new Error('Failed to categorize transaction');
+      }
+    }),
+
+  // ============ EXISTING ENDPOINTS ============
   // Debug endpoint to check raw transaction count
   getCount: protectedProcedure
     .query(async () => {
