@@ -153,7 +153,8 @@ export function BankingViewEnhanced() {
             const importedIds = data.transactions.map((t: any) => t.id);
             setNewlyImportedIds(importedIds);
             setViewMode('detailed');
-            setShowReconcileDialog(true);
+            // Legacy dialog disabled - use individual "Match to Bill" feature instead
+            // setShowReconcileDialog(true);
             setIsUploading(false);
           },
           onError: () => {
