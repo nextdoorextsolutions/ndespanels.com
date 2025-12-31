@@ -98,24 +98,35 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const bills: ParsedBill[] = results.data.map((row: any) => ({
-          orderPlacedDate: row['OrderPlacedDate'] || row['Order Placed Date'] || '',
-          orderNumber: row['OrderNumber'] || row['Order Number'] || '',
-          orderStatus: row['OrderStatus'] || row['Order Status'] || '',
-          vendorPO: row['VendorPO'] || row['Vendor PO'] || '',
-          jobName: row['JobName'] || row['Job Name'] || '',
-          shippingAddress: row['ShippingAddress'] || row['Shipping Address'] || '',
-          memberItemNumber: row['MemberItemNumber'] || row['Member Item Number'] || '',
-          itemDescription: row['ItemDescription'] || row['Item Description'] || '',
-          unitOfMeasure: row['UnitOfMeasure'] || row['Unit of Measure'] || '',
-          unitPrice: parseFloat(row['UnitPrice'] || row['Unit Price'] || '0'),
-          shippedExtendedTotal: parseFloat(row['ShippedExtendedTotal'] || row['Shipped Extended Total'] || '0'),
-          otherCharges: parseFloat(row['OtherCharges'] || row['Other Charges'] || '0'),
-          tax: parseFloat(row['Tax'] || '0'),
-          subTotal: parseFloat(row['SubTotal'] || row['Sub Total'] || '0'),
-          total: parseFloat(row['Total'] || '0'),
-        }));
+        const bills: ParsedBill[] = results.data.map((row: any) => {
+          // Parse numeric values, handling currency formatting
+          const parseAmount = (val: any) => {
+            if (!val) return 0;
+            const str = String(val).replace(/[$,]/g, '');
+            const num = parseFloat(str);
+            return isNaN(num) ? 0 : num;
+          };
 
+          return {
+            orderPlacedDate: row['OrderPlacedDate'] || row['Order Placed Date'] || '',
+            orderNumber: row['OrderNumber'] || row['Order Number'] || '',
+            orderStatus: row['OrderStatus'] || row['Order Status'] || '',
+            vendorPO: row['VendorPO'] || row['Vendor PO'] || '',
+            jobName: row['JobName'] || row['Job Name'] || '',
+            shippingAddress: row['ShippingAddress'] || row['Shipping Address'] || '',
+            memberItemNumber: row['MemberItemNumber'] || row['Member Item Number'] || '',
+            itemDescription: row['ItemDescription'] || row['Item Description'] || '',
+            unitOfMeasure: row['UnitOfMeasure'] || row['Unit of Measure'] || '',
+            unitPrice: parseAmount(row['UnitPrice'] || row['Unit Price']),
+            shippedExtendedTotal: parseAmount(row['ShippedExtendedTotal'] || row['Shipped Extended Total']),
+            otherCharges: parseAmount(row['OtherCharges'] || row['Other Charges']),
+            tax: parseAmount(row['Tax']),
+            subTotal: parseAmount(row['SubTotal'] || row['Sub Total']),
+            total: parseAmount(row['Total']),
+          };
+        });
+
+        console.log('[CSV Import] Parsed bills sample:', bills.slice(0, 3));
         setParsedBills(bills);
         await consolidateBills(bills);
         setIsProcessing(false);
@@ -208,14 +219,20 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       }
       
       // Accumulate totals (these might be on summary rows or individual rows)
-      if (bill.total && !isNaN(bill.total)) {
+      if (bill.total && !isNaN(bill.total) && bill.total > 0) {
         acc[key].totalAmount = Math.max(acc[key].totalAmount, bill.total);
       }
-      if (bill.tax && !isNaN(bill.tax)) {
+      if (bill.tax && !isNaN(bill.tax) && bill.tax > 0) {
         acc[key].taxAmount = Math.max(acc[key].taxAmount, bill.tax);
       }
-      if (bill.subTotal && !isNaN(bill.subTotal)) {
+      if (bill.subTotal && !isNaN(bill.subTotal) && bill.subTotal > 0) {
         acc[key].totalAmount = Math.max(acc[key].totalAmount, bill.subTotal + (bill.tax || 0));
+      }
+      
+      // If no totals found yet, sum up line items as fallback
+      if (acc[key].totalAmount === 0 && bill.shippedExtendedTotal > 0) {
+        const currentSum = acc[key].lineItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        acc[key].totalAmount = currentSum;
       }
       
       return acc;
@@ -230,6 +247,13 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       // The JobName/CustomerPO contains the homeowner's last name (shipping destination)
       const vendorName = 'Beacon Building Products';
       const customerName = group.jobName || group.vendorPO || 'Unknown Customer';
+
+      // If still no total, sum all line items
+      if (group.totalAmount === 0 && group.lineItems.length > 0) {
+        group.totalAmount = group.lineItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+      }
+
+      console.log(`[CSV Import] Order ${group.orderNumber}: Total=${group.totalAmount}, Tax=${group.taxAmount}, LineItems=${group.lineItems.length}`);
 
       return {
         billNumber: group.orderNumber,
