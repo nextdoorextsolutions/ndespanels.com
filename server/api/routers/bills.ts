@@ -213,9 +213,11 @@ export const billsRouter = router({
       return bill;
     }),
 
-  // Delete bill
+  // Delete a bill
   delete: protectedProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({
+      id: z.number(),
+    }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -225,6 +227,29 @@ export const billsRouter = router({
         .where(eq(billsPayable.id, input.id));
 
       return { success: true };
+    }),
+
+  // Bulk delete bills
+  bulkDelete: protectedProcedure
+    .input(z.object({
+      ids: z.array(z.number()),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      if (input.ids.length === 0) {
+        throw new Error("No bills selected");
+      }
+
+      await db
+        .delete(billsPayable)
+        .where(sql`${billsPayable.id} = ANY(${input.ids})`);
+
+      return { 
+        success: true,
+        deleted: input.ids.length,
+      };
     }),
 
   // Get vendors (distinct)

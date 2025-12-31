@@ -13,6 +13,8 @@ export function BillsViewNDES() {
   const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedBill, setSelectedBill] = useState<any>(null);
+  const [selectedBills, setSelectedBills] = useState<Set<number>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   const { data: bills = [], isLoading } = trpc.bills.getAll.useQuery();
   const { data: stats } = trpc.bills.getStats.useQuery();
@@ -25,6 +27,18 @@ export function BillsViewNDES() {
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to delete bill');
+    },
+  });
+
+  const bulkDeleteBills = trpc.bills.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Deleted ${data.deleted} bills`);
+      setSelectedBills(new Set());
+      setShowBulkDeleteDialog(false);
+      utils.bills.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete bills');
     },
   });
 
@@ -42,6 +56,36 @@ export function BillsViewNDES() {
   const handleMarkPaid = (bill: any) => {
     setSelectedBill(bill);
     setShowMarkPaidDialog(true);
+  };
+
+  const toggleBillSelection = (billId: number) => {
+    const newSelection = new Set(selectedBills);
+    if (newSelection.has(billId)) {
+      newSelection.delete(billId);
+    } else {
+      newSelection.add(billId);
+    }
+    setSelectedBills(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedBills.size === filteredBills.length) {
+      setSelectedBills(new Set());
+    } else {
+      setSelectedBills(new Set(filteredBills.map(item => item.bill.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedBills.size === 0) {
+      toast.error('No bills selected');
+      return;
+    }
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmBulkDelete = () => {
+    bulkDeleteBills.mutate({ ids: Array.from(selectedBills) });
   };
 
   const getStatusColor = (status: string) => {
@@ -165,6 +209,15 @@ export function BillsViewNDES() {
               </button>
             ))}
           </div>
+          {selectedBills.size > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all flex items-center gap-2"
+            >
+              <Trash2 size={18} />
+              Delete ({selectedBills.size})
+            </button>
+          )}
           <button 
             onClick={() => setShowImportDialog(true)}
             className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold transition-all flex items-center gap-2"
@@ -187,6 +240,14 @@ export function BillsViewNDES() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-white/5 text-zinc-500 text-[10px] uppercase tracking-widest font-bold bg-white/[0.01]">
+              <th className="px-8 py-6">
+                <input
+                  type="checkbox"
+                  checked={selectedBills.size === filteredBills.length && filteredBills.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-purple-600 focus:ring-purple-500"
+                />
+              </th>
               <th className="px-8 py-6">Bill #</th>
               <th className="px-8 py-6">Vendor</th>
               <th className="px-8 py-6 text-right">Amount</th>
@@ -203,6 +264,14 @@ export function BillsViewNDES() {
 
               return (
                 <tr key={bill.id} className="hover:bg-white/[0.02] transition-colors group">
+                  <td className="px-8 py-6">
+                    <input
+                      type="checkbox"
+                      checked={selectedBills.has(bill.id)}
+                      onChange={() => toggleBillSelection(bill.id)}
+                      className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-purple-600 focus:ring-purple-500"
+                    />
+                  </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
@@ -288,6 +357,51 @@ export function BillsViewNDES() {
         open={showImportDialog}
         onOpenChange={setShowImportDialog}
       />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      {showBulkDeleteDialog && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#1a1a20] border border-white/10 rounded-3xl p-8 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center">
+                <Trash2 className="text-rose-400" size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Delete Bills</h3>
+                <p className="text-sm text-zinc-400">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-zinc-300 mb-6">
+              Are you sure you want to delete <strong className="text-white">{selectedBills.size}</strong> selected {selectedBills.size === 1 ? 'bill' : 'bills'}?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBulkDeleteDialog(false)}
+                className="flex-1 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBulkDelete}
+                disabled={bulkDeleteBills.isPending}
+                className="flex-1 px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {bulkDeleteBills.isPending ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={18} />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
