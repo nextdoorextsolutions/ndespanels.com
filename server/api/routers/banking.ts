@@ -25,32 +25,29 @@ export const bankingRouter = router({
 
       try {
         // Get transactions to categorize
-        let query;
+        let transactions;
         
-        if (input.recategorize) {
+        if (input.transactionIds && input.transactionIds.length > 0) {
+          // Use specific transaction IDs if provided
+          transactions = await db
+            .select()
+            .from(bankTransactions)
+            .where(sql`${bankTransactions.id} = ANY(ARRAY[${sql.join(input.transactionIds.map(id => sql`${id}`), sql`, `)}])`);
+        } else if (input.recategorize) {
           // Recategorize all pending transactions regardless of current category
-          query = db
+          transactions = await db
             .select()
             .from(bankTransactions)
             .where(eq(bankTransactions.status, "pending"))
             .limit(input.limit);
         } else {
           // Only categorize uncategorized transactions (NULL or empty string)
-          query = db
+          transactions = await db
             .select()
             .from(bankTransactions)
             .where(sql`(${bankTransactions.category} IS NULL OR ${bankTransactions.category} = '')`)
             .limit(input.limit);
         }
-
-        if (input.transactionIds && input.transactionIds.length > 0) {
-          query = db
-            .select()
-            .from(bankTransactions)
-            .where(sql`${bankTransactions.id} = ANY(${input.transactionIds})`);
-        }
-
-        const transactions = await query;
 
         console.log('[AI Categorization] Processing', transactions.length, 'transactions');
 
