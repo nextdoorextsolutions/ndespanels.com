@@ -164,6 +164,22 @@ export const bankAccountsRouter = router({
       .from(bankAccounts)
       .where(eq(bankAccounts.isActive, true));
 
+    // Calculate actual cash (checking + savings)
+    const cashAccounts = accounts.filter((a: BankAccount) => 
+      a.accountType === "checking" || a.accountType === "savings"
+    );
+    const totalCash = cashAccounts.reduce((sum: number, a: BankAccount) => 
+      sum + Number(a.currentBalance || 0), 0
+    );
+
+    // Calculate total debt (credit cards + lines of credit)
+    const debtAccounts = accounts.filter((a: BankAccount) => 
+      a.accountType === "credit_card" || a.accountType === "line_of_credit"
+    );
+    const totalDebt = debtAccounts.reduce((sum: number, a: BankAccount) => 
+      sum + Math.abs(Number(a.currentBalance || 0)), 0
+    );
+
     const stats = {
       totalAccounts: accounts.length,
       byType: {
@@ -175,8 +191,7 @@ export const bankAccountsRouter = router({
       totalCreditLimit: accounts
         .filter((a: BankAccount) => a.creditLimit)
         .reduce((sum: number, a: BankAccount) => sum + Number(a.creditLimit || 0), 0),
-      totalBalance: accounts
-        .reduce((sum: number, a: BankAccount) => sum + Number(a.currentBalance || 0), 0),
+      totalBalance: totalCash - totalDebt, // Actual balance = cash - debt
     };
 
     return stats;

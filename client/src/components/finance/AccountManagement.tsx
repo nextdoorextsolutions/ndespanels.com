@@ -176,7 +176,9 @@ export function AccountManagement() {
           <Card className="bg-slate-800 border-slate-700">
             <CardContent className="pt-6">
               <div className="text-sm text-slate-400">Total Balance</div>
-              <div className="text-2xl font-bold text-green-400 mt-1">{formatCurrency(stats.totalBalance)}</div>
+              <div className={`text-2xl font-bold mt-1 ${stats.totalBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatCurrency(stats.totalBalance)}
+              </div>
             </CardContent>
           </Card>
           <Card className="bg-slate-800 border-slate-700">
@@ -245,7 +247,7 @@ export function AccountManagement() {
                       </div>
                       <div className="text-right">
                         <div className={`text-lg font-semibold ${
-                          Number(account.currentBalance) >= 0 ? 'text-green-400' : 'text-red-400'
+                          isCredit ? 'text-red-400' : (Number(account.currentBalance) >= 0 ? 'text-green-400' : 'text-red-400')
                         }`}>
                           {formatCurrency(account.currentBalance)}
                         </div>
