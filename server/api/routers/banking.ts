@@ -23,11 +23,11 @@ export const bankingRouter = router({
       if (!db) throw new Error("Database not available");
 
       try {
-        // Get uncategorized transactions
+        // Get uncategorized transactions (NULL or empty string)
         let query = db
           .select()
           .from(bankTransactions)
-          .where(sql`${bankTransactions.category} IS NULL`)
+          .where(sql`(${bankTransactions.category} IS NULL OR ${bankTransactions.category} = '')`)
           .limit(input.limit);
 
         if (input.transactionIds && input.transactionIds.length > 0) {
