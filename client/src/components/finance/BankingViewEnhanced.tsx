@@ -300,7 +300,7 @@ export function BankingViewEnhanced() {
   };
 
   // Filtered transaction lists
-  const pendingTransactions = transactions.filter(t => t.transaction.status === 'pending');
+  const pendingTransactions = filteredTransactions.filter(t => t.transaction.status === 'pending');
   const reconciledTransactions = filteredTransactions.filter(t => t.transaction.status === 'reconciled');
 
   return (
