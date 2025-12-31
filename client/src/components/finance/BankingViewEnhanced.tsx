@@ -90,6 +90,7 @@ export function BankingViewEnhanced() {
   const [selectedMonth, setSelectedMonth] = useState('ytd');
   const [viewMode, setViewMode] = useState<ViewMode>('summary');
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isDragging, setIsDragging] = useState(false);
   const [showDateDialog, setShowDateDialog] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -106,6 +107,8 @@ export function BankingViewEnhanced() {
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [newCategoryInput, setNewCategoryInput] = useState('');
   const [showAddCategoryInput, setShowAddCategoryInput] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingReconciledTx, setEditingReconciledTx] = useState<any>(null);
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
   const { data: transactionCount } = trpc.banking.getCount.useQuery();
@@ -227,9 +230,11 @@ export function BankingViewEnhanced() {
         tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tx.category?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      return matchesYear && matchesMonth && matchesSearch;
+      const matchesCategory = categoryFilter === 'all' || tx.category === categoryFilter;
+      
+      return matchesYear && matchesMonth && matchesSearch && matchesCategory;
     });
-  }, [transactions, selectedYear, selectedMonth, searchQuery]);
+  }, [transactions, selectedYear, selectedMonth, searchQuery, categoryFilter]);
 
   // Calculate financial metrics
   const metrics = useMemo(() => {
@@ -774,6 +779,18 @@ export function BankingViewEnhanced() {
               className="bg-slate-800 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-cyan-500 text-white w-64" 
             />
           </div>
+
+          {/* Category Filter */}
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-slate-800 border border-slate-700 rounded-lg py-2 px-4 text-sm focus:outline-none focus:border-cyan-500 text-white"
+          >
+            <option value="all">All Categories</option>
+            {allCategories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
 
           {/* Hidden File Input */}
           <input
@@ -1434,6 +1451,20 @@ export function BankingViewEnhanced() {
                           }`}>
                             ${Math.abs(Number(tx.amount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </p>
+                          <Button
+                            onClick={() => {
+                              setEditingReconciledTx(item);
+                              setSelectedCategory({ ...selectedCategory, [tx.id]: tx.category || '' });
+                              setSelectedProject({ ...selectedProject, [tx.id]: tx.projectId || undefined });
+                              setShowEditDialog(true);
+                            }}
+                            size="sm"
+                            variant="outline"
+                            className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                          >
+                            <Edit2 size={14} className="mr-1" />
+                            Edit
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -1716,6 +1747,107 @@ export function BankingViewEnhanced() {
               className="border-slate-600 text-slate-300"
             >
               Skip for Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Reconciled Transaction Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-cyan-400" />
+              Edit Transaction
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Update the category or project for this transaction
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingReconciledTx && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-white mb-1">
+                  {editingReconciledTx.transaction.description}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {new Date(editingReconciledTx.transaction.transactionDate).toLocaleDateString()} • 
+                  ${Math.abs(Number(editingReconciledTx.transaction.amount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm text-slate-400 mb-2 block">Category</label>
+                <select
+                  value={selectedCategory[editingReconciledTx.transaction.id] || ''}
+                  onChange={(e) => setSelectedCategory({ 
+                    ...selectedCategory, 
+                    [editingReconciledTx.transaction.id]: e.target.value 
+                  })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-white text-sm"
+                >
+                  <option value="">Select category...</option>
+                  {allCategories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm text-slate-400 mb-2 block">Project (Optional)</label>
+                <select
+                  value={selectedProject[editingReconciledTx.transaction.id] || ''}
+                  onChange={(e) => setSelectedProject({ 
+                    ...selectedProject, 
+                    [editingReconciledTx.transaction.id]: e.target.value ? Number(e.target.value) : undefined 
+                  })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-white text-sm"
+                >
+                  <option value="">No project</option>
+                  {jobs.map((job: any) => (
+                    <option key={job.id} value={job.id}>{job.fullName}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditDialog(false);
+                setEditingReconciledTx(null);
+              }}
+              className="border-slate-600 text-slate-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (editingReconciledTx) {
+                  const txId = editingReconciledTx.transaction.id;
+                  const category = selectedCategory[txId];
+                  const projectId = selectedProject[txId];
+                  
+                  if (category) {
+                    reconcile.mutate(
+                      { id: txId, category, projectId },
+                      {
+                        onSuccess: () => {
+                          setShowEditDialog(false);
+                          setEditingReconciledTx(null);
+                        }
+                      }
+                    );
+                  }
+                }
+              }}
+              disabled={!editingReconciledTx || !selectedCategory[editingReconciledTx.transaction.id]}
+              className="bg-cyan-600 hover:bg-cyan-700"
+            >
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
