@@ -16,7 +16,9 @@ import {
   Filter,
   CreditCard,
   Wallet,
-  Building2
+  Building2,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { AccountManagement } from './AccountManagement';
 import { trpc } from '@/lib/trpc';
@@ -87,6 +89,9 @@ export function BankingViewEnhanced() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [statementYear, setStatementYear] = useState(new Date().getFullYear().toString());
   const [statementMonth, setStatementMonth] = useState((new Date().getMonth() + 1).toString());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteTransactionId, setDeleteTransactionId] = useState<number | null>(null);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
   const { data: transactionCount } = trpc.banking.getCount.useQuery();
@@ -123,6 +128,29 @@ export function BankingViewEnhanced() {
       console.error('Error details:', JSON.stringify(error, null, 2));
       toast.error(`Import failed: ${error.message || 'Unknown error'}`);
       setIsUploading(false);
+    },
+  });
+
+  const deleteTransaction = trpc.banking.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Transaction deleted');
+      utils.banking.invalidate();
+      setShowDeleteDialog(false);
+      setDeleteTransactionId(null);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete transaction');
+    },
+  });
+
+  const bulkDelete = trpc.banking.bulkDelete.useMutation({
+    onSuccess: (data: { count: number }) => {
+      toast.success(`Deleted ${data.count} transactions`);
+      utils.banking.invalidate();
+      setShowBulkDeleteDialog(false);
+    },
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || 'Failed to delete transactions');
     },
   });
 
@@ -208,6 +236,28 @@ export function BankingViewEnhanced() {
       category,
       projectId,
     });
+  };
+
+  const handleDelete = (txId: number) => {
+    setDeleteTransactionId(txId);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteTransactionId) {
+      deleteTransaction.mutate({ id: deleteTransactionId });
+    }
+  };
+
+  const handleBulkDelete = () => {
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmBulkDelete = () => {
+    const year = parseInt(selectedYear);
+    const month = selectedMonth === 'ytd' || selectedMonth === 'all' ? undefined : parseInt(selectedMonth);
+    
+    bulkDelete.mutate({ year, month });
   };
 
   const processFile = (file: File, year?: string, month?: string) => {
@@ -658,6 +708,18 @@ export function BankingViewEnhanced() {
               <div className="absolute inset-0 border-2 border-dashed border-purple-400 rounded-lg pointer-events-none" />
             )}
           </div>
+
+          {/* Bulk Delete Button */}
+          {filteredTransactions.length > 0 && selectedMonth !== 'all' && selectedMonth !== 'ytd' && (
+            <Button
+              onClick={handleBulkDelete}
+              variant="outline"
+              className="border-red-600 text-red-400 hover:bg-red-600/10"
+            >
+              <Trash2 size={16} className="mr-2" />
+              Delete {MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1142,14 +1204,23 @@ export function BankingViewEnhanced() {
                           </div>
                         </div>
 
-                        <Button
-                          onClick={() => handleReconcile(tx.id)}
-                          disabled={!selectedCategory[tx.id] || reconcile.isPending}
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                        >
-                          <Check size={16} className="mr-2" />
-                          Reconcile
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleDelete(tx.id)}
+                            variant="outline"
+                            className="border-red-600 text-red-400 hover:bg-red-600/10"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                          <Button
+                            onClick={() => handleReconcile(tx.id)}
+                            disabled={!selectedCategory[tx.id] || reconcile.isPending}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            <Check size={16} className="mr-2" />
+                            Reconcile
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1274,6 +1345,69 @@ export function BankingViewEnhanced() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Transaction Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              Delete Transaction
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Are you sure you want to delete this transaction? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              className="border-slate-600 text-slate-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              disabled={deleteTransaction.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteTransaction.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <DialogContent className="bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              Delete All Transactions
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Are you sure you want to delete all transactions for {MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear}? 
+              This will permanently delete {filteredTransactions.length} transaction(s). This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowBulkDeleteDialog(false)}
+              className="border-slate-600 text-slate-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmBulkDelete}
+              disabled={bulkDelete.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {bulkDelete.isPending ? 'Deleting...' : `Delete ${filteredTransactions.length} Transaction(s)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </>
   );

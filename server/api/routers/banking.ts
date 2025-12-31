@@ -260,6 +260,42 @@ export const bankingRouter = router({
       return { success: true };
     }),
 
+  // Bulk delete transactions by year/month
+  bulkDelete: protectedProcedure
+    .input(z.object({
+      year: z.number(),
+      month: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const conditions = [];
+      
+      // Filter by year
+      const startOfYear = new Date(input.year, 0, 1);
+      const endOfYear = new Date(input.year, 11, 31, 23, 59, 59);
+      
+      if (input.month) {
+        // Filter by specific month
+        const startOfMonth = new Date(input.year, input.month - 1, 1);
+        const endOfMonth = new Date(input.year, input.month, 0, 23, 59, 59);
+        conditions.push(gte(bankTransactions.transactionDate, startOfMonth));
+        conditions.push(lte(bankTransactions.transactionDate, endOfMonth));
+      } else {
+        // Delete entire year
+        conditions.push(gte(bankTransactions.transactionDate, startOfYear));
+        conditions.push(lte(bankTransactions.transactionDate, endOfYear));
+      }
+
+      const deleted = await db
+        .delete(bankTransactions)
+        .where(and(...conditions))
+        .returning();
+
+      return { count: deleted.length };
+    }),
+
   // Get categories (distinct)
   getCategories: protectedProcedure.query(async () => {
     const db = await getDb();
