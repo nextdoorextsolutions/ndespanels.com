@@ -33,6 +33,7 @@ import { InvoicesViewNDES } from '@/components/finance/InvoicesViewNDES';
 import { BankingViewEnhanced } from '@/components/finance/BankingViewEnhanced';
 import { InventoryViewNDES } from '@/components/finance/InventoryViewNDES';
 import { BillsViewNDES } from '@/components/finance/BillsViewNDES';
+import { CashFlowForecast } from '@/components/finance/CashFlowForecast';
 
 // TypeScript Interfaces
 type InvoiceStatus = 'Paid' | 'Overdue' | 'Sent' | 'Draft';
@@ -292,64 +293,8 @@ export default function OwnerFinanceDashboard() {
                   </div>
                 </div>
 
-                {/* Quick Stats / Cash Flow Mini Widget */}
-                <div className="bg-[#151a21] border border-gray-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between">
-                   <div>
-                     <h2 className="text-lg font-bold text-white mb-2">Profit Breakdown</h2>
-                     <p className="text-sm text-gray-400 mb-6">Revenue by payment type</p>
-                   </div>
-                   
-                   <div className="relative h-48 flex items-center justify-center">
-                       {/* Abstract representation of a pie chart or gauge */}
-                       <div className="w-40 h-40 rounded-full border-[12px] border-gray-800 border-t-cyan-400 border-r-purple-500 border-b-emerald-500 border-l-yellow-500 rotate-45 relative shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-                         <div className="absolute inset-0 flex flex-col items-center justify-center -rotate-45">
-                            <span className="text-2xl font-bold text-white">
-                              {metrics ? `$${(metrics.profitByDealType.cash + metrics.profitByDealType.finance + metrics.profitByDealType.insurance).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '$0'}
-                            </span>
-                            <span className="text-xs text-gray-500 uppercase font-semibold">Total Revenue</span>
-                         </div>
-                       </div>
-                   </div>
-
-                   <div className="space-y-3 mt-4">
-                      <div className="flex justify-between items-center text-sm">
-                          <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></div>
-                              <span className="text-gray-300">Cash</span>
-                          </div>
-                          <span className="font-bold text-white">
-                            {metrics ? `$${metrics.profitByDealType.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '$0'}
-                          </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                          <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-purple-500 shadow-[0_0_8px_#a855f7]"></div>
-                              <span className="text-gray-300">Finance</span>
-                          </div>
-                          <span className="font-bold text-white">
-                            {metrics ? `$${metrics.profitByDealType.finance.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '$0'}
-                          </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                          <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
-                              <span className="text-gray-300">Insurance</span>
-                          </div>
-                          <span className="font-bold text-white">
-                            {metrics ? `$${metrics.profitByDealType.insurance.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '$0'}
-                          </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                          <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_8px_#eab308]"></div>
-                              <span className="text-gray-300">Commercial</span>
-                          </div>
-                          <span className="font-bold text-white">
-                            {metrics ? `$${metrics.profitByDealType.commercial.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '$0'}
-                          </span>
-                      </div>
-                   </div>
-                </div>
+                {/* Cash Flow Forecast */}
+                <CashFlowForecast />
               </div>
 
               {/* Recent Invoices Table */}
