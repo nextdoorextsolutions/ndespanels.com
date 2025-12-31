@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Search, Plus, Receipt, AlertCircle, DollarSign, Calendar, Trash2, CheckCircle, Upload } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
@@ -28,13 +28,16 @@ export function BillsViewNDES() {
     },
   });
 
-  const filteredBills = bills.filter((item) => {
-    const bill = item.bill;
-    const matchesSearch = bill.vendorName.toLowerCase().includes(search.toLowerCase()) ||
-                         bill.billNumber?.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || bill.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Memoize filtered bills to prevent unnecessary re-renders
+  const filteredBills = useMemo(() => {
+    return bills.filter((item) => {
+      const bill = item.bill;
+      const matchesSearch = bill.vendorName.toLowerCase().includes(search.toLowerCase()) ||
+                           bill.billNumber?.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || bill.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [bills, search, statusFilter]);
 
   const handleMarkPaid = (bill: any) => {
     setSelectedBill(bill);
