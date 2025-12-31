@@ -34,6 +34,7 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
   const [matchedBills, setMatchedBills] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'upload' | 'preview' | 'matching' | 'complete'>('upload');
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
@@ -54,8 +55,39 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      setFile(selectedFile);
-      parseCSV(selectedFile);
+      processFile(selectedFile);
+    }
+  };
+
+  const processFile = (selectedFile: File) => {
+    if (!selectedFile.name.endsWith('.csv')) {
+      toast.error('Please upload a CSV file');
+      return;
+    }
+    setFile(selectedFile);
+    parseCSV(selectedFile);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) {
+      processFile(droppedFile);
     }
   };
 
@@ -358,11 +390,22 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
             <div className="space-y-4">
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-white/20 rounded-2xl p-12 text-center hover:border-purple-500/50 hover:bg-purple-500/5 transition-all cursor-pointer"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${
+                  isDragging 
+                    ? 'border-purple-500 bg-purple-500/20 scale-105' 
+                    : 'border-white/20 hover:border-purple-500/50 hover:bg-purple-500/5'
+                }`}
               >
-                <Upload className="mx-auto text-purple-400 mb-4" size={48} />
-                <p className="text-white font-medium mb-2">Click to upload CSV file</p>
-                <p className="text-sm text-zinc-400">Beacon bill export format supported</p>
+                <Upload className={`mx-auto mb-4 transition-all ${isDragging ? 'text-purple-300 scale-110' : 'text-purple-400'}`} size={48} />
+                <p className="text-white font-medium mb-2">
+                  {isDragging ? '📂 Drop CSV file here' : 'Click or drag & drop CSV file'}
+                </p>
+                <p className="text-sm text-zinc-400">
+                  {isDragging ? 'Release to upload' : 'Beacon bill export format supported'}
+                </p>
                 <input
                   ref={fileInputRef}
                   type="file"
