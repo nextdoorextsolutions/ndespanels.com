@@ -123,6 +123,51 @@ Return ONLY valid JSON array in this exact format:
                   })
                   .where(eq(bankTransactions.id, transaction.id));
                 
+                // Auto-create bill if this is a vendor payment (negative amount, materials/equipment/etc)
+                const isExpense = parseFloat(transaction.amount) < 0;
+                const isVendorCategory = ['materials', 'equipment', 'vehicle', 'utilities', 'professional_services'].includes(cat.category);
+                
+                if (isExpense && isVendorCategory && cat.confidence > 0.7) {
+                  // Extract vendor name from description (simple heuristic)
+                  const vendorName = transaction.description.split(/[-–]/)[0].trim() || transaction.description.substring(0, 50);
+                  
+                  // Check if bill already exists for this transaction amount and vendor
+                  const existingBills = await db
+                    .select()
+                    .from(billsPayable)
+                    .where(
+                      sql`${billsPayable.vendorName} ILIKE ${`%${vendorName.substring(0, 20)}%`} 
+                          AND ABS(${billsPayable.totalAmount}::numeric - ${Math.abs(parseFloat(transaction.amount))}) < 0.05
+                          AND ${billsPayable.status} = 'paid'`
+                    )
+                    .limit(1);
+                  
+                  // Only create if no matching bill exists
+                  if (existingBills.length === 0) {
+                    const txDate = new Date(transaction.transactionDate);
+                    await db
+                      .insert(billsPayable)
+                      .values({
+                        billNumber: `AUTO-${transaction.id}`,
+                        vendorName: vendorName,
+                        billDate: txDate,
+                        dueDate: txDate,
+                        amount: Math.abs(parseFloat(transaction.amount)).toString(),
+                        taxAmount: '0',
+                        totalAmount: Math.abs(parseFloat(transaction.amount)).toString(),
+                        category: cat.category,
+                        status: 'paid',
+                        paymentMethod: transaction.bankAccount || 'bank_transfer',
+                        paymentDate: txDate,
+                        paymentReference: `Auto-created from bank transaction #${transaction.id}`,
+                        notes: `Automatically created from imported bank transaction. AI categorized as ${cat.category} with ${(cat.confidence * 100).toFixed(0)}% confidence.`,
+                        createdBy: 1, // System user
+                      });
+                    
+                    console.log(`[AI Categorization] Auto-created bill for ${vendorName}: $${Math.abs(parseFloat(transaction.amount))}`);
+                  }
+                }
+                
                 categorized.push({
                   id: transaction.id,
                   category: cat.category,
