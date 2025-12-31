@@ -97,7 +97,7 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
         const bills: ParsedBill[] = results.data.map((row: any) => ({
           orderPlacedDate: row['OrderPlacedDate'] || row['Order Placed Date'] || '',
           orderNumber: row['OrderNumber'] || row['Order Number'] || '',
@@ -117,7 +117,7 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
         }));
 
         setParsedBills(bills);
-        consolidateBills(bills);
+        await consolidateBills(bills);
         setIsProcessing(false);
         setStep('preview');
       },
@@ -171,7 +171,7 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
     return 'materials';
   };
 
-  const consolidateBills = (bills: ParsedBill[]) => {
+  const consolidateBills = async (bills: ParsedBill[]) => {
     // Group by order number to consolidate line items
     const grouped = bills.reduce((acc, bill) => {
       const key = bill.orderNumber;
@@ -234,7 +234,7 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
     });
 
     setConsolidatedBills(consolidated);
-    detectPriceSpikes(consolidated);
+    await detectPriceSpikes(consolidated);
   };
 
   const detectPriceSpikes = async (bills: any[]) => {
