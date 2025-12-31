@@ -106,11 +106,18 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     setState(prev => ({ ...prev, crmUserLoading: true, syncError: null }));
     
     try {
-      const result = await syncUserMutation.mutateAsync({
+      // Add timeout to prevent infinite spinner
+      const syncPromise = syncUserMutation.mutateAsync({
         supabaseUserId: supabaseUser.id,
         email: supabaseUser.email || "",
         name: supabaseUser.user_metadata?.name || supabaseUser.email?.split("@")[0],
       });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('CRM sync timeout - please refresh')), 15000)
+      );
+      
+      const result = await Promise.race([syncPromise, timeoutPromise]) as any;
       
       if (result.success && result.user) {
         // CRITICAL FIX: Store the session token returned from the backend
