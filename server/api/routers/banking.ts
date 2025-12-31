@@ -105,6 +105,9 @@ Return ONLY valid JSON array in this exact format:
                   .update(bankTransactions)
                   .set({
                     category: cat.category,
+                    aiSuggestedCategory: cat.category,
+                    aiConfidence: cat.confidence,
+                    aiReasoning: cat.reasoning,
                   })
                   .where(eq(bankTransactions.id, transaction.id));
                 
@@ -190,6 +193,9 @@ Return ONLY valid JSON:
           .update(bankTransactions)
           .set({
             category: categorization.category,
+            aiSuggestedCategory: categorization.category,
+            aiConfidence: categorization.confidence,
+            aiReasoning: categorization.reasoning,
           })
           .where(eq(bankTransactions.id, input.transactionId));
 
