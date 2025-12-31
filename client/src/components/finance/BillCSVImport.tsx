@@ -278,11 +278,11 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
           const recentPrice = historicalPrices[historicalPrices.length - 1];
           const currentPrice = item.unitPrice;
           
-          // Alert if price is 15% higher than average OR 20% higher than most recent
+          // Alert if price is 5% higher than average OR 5% higher than most recent
           const avgIncrease = ((currentPrice - avgPrice) / avgPrice) * 100;
           const recentIncrease = ((currentPrice - recentPrice) / recentPrice) * 100;
           
-          if (avgIncrease > 15 || recentIncrease > 20) {
+          if (avgIncrease > 5 || recentIncrease > 5) {
             alerts.push({
               billNumber: newBill.billNumber,
               item: item.description,
