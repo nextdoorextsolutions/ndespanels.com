@@ -226,19 +226,24 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       const primaryCategory = Object.entries(group.categoryBreakdown)
         .sort(([, a]: any, [, b]: any) => b - a)[0]?.[0] || 'materials';
 
-      // Extract vendor name from JobName (e.g., "MENCH SHOP" -> "Menards")
-      let vendorName = 'Unknown Vendor';
-      const jobName = group.jobName || '';
-      if (jobName.includes('MENCH')) {
-        vendorName = 'Menards';
-      } else if (jobName.includes('CARCANA')) {
-        vendorName = 'Carcana';
-      } else if (jobName.includes('GRIMES')) {
-        vendorName = 'Grimes';
-      } else if (jobName.trim()) {
-        // Use the full job name if it doesn't match known vendors
-        vendorName = jobName.replace(/\s+SHOP$/i, '').trim() || jobName;
+      // Extract vendor name from order number prefix
+      // Beacon uses different prefixes for different vendors
+      let vendorName = 'Beacon Building Products';
+      const orderNum = group.orderNumber || '';
+      
+      // Map order number prefixes to vendors
+      if (orderNum.startsWith('TT')) {
+        vendorName = 'Beacon - Tampa Terminal';
+      } else if (orderNum.startsWith('TO')) {
+        vendorName = 'Beacon - Tampa Orlando';
+      } else if (orderNum.startsWith('TM')) {
+        vendorName = 'Beacon - Tampa Main';
+      } else if (orderNum.startsWith('TS')) {
+        vendorName = 'Beacon - Tampa South';
       }
+      
+      // If there's additional vendor info in the CSV, we can use it
+      // For now, all orders are from Beacon (different locations)
 
       return {
         billNumber: group.orderNumber,
