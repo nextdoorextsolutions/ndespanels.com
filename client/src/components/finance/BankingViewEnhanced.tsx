@@ -766,14 +766,14 @@ export function BankingViewEnhanced() {
             </Button>
           )}
 
-          {/* Legend/Mapping Button */}
+          {/* Legacy/Mapping Button */}
           <Button
             onClick={() => setShowLegendDialog(true)}
             variant="outline"
             className="border-cyan-600 text-cyan-400 hover:bg-cyan-600/10"
           >
             <BookOpen size={16} className="mr-2" />
-            Legend
+            Legacy
           </Button>
         </div>
       </div>
@@ -1496,17 +1496,17 @@ export function BankingViewEnhanced() {
         </DialogContent>
       </Dialog>
 
-      {/* Legend/Mapping Dialog */}
+      {/* Legacy/Mapping Dialog */}
       <Dialog open={showLegendDialog} onOpenChange={setShowLegendDialog}>
         <DialogContent className="bg-slate-900 border-slate-700 max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-cyan-400" />
-              Transaction Legend & Auto-Categorization
+              Legacy Transaction Management
             </DialogTitle>
             <DialogDescription className="text-slate-400">
-              Create rules to automatically categorize and assign projects to transactions based on description patterns.
-              For example, map "OPC* MAN" to Materials category and a specific project.
+              Bulk categorize and assign projects to older transactions based on description patterns.
+              Perfect for managing legacy entries without projects or categories.
             </DialogDescription>
           </DialogHeader>
           
