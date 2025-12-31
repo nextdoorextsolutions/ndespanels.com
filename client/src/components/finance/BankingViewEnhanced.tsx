@@ -327,14 +327,24 @@ export function BankingViewEnhanced() {
     }
   };
 
-  const bulkReconcileImported = (category: string, projectId?: number) => {
-    // Update all newly imported transactions
+  const bulkReconcileImported = (category: string) => {
+    // Update all newly imported transactions with category and reconciled status
+    let completed = 0;
     newlyImportedIds.forEach(id => {
-      updateTransaction.mutate({ id, category, projectId });
+      reconcile.mutate(
+        { id, category },
+        {
+          onSuccess: () => {
+            completed++;
+            if (completed === newlyImportedIds.length) {
+              toast.success(`Reconciled ${newlyImportedIds.length} transactions as ${category}`);
+            }
+          },
+        }
+      );
     });
     setShowReconcileDialog(false);
     setNewlyImportedIds([]);
-    toast.success(`Reconciled ${newlyImportedIds.length} transactions`);
   };
 
   const processFile = (file: File, year?: string, month?: string) => {
@@ -1642,51 +1652,31 @@ export function BankingViewEnhanced() {
               Reconcile Imported Transactions
             </DialogTitle>
             <DialogDescription className="text-slate-400">
-              You've imported {newlyImportedIds.length} transactions. Quickly categorize them all as "Legacy" or assign to a project.
+              You've imported {newlyImportedIds.length} transactions from your bank statement.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-              <p className="text-sm text-purple-300 mb-4">
-                <strong>Quick Reconcile:</strong> Mark all {newlyImportedIds.length} imported transactions as "Legacy" to categorize them later.
-              </p>
-              
               <div className="space-y-3">
+                <div className="space-y-2">
+                  <h4 className="text-white font-semibold">What is "Legacy"?</h4>
+                  <p className="text-sm text-slate-400">
+                    Mark these transactions as "Legacy" to indicate they're from before you started using this CRM. 
+                    You can categorize them individually later using the Quick Add feature.
+                  </p>
+                </div>
+                
                 <Button
                   onClick={() => bulkReconcileImported('Legacy')}
                   className="w-full bg-purple-600 hover:bg-purple-700"
                 >
-                  Mark All as Legacy
+                  Mark All {newlyImportedIds.length} as Legacy & Reconcile
                 </Button>
                 
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-slate-700" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-slate-900 px-2 text-slate-500">Or assign to project</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs text-slate-400">Assign to Project (Optional)</label>
-                  <select
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        bulkReconcileImported('Legacy', Number(e.target.value));
-                      }
-                    }}
-                  >
-                    <option value="">Select project...</option>
-                    {jobs.map((job: any) => (
-                      <option key={job.id} value={job.id}>
-                        {job.fullName} - {job.address}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <p className="text-xs text-slate-500 text-center">
+                  This will move all transactions from "Pending" to "Reconciled" with the Legacy category.
+                </p>
               </div>
             </div>
           </div>
