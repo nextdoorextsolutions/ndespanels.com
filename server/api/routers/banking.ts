@@ -5,6 +5,20 @@ import { getDb } from "../../db";
 import { bankTransactions, reportRequests } from "../../../drizzle/schema";
 
 export const bankingRouter = router({
+  // Debug endpoint to check raw transaction count
+  getCount: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(bankTransactions);
+      
+      console.log('[getCount] Total transactions in DB:', result[0]?.count);
+      return { count: result[0]?.count || 0 };
+    }),
+
   // Get all bank transactions with optional filters
   getAll: protectedProcedure
     .input(z.object({

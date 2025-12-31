@@ -89,10 +89,15 @@ export function BankingViewEnhanced() {
   const [statementMonth, setStatementMonth] = useState((new Date().getMonth() + 1).toString());
 
   const { data: transactions = [], isLoading } = trpc.banking.getAll.useQuery({ status: 'all' });
+  const { data: transactionCount } = trpc.banking.getCount.useQuery();
   const { data: jobs = [] } = trpc.crm.getLeads.useQuery({});
   const { data: accounts = [] } = trpc.bankAccounts.getAll.useQuery({});
   const { data: accountStats } = trpc.bankAccounts.getStats.useQuery();
   const utils = trpc.useUtils();
+
+  // Debug logging
+  console.log('[BankingView] Transactions loaded:', transactions.length);
+  console.log('[BankingView] Transaction count from DB:', transactionCount?.count);
 
   const reconcile = trpc.banking.reconcile.useMutation({
     onSuccess: () => {
