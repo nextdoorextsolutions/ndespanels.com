@@ -9,6 +9,12 @@ interface FinanceMetrics {
   netProfit: number;
   recentInvoices: Invoice[];
   revenueData: RevenueDataPoint[];
+  profitByDealType: {
+    cash: number;
+    finance: number;
+    insurance: number;
+    commercial: number;
+  };
 }
 
 interface Invoice {
@@ -28,8 +34,11 @@ interface RevenueDataPoint {
 }
 
 export function useFinanceMetrics() {
-  // Fetch all invoices using tRPC
+  // Fetch all invoices with job details using tRPC
   const { data: invoices = [] } = trpc.invoices.getAll.useQuery({});
+  
+  // Fetch all jobs to get deal types
+  const { data: jobs = [] } = trpc.crm.getLeads.useQuery({});
   
   // TODO: Add expenses router - for now use empty array
   const expenses: any[] = [];
@@ -61,6 +70,30 @@ export function useFinanceMetrics() {
   // Calculate Net Profit
   const netProfit = totalRevenue - totalExpenses;
 
+  // Calculate profit breakdown by deal type
+  const profitByDealType = {
+    cash: 0,
+    finance: 0,
+    insurance: 0,
+    commercial: 0,
+  };
+
+  (invoices || [])
+    .filter((inv: any) => inv.status === 'paid')
+    .forEach((inv: any) => {
+      const amount = parseFloat(inv.totalAmount || '0');
+      if (inv.reportRequestId) {
+        const job = jobs.find((j: any) => j.id === inv.reportRequestId);
+        if (job?.dealType === 'cash') {
+          profitByDealType.cash += amount;
+        } else if (job?.dealType === 'financed') {
+          profitByDealType.finance += amount;
+        } else if (job?.dealType === 'insurance') {
+          profitByDealType.insurance += amount;
+        }
+      }
+    });
+
   // Get recent 5 invoices
   const recentInvoices: Invoice[] = (invoices || []).slice(0, 5).map((inv: any) => ({
     id: inv.id,
@@ -85,6 +118,7 @@ export function useFinanceMetrics() {
       netProfit,
       recentInvoices,
       revenueData,
+      profitByDealType,
     },
     isLoading: false,
   };
