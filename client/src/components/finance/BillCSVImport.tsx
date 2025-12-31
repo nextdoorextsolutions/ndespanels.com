@@ -253,13 +253,21 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
         group.totalAmount = group.lineItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
       }
 
+      // Parse and format dates to ISO string
+      const parseDate = (dateStr: string) => {
+        if (!dateStr) return new Date().toISOString();
+        // Handle MM-DD-YYYY format from Beacon CSV
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+      };
+
       console.log(`[CSV Import] Order ${group.orderNumber}: Total=${group.totalAmount}, Tax=${group.taxAmount}, LineItems=${group.lineItems.length}`);
 
       return {
         billNumber: group.orderNumber,
         vendorName: vendorName,
-        billDate: group.orderPlacedDate,
-        dueDate: group.orderPlacedDate,
+        billDate: parseDate(group.orderPlacedDate),
+        dueDate: parseDate(group.orderPlacedDate),
         amount: (group.totalAmount - group.taxAmount).toFixed(2),
         taxAmount: group.taxAmount.toFixed(2),
         totalAmount: group.totalAmount.toFixed(2),
