@@ -40,8 +40,8 @@ export function useFinanceMetrics() {
   // Fetch all jobs to get deal types
   const { data: jobs = [] } = trpc.crm.getLeads.useQuery({});
   
-  // TODO: Add expenses router - for now use empty array
-  const expenses: any[] = [];
+  // Fetch all expenses using tRPC
+  const { data: expenses = [] } = trpc.expenses.getAll.useQuery({});
 
   // Calculate Total Revenue (sum of paid invoices)
   const totalRevenue = (invoices || [])
