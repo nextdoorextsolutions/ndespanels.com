@@ -265,6 +265,7 @@ export function BankingViewEnhanced() {
           const amountIdx = headerCols.findIndex(h => h.includes('amount'));
           
           console.log('Column indices - Date:', dateIdx, 'Description:', descIdx, 'Amount:', amountIdx);
+          console.log('Sample data row:', lines[1]);
           
           // Parse transactions
           const transactions = lines.slice(1).map((line, idx) => {
