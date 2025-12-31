@@ -259,9 +259,10 @@ export function BankingViewEnhanced() {
           
           console.log('Header columns:', headerCols);
           
-          // Find column indices (Chase CSV typically has: Details, Posting Date, Description, Amount, Type, Balance, Check or Slip #)
+          // Find column indices (Chase CSV has: Details, Posting Date, Description, Amount, Type, Balance, Check or Slip #)
+          // Note: "Description" column has merchant names, "Details" column has transaction type (DEBIT/CREDIT)
           const dateIdx = headerCols.findIndex(h => h.includes('date') || h.includes('posting'));
-          const descIdx = headerCols.findIndex(h => h.includes('description') || h.includes('details'));
+          const descIdx = headerCols.findIndex(h => h.includes('description')); // Only match "description", not "details"
           const amountIdx = headerCols.findIndex(h => h.includes('amount'));
           
           console.log('Column indices - Date:', dateIdx, 'Description:', descIdx, 'Amount:', amountIdx);
