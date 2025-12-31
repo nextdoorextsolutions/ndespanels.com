@@ -144,11 +144,13 @@ export function BankingViewEnhanced() {
       bulkImport.mutate(
         { transactions: result.transactions },
         {
-          onSuccess: () => {
+          onSuccess: (data) => {
+            toast.success(`Successfully imported ${data.transactions.length} transactions! Use "Reconcile" button to match bills.`);
             setViewMode('detailed');
             setIsUploading(false);
           },
-          onError: () => {
+          onError: (error: any) => {
+            toast.error(error.message || 'Failed to import transactions');
             setIsUploading(false);
           }
         }
