@@ -31,8 +31,8 @@ export function useFinanceMetrics() {
   // Fetch all invoices using tRPC
   const { data: invoices = [] } = trpc.invoices.getAll.useQuery({});
   
-  // Fetch all expenses using tRPC
-  const { data: expenses = [] } = trpc.expenses.getAll.useQuery({});
+  // TODO: Add expenses router - for now use empty array
+  const expenses: any[] = [];
 
   // Calculate Total Revenue (sum of paid invoices)
   const totalRevenue = (invoices || [])

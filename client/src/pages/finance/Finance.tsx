@@ -70,7 +70,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
 export default function OwnerFinanceDashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'banking' | 'inventory' | 'bills'>('dashboard');
-  const { data: metrics, isLoading, error } = useFinanceMetrics();
+  const { data: metrics, isLoading } = useFinanceMetrics();
   const { user } = useAuth();
   
   // Check if user is owner
@@ -123,17 +123,6 @@ export default function OwnerFinanceDashboard() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex min-h-screen bg-[#0B0C10] items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-          <p className="text-gray-400">Error loading financial data</p>
-          <p className="text-sm text-gray-500 mt-2">{error.message}</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-[#0B0C10] text-gray-100 font-sans selection:bg-cyan-500/30">
