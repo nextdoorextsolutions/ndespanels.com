@@ -3,25 +3,18 @@ import { Search, Plus, Receipt, AlertCircle, DollarSign, Calendar, Trash2, Check
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { AddBillDialog } from './AddBillDialog';
+import { MarkBillPaidDialog } from './MarkBillPaidDialog';
 
 export function BillsViewNDES() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'paid' | 'overdue'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false);
+  const [selectedBill, setSelectedBill] = useState<any>(null);
 
   const { data: bills = [], isLoading } = trpc.bills.getAll.useQuery();
   const { data: stats } = trpc.bills.getStats.useQuery();
   const utils = trpc.useUtils();
-
-  const markAsPaid = trpc.bills.markAsPaid.useMutation({
-    onSuccess: () => {
-      toast.success('Bill marked as paid');
-      utils.bills.invalidate();
-    },
-    onError: (error) => {
-      toast.error(error.message || 'Failed to mark as paid');
-    },
-  });
 
   const deleteBill = trpc.bills.delete.useMutation({
     onSuccess: () => {
@@ -41,13 +34,9 @@ export function BillsViewNDES() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleMarkPaid = (billId: number) => {
-    const paymentDate = new Date().toISOString();
-    markAsPaid.mutate({
-      id: billId,
-      paymentMethod: 'check',
-      paymentDate,
-    });
+  const handleMarkPaid = (bill: any) => {
+    setSelectedBill(bill);
+    setShowMarkPaidDialog(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -236,7 +225,7 @@ export function BillsViewNDES() {
                     <div className="flex items-center justify-center gap-2">
                       {bill.status !== 'paid' && (
                         <button 
-                          onClick={() => handleMarkPaid(bill.id)}
+                          onClick={() => handleMarkPaid(bill)}
                           className="p-2 text-zinc-500 hover:text-emerald-400 transition-colors"
                           title="Mark as Paid"
                         >
@@ -273,6 +262,13 @@ export function BillsViewNDES() {
       <AddBillDialog 
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
+      />
+
+      {/* Mark Bill Paid Dialog */}
+      <MarkBillPaidDialog
+        open={showMarkPaidDialog}
+        onOpenChange={setShowMarkPaidDialog}
+        bill={selectedBill}
       />
     </div>
   );
