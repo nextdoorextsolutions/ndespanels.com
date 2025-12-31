@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { trpc } from '@/lib/trpc';
 
 interface FinanceMetrics {
   totalRevenue: number;
@@ -29,89 +28,66 @@ interface RevenueDataPoint {
 }
 
 export function useFinanceMetrics() {
-  return useQuery<FinanceMetrics>({
-    queryKey: ['finance-metrics'],
-    queryFn: async () => {
-      if (!supabase) {
-        throw new Error('Supabase client not initialized');
-      }
+  // Fetch all invoices using tRPC
+  const { data: invoices = [] } = trpc.invoices.getAll.useQuery({});
+  
+  // Fetch all expenses using tRPC
+  const { data: expenses = [] } = trpc.expenses.getAll.useQuery({});
 
-      // Fetch all invoices
-      const { data: invoices, error: invoicesError } = await supabase
-        .from('invoices')
-        .select('*')
-        .order('invoice_date', { ascending: false });
+  // Calculate Total Revenue (sum of paid invoices)
+  const totalRevenue = (invoices || [])
+    .filter((inv: any) => inv.status === 'paid')
+    .reduce((sum: number, inv: any) => sum + parseFloat(inv.totalAmount || '0'), 0);
 
-      if (invoicesError) {
-        console.error('Error fetching invoices:', invoicesError);
-        throw invoicesError;
-      }
+  // Calculate Outstanding (sum of sent and overdue invoices)
+  const outstanding = (invoices || [])
+    .filter((inv: any) => inv.status === 'sent' || inv.status === 'overdue')
+    .reduce((sum: number, inv: any) => sum + parseFloat(inv.totalAmount || '0'), 0);
 
-      // Fetch all expenses
-      const { data: expenses, error: expensesError } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('date', { ascending: false });
+  // Count paid invoices
+  const paidInvoicesCount = (invoices || []).filter((inv: any) => inv.status === 'paid').length;
 
-      if (expensesError) {
-        console.error('Error fetching expenses:', expensesError);
-        throw expensesError;
-      }
+  // Count pending invoices (sent + overdue)
+  const pendingInvoicesCount = (invoices || []).filter(
+    (inv: any) => inv.status === 'sent' || inv.status === 'overdue'
+  ).length;
 
-      // Calculate Total Revenue (sum of paid invoices)
-      const totalRevenue = (invoices || [])
-        .filter((inv: any) => inv.status === 'paid')
-        .reduce((sum: number, inv: any) => sum + parseFloat(inv.total_amount || '0'), 0);
+  // Calculate Total Expenses
+  const totalExpenses = (expenses || []).reduce(
+    (sum: number, exp: any) => sum + parseFloat(exp.amount || '0'),
+    0
+  );
 
-      // Calculate Outstanding (sum of sent and overdue invoices)
-      const outstanding = (invoices || [])
-        .filter((inv: any) => inv.status === 'sent' || inv.status === 'overdue')
-        .reduce((sum: number, inv: any) => sum + parseFloat(inv.total_amount || '0'), 0);
+  // Calculate Net Profit
+  const netProfit = totalRevenue - totalExpenses;
 
-      // Count paid invoices
-      const paidInvoicesCount = (invoices || []).filter((inv: any) => inv.status === 'paid').length;
+  // Get recent 5 invoices
+  const recentInvoices: Invoice[] = (invoices || []).slice(0, 5).map((inv: any) => ({
+    id: inv.id,
+    invoiceNumber: inv.invoiceNumber,
+    clientName: inv.clientName,
+    address: inv.address || 'N/A',
+    amount: parseFloat(inv.totalAmount || '0'),
+    status: inv.status.charAt(0).toUpperCase() + inv.status.slice(1),
+    invoiceDate: new Date(inv.invoiceDate).toLocaleDateString(),
+  }));
 
-      // Count pending invoices (sent + overdue)
-      const pendingInvoicesCount = (invoices || []).filter(
-        (inv: any) => inv.status === 'sent' || inv.status === 'overdue'
-      ).length;
+  // Generate revenue data for last 6 months
+  const revenueData = generateMonthlyRevenueData(invoices || [], expenses || []);
 
-      // Calculate Total Expenses
-      const totalExpenses = (expenses || []).reduce(
-        (sum: number, exp: any) => sum + parseFloat(exp.amount || '0'),
-        0
-      );
-
-      // Calculate Net Profit
-      const netProfit = totalRevenue - totalExpenses;
-
-      // Get recent 5 invoices
-      const recentInvoices: Invoice[] = (invoices || []).slice(0, 5).map((inv: any) => ({
-        id: inv.id,
-        invoiceNumber: inv.invoice_number,
-        clientName: inv.client_name,
-        address: inv.address || 'N/A',
-        amount: parseFloat(inv.total_amount || '0'),
-        status: inv.status.charAt(0).toUpperCase() + inv.status.slice(1),
-        invoiceDate: new Date(inv.invoice_date).toLocaleDateString(),
-      }));
-
-      // Generate revenue data for last 6 months
-      const revenueData = generateMonthlyRevenueData(invoices || [], expenses || []);
-
-      return {
-        totalRevenue,
-        outstanding,
-        paidInvoicesCount,
-        pendingInvoicesCount,
-        totalExpenses,
-        netProfit,
-        recentInvoices,
-        revenueData,
-      };
+  return {
+    data: {
+      totalRevenue,
+      outstanding,
+      paidInvoicesCount,
+      pendingInvoicesCount,
+      totalExpenses,
+      netProfit,
+      recentInvoices,
+      revenueData,
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
-  });
+    isLoading: false,
+  };
 }
 
 function generateMonthlyRevenueData(invoices: any[], expenses: any[]): RevenueDataPoint[] {
@@ -128,11 +104,11 @@ function generateMonthlyRevenueData(invoices: any[], expenses: any[]): RevenueDa
     // Calculate income for this month (paid invoices)
     const income = invoices
       .filter((inv: any) => {
-        if (inv.status !== 'paid' || !inv.paid_date) return false;
-        const paidDate = new Date(inv.paid_date);
+        if (inv.status !== 'paid' || !inv.paidDate) return false;
+        const paidDate = new Date(inv.paidDate);
         return paidDate.getFullYear() === year && paidDate.getMonth() === month;
       })
-      .reduce((sum: number, inv: any) => sum + parseFloat(inv.total_amount || '0'), 0);
+      .reduce((sum: number, inv: any) => sum + parseFloat(inv.totalAmount || '0'), 0);
 
     // Calculate expenses for this month
     const expensesAmount = expenses
