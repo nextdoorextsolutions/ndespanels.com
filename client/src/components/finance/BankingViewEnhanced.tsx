@@ -203,8 +203,9 @@ export function BankingViewEnhanced() {
   };
 
   const confirmBulkDelete = () => {
-    const txIds = filteredTransactions.map(item => item.transaction.id);
-    bulkDelete.mutate({ ids: txIds });
+    const year = parseInt(selectedYear);
+    const month = selectedMonth !== 'all' && selectedMonth !== 'ytd' ? parseInt(selectedMonth) : undefined;
+    bulkDelete.mutate({ year, month });
     setShowBulkDeleteDialog(false);
   };
 
@@ -254,7 +255,7 @@ export function BankingViewEnhanced() {
     if (item) {
       setEditingReconciledTx(item);
       setSelectedCategory({ ...selectedCategory, [txId]: item.transaction.category || '' });
-      setSelectedProject({ ...selectedProject, [txId]: item.transaction.projectId || undefined });
+      setSelectedProject({ ...selectedProject, [txId]: item.project?.id || undefined });
       setShowEditDialog(true);
     }
   };

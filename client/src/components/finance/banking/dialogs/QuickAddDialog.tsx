@@ -26,7 +26,14 @@ interface Transaction {
     description: string;
     transactionDate: Date | string;
     amount: string;
+    category?: string | null;
+    status: string | null;
+    projectId?: number | null;
   };
+  project?: {
+    id: number;
+    fullName: string;
+  } | null;
 }
 
 interface QuickAddDialogProps {

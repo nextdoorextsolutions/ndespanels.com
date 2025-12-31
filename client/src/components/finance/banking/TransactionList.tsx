@@ -22,7 +22,8 @@ interface Transaction {
     transactionDate: Date | string;
     amount: string;
     category?: string | null;
-    status: string;
+    status: string | null;
+    projectId?: number | null;
   };
   project?: {
     id: number;
