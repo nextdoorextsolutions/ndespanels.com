@@ -192,19 +192,31 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       
       const category = categorizeMaterial(bill.itemDescription);
       
-      acc[key].lineItems.push({
-        description: bill.itemDescription,
-        quantity: 1,
-        unitPrice: bill.unitPrice,
-        amount: bill.shippedExtendedTotal,
-        category,
-      });
+      // Only add line items that have actual item descriptions (not summary rows)
+      if (bill.itemDescription && bill.itemDescription.trim()) {
+        acc[key].lineItems.push({
+          description: bill.itemDescription,
+          quantity: 1,
+          unitPrice: bill.unitPrice,
+          amount: bill.shippedExtendedTotal || bill.unitPrice,
+          category,
+        });
+        
+        // Track category breakdown using the line item amount
+        const lineAmount = bill.shippedExtendedTotal || bill.unitPrice || 0;
+        acc[key].categoryBreakdown[category] = (acc[key].categoryBreakdown[category] || 0) + lineAmount;
+      }
       
-      // Track category breakdown
-      acc[key].categoryBreakdown[category] = (acc[key].categoryBreakdown[category] || 0) + bill.shippedExtendedTotal;
-      
-      acc[key].totalAmount += bill.total;
-      acc[key].taxAmount += bill.tax;
+      // Accumulate totals (these might be on summary rows or individual rows)
+      if (bill.total && !isNaN(bill.total)) {
+        acc[key].totalAmount = Math.max(acc[key].totalAmount, bill.total);
+      }
+      if (bill.tax && !isNaN(bill.tax)) {
+        acc[key].taxAmount = Math.max(acc[key].taxAmount, bill.tax);
+      }
+      if (bill.subTotal && !isNaN(bill.subTotal)) {
+        acc[key].totalAmount = Math.max(acc[key].totalAmount, bill.subTotal + (bill.tax || 0));
+      }
       
       return acc;
     }, {} as Record<string, any>);
@@ -214,11 +226,23 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       const primaryCategory = Object.entries(group.categoryBreakdown)
         .sort(([, a]: any, [, b]: any) => b - a)[0]?.[0] || 'materials';
 
+      // Extract vendor name from JobName (e.g., "MENCH SHOP" -> "Menards")
+      let vendorName = 'Unknown Vendor';
+      const jobName = group.jobName || '';
+      if (jobName.includes('MENCH')) {
+        vendorName = 'Menards';
+      } else if (jobName.includes('CARCANA')) {
+        vendorName = 'Carcana';
+      } else if (jobName.includes('GRIMES')) {
+        vendorName = 'Grimes';
+      } else if (jobName.trim()) {
+        // Use the full job name if it doesn't match known vendors
+        vendorName = jobName.replace(/\s+SHOP$/i, '').trim() || jobName;
+      }
+
       return {
         billNumber: group.orderNumber,
-        vendorName: group.jobName.includes('MENCH') ? 'Menards' : 
-                    group.jobName.includes('CARCANA') ? 'Carcana' : 
-                    group.jobName.split(' ')[0],
+        vendorName: vendorName,
         billDate: group.orderPlacedDate,
         dueDate: group.orderPlacedDate,
         amount: (group.totalAmount - group.taxAmount).toFixed(2),
