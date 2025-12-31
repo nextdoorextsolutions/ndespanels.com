@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../../_core/trpc";
 import { getDb } from "../../db";
-import { billsPayable, reportRequests } from "../../../drizzle/schema";
+import { billsPayable, reportRequests, bankTransactions } from "../../../drizzle/schema";
 
 export const billsRouter = router({
   // Get all bills with optional filters
@@ -306,6 +306,129 @@ export const billsRouter = router({
         pendingCount: Number(stats.pendingCount) || 0,
         overdueCount: Number(stats.overdueCount) || 0,
         totalCount: Number(stats.totalCount) || 0,
+      };
+    }),
+
+  // Bulk import bills from CSV
+  bulkImport: protectedProcedure
+    .input(z.object({
+      bills: z.array(z.object({
+        billNumber: z.string(),
+        vendorName: z.string(),
+        billDate: z.string(),
+        dueDate: z.string(),
+        amount: z.string(),
+        taxAmount: z.string(),
+        totalAmount: z.string(),
+        category: z.string(),
+        status: z.string(),
+        lineItems: z.array(z.any()).optional(),
+        notes: z.string().optional(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const imported = [];
+
+      for (const bill of input.bills) {
+        // Check if bill already exists
+        const existing = await db
+          .select()
+          .from(billsPayable)
+          .where(eq(billsPayable.billNumber, bill.billNumber))
+          .limit(1);
+
+        if (existing.length > 0) {
+          console.log(`[Bill Import] Skipping duplicate bill: ${bill.billNumber}`);
+          continue;
+        }
+
+        const [newBill] = await db
+          .insert(billsPayable)
+          .values({
+            billNumber: bill.billNumber,
+            vendorName: bill.vendorName,
+            billDate: new Date(bill.billDate),
+            dueDate: new Date(bill.dueDate),
+            amount: bill.amount,
+            taxAmount: bill.taxAmount,
+            totalAmount: bill.totalAmount,
+            category: bill.category,
+            status: bill.status as any,
+            lineItems: bill.lineItems ? JSON.stringify(bill.lineItems) : null,
+            notes: bill.notes,
+            createdBy: ctx.user.id,
+          })
+          .returning();
+
+        imported.push(newBill);
+      }
+
+      console.log(`[Bill Import] Successfully imported ${imported.length} bills`);
+
+      return {
+        success: true,
+        imported: imported.length,
+        skipped: input.bills.length - imported.length,
+      };
+    }),
+
+  // Match bills with bank transactions using AI
+  matchWithTransactions: protectedProcedure
+    .input(z.object({
+      bills: z.array(z.object({
+        billNumber: z.string(),
+        vendorName: z.string(),
+        totalAmount: z.string(),
+        billDate: z.string(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const matched = [];
+
+      // Get all reconciled bank transactions
+      const transactions = await db
+        .select()
+        .from(bankTransactions)
+        .where(eq(bankTransactions.status, 'reconciled'));
+
+      for (const bill of input.bills) {
+        const billAmount = parseFloat(bill.totalAmount);
+        const billDate = new Date(bill.billDate);
+
+        // Find matching transaction (negative amount, similar date, similar amount)
+        const matchingTx = transactions.find(tx => {
+          const txAmount = Math.abs(parseFloat(tx.amount));
+          const txDate = new Date(tx.transactionDate);
+          const amountMatch = Math.abs(txAmount - billAmount) < 0.05;
+          const dateDiff = Math.abs(txDate.getTime() - billDate.getTime()) / (1000 * 60 * 60 * 24);
+          const dateMatch = dateDiff <= 30; // Within 30 days
+          const vendorMatch = tx.description.toLowerCase().includes(bill.vendorName.toLowerCase().substring(0, 5));
+
+          return amountMatch && dateMatch && vendorMatch;
+        });
+
+        if (matchingTx) {
+          matched.push({
+            billNumber: bill.billNumber,
+            transactionId: matchingTx.id,
+            transactionDescription: matchingTx.description,
+            confidence: 0.9,
+          });
+
+          console.log(`[Bill Matching] Matched bill ${bill.billNumber} with transaction #${matchingTx.id}`);
+        }
+      }
+
+      return {
+        success: true,
+        matchedCount: matched.length,
+        matched,
       };
     }),
 });

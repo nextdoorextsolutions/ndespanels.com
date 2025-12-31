@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { Search, Plus, Receipt, AlertCircle, DollarSign, Calendar, Trash2, CheckCircle } from 'lucide-react';
+import { Search, Plus, Receipt, AlertCircle, DollarSign, Calendar, Trash2, CheckCircle, Upload } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { AddBillDialog } from './AddBillDialog';
 import { MarkBillPaidDialog } from './MarkBillPaidDialog';
+import { BillCSVImport } from './BillCSVImport';
 
 export function BillsViewNDES() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'paid' | 'overdue'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedBill, setSelectedBill] = useState<any>(null);
 
   const { data: bills = [], isLoading } = trpc.bills.getAll.useQuery();
@@ -161,11 +163,18 @@ export function BillsViewNDES() {
             ))}
           </div>
           <button 
+            onClick={() => setShowImportDialog(true)}
+            className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold transition-all flex items-center gap-2"
+          >
+            <Upload size={18} />
+            Import CSV
+          </button>
+          <button 
             onClick={() => setShowAddDialog(true)}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-purple-600 rounded-2xl font-bold hover:bg-purple-500 transition-all shadow-lg shadow-purple-500/20"
+            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-all flex items-center gap-2"
           >
             <Plus size={18} />
-            <span>Add Bill</span>
+            Add Bill
           </button>
         </div>
       </div>
@@ -269,6 +278,12 @@ export function BillsViewNDES() {
         open={showMarkPaidDialog}
         onOpenChange={setShowMarkPaidDialog}
         bill={selectedBill}
+      />
+
+      {/* Import Bills CSV Dialog */}
+      <BillCSVImport
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
       />
     </div>
   );
