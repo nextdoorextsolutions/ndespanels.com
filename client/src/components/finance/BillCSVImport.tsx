@@ -226,24 +226,10 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       const primaryCategory = Object.entries(group.categoryBreakdown)
         .sort(([, a]: any, [, b]: any) => b - a)[0]?.[0] || 'materials';
 
-      // Extract vendor name from order number prefix
-      // Beacon uses different prefixes for different vendors
-      let vendorName = 'Beacon Building Products';
-      const orderNum = group.orderNumber || '';
-      
-      // Map order number prefixes to vendors
-      if (orderNum.startsWith('TT')) {
-        vendorName = 'Beacon - Tampa Terminal';
-      } else if (orderNum.startsWith('TO')) {
-        vendorName = 'Beacon - Tampa Orlando';
-      } else if (orderNum.startsWith('TM')) {
-        vendorName = 'Beacon - Tampa Main';
-      } else if (orderNum.startsWith('TS')) {
-        vendorName = 'Beacon - Tampa South';
-      }
-      
-      // If there's additional vendor info in the CSV, we can use it
-      // For now, all orders are from Beacon (different locations)
+      // All orders from Beacon CSV are from Beacon Building Products
+      // The JobName/CustomerPO contains the homeowner's last name (shipping destination)
+      const vendorName = 'Beacon Building Products';
+      const customerName = group.jobName || group.vendorPO || 'Unknown Customer';
 
       return {
         billNumber: group.orderNumber,
@@ -258,7 +244,7 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
         status: group.orderStatus.toLowerCase() === 'invoiced' ? 'pending' : 
                 group.orderStatus.toLowerCase() === 'pending' ? 'pending' : 'approved',
         lineItems: group.lineItems,
-        notes: `Imported from Beacon CSV. PO: ${group.vendorPO}. Address: ${group.shippingAddress}`,
+        notes: `Imported from Beacon CSV. Customer: ${customerName}. PO: ${group.vendorPO}. Address: ${group.shippingAddress}`,
       };
     });
 
