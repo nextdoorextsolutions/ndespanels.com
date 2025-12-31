@@ -29,10 +29,11 @@ export const bankingRouter = router({
         
         if (input.transactionIds && input.transactionIds.length > 0) {
           // Use specific transaction IDs if provided
+          const conditions = input.transactionIds.map(id => eq(bankTransactions.id, id));
           transactions = await db
             .select()
             .from(bankTransactions)
-            .where(sql`${bankTransactions.id} = ANY(ARRAY[${sql.join(input.transactionIds.map(id => sql`${id}`), sql`, `)}])`);
+            .where(sql`${bankTransactions.id} IN (${sql.join(input.transactionIds.map(id => sql`${id}`), sql`, `)})`);
         } else if (input.recategorize) {
           // Recategorize all pending transactions regardless of current category
           transactions = await db
