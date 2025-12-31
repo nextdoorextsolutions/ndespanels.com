@@ -32,7 +32,6 @@ import { BankingControlBar } from './banking/BankingControlBar';
 import { BankingSummary } from './banking/BankingSummary';
 import { AccountCards } from './banking/AccountCards';
 import { TransactionList } from './banking/TransactionList';
-import { ReconcileDialog } from './banking/dialogs/ReconcileDialog';
 import { EditTransactionDialog } from './banking/dialogs/EditTransactionDialog';
 import { QuickAddDialog } from './banking/dialogs/QuickAddDialog';
 import { MatchTransactionDialog } from './banking/dialogs/MatchTransactionDialog';
@@ -64,7 +63,6 @@ export function BankingViewEnhanced() {
   const [statementMonth, setStatementMonth] = useState((new Date().getMonth() + 1).toString());
 
   // Dialog State
-  const [showReconcileDialog, setShowReconcileDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
@@ -72,9 +70,6 @@ export function BankingViewEnhanced() {
   const [deleteTransactionId, setDeleteTransactionId] = useState<number | null>(null);
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [matchingTransaction, setMatchingTransaction] = useState<any>(null);
-
-  // Transaction State
-  const [newlyImportedIds, setNewlyImportedIds] = useState<number[]>([]);
   const [editingReconciledTx, setEditingReconciledTx] = useState<any>(null);
   const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
   const [editedDescription, setEditedDescription] = useState('');
@@ -149,12 +144,8 @@ export function BankingViewEnhanced() {
       bulkImport.mutate(
         { transactions: result.transactions },
         {
-          onSuccess: (data) => {
-            const importedIds = data.transactions.map((t: any) => t.id);
-            setNewlyImportedIds(importedIds);
+          onSuccess: () => {
             setViewMode('detailed');
-            // Legacy dialog disabled - use individual "Match to Bill" feature instead
-            // setShowReconcileDialog(true);
             setIsUploading(false);
           },
           onError: () => {
@@ -213,43 +204,6 @@ export function BankingViewEnhanced() {
     setShowBulkDeleteDialog(false);
   };
 
-  const bulkReconcileImported = (category: string) => {
-    let completed = 0;
-    newlyImportedIds.forEach(id => {
-      reconcile.mutate(
-        { id, category },
-        {
-          onSuccess: () => {
-            completed++;
-            if (completed === newlyImportedIds.length) {
-              toast.success(`Reconciled ${newlyImportedIds.length} transactions as ${category}`);
-            }
-          },
-        }
-      );
-    });
-    setShowReconcileDialog(false);
-    setNewlyImportedIds([]);
-  };
-
-  const handleAIReconcileImported = () => {
-    categorizeBatch.mutate(
-      { 
-        transactionIds: newlyImportedIds,
-        limit: newlyImportedIds.length,
-      },
-      {
-        onSuccess: () => {
-          toast.success(`AI categorized and reconciled ${newlyImportedIds.length} transactions`);
-          setShowReconcileDialog(false);
-          setNewlyImportedIds([]);
-        },
-        onError: (error) => {
-          toast.error(`Failed to AI categorize: ${error.message}`);
-        }
-      }
-    );
-  };
 
   const startEditingDescription = (txId: number, description: string) => {
     setEditingTransactionId(txId);
@@ -455,18 +409,6 @@ export function BankingViewEnhanced() {
       </div>
 
       {/* Dialogs */}
-      <ReconcileDialog
-        open={showReconcileDialog}
-        onOpenChange={setShowReconcileDialog}
-        transactionCount={newlyImportedIds.length}
-        onReconcile={bulkReconcileImported}
-        onAIReconcile={handleAIReconcileImported}
-        onSkip={() => {
-          setShowReconcileDialog(false);
-          setNewlyImportedIds([]);
-        }}
-        isAIProcessing={categorizeBatch.isPending}
-      />
 
       <EditTransactionDialog
         open={showEditDialog}
