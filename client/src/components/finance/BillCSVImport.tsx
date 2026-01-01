@@ -31,9 +31,10 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [parsedBills, setParsedBills] = useState<ParsedBill[]>([]);
   const [consolidatedBills, setConsolidatedBills] = useState<any[]>([]);
-  const [matchedBills, setMatchedBills] = useState<any[]>([]);
+  const [duplicateBills, setDuplicateBills] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [step, setStep] = useState<'upload' | 'preview' | 'matching' | 'complete'>('upload');
+  const [step, setStep] = useState<'upload' | 'preview' | 'duplicates' | 'complete'>('upload');
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,7 +51,6 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
     },
   });
 
-  const matchBillsWithTransactions = trpc.bills.matchWithTransactions.useMutation();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -281,108 +281,38 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
     });
 
     setConsolidatedBills(consolidated);
-    await detectPriceSpikes(consolidated);
+    await checkForDuplicates(consolidated);
   };
 
-  const detectPriceSpikes = async (bills: any[]) => {
-    // Get historical bills for price comparison
-    const allBills = await utils.bills.getAll.fetch();
+  const checkForDuplicates = async (bills: any[]) => {
+    // Get all existing bills
+    const existingBills = await utils.bills.getAll.fetch();
+    const existingBillNumbers = new Set(existingBills.map(b => b.bill.billNumber));
     
-    const alerts: any[] = [];
+    // Find duplicates
+    const duplicates = bills.filter(bill => existingBillNumbers.has(bill.billNumber));
     
-    bills.forEach(newBill => {
-      newBill.lineItems.forEach((item: any) => {
-        // Find historical prices for similar items
-        const historicalPrices: number[] = [];
-        
-        allBills?.forEach((existingBillData: any) => {
-          const existingBill = existingBillData.bill;
-          if (existingBill.lineItems) {
-            try {
-              const lineItems = typeof existingBill.lineItems === 'string' 
-                ? JSON.parse(existingBill.lineItems) 
-                : existingBill.lineItems;
-              
-              lineItems.forEach((existingItem: any) => {
-                // Match by similar description (fuzzy match)
-                const similarity = calculateSimilarity(
-                  item.description.toLowerCase(), 
-                  existingItem.description?.toLowerCase() || ''
-                );
-                
-                if (similarity > 0.6 && existingItem.unitPrice) {
-                  historicalPrices.push(parseFloat(existingItem.unitPrice));
-                }
-              });
-            } catch (e) {
-              // Skip invalid line items
-            }
-          }
-        });
-        
-        if (historicalPrices.length >= 3) {
-          const avgPrice = historicalPrices.reduce((a, b) => a + b, 0) / historicalPrices.length;
-          const recentPrice = historicalPrices[historicalPrices.length - 1];
-          const currentPrice = item.unitPrice;
-          
-          // Alert if price is 5% higher than average OR 5% higher than most recent
-          const avgIncrease = ((currentPrice - avgPrice) / avgPrice) * 100;
-          const recentIncrease = ((currentPrice - recentPrice) / recentPrice) * 100;
-          
-          if (avgIncrease > 5 || recentIncrease > 5) {
-            alerts.push({
-              billNumber: newBill.billNumber,
-              item: item.description,
-              currentPrice: currentPrice,
-              avgPrice: avgPrice.toFixed(2),
-              recentPrice: recentPrice.toFixed(2),
-              increase: Math.max(avgIncrease, recentIncrease).toFixed(1),
-              type: avgIncrease > recentIncrease ? 'avg' : 'recent',
-            });
-          }
-        }
-      });
-    });
-    
-    if (alerts.length > 0) {
-      setPriceAlerts(alerts);
+    if (duplicates.length > 0) {
+      setDuplicateBills(duplicates);
+      setStep('duplicates');
+      console.log(`[CSV Import] Found ${duplicates.length} duplicate bills`);
+    } else {
+      setStep('preview');
     }
   };
 
-  const calculateSimilarity = (str1: string, str2: string): number => {
-    // Simple word-based similarity
-    const words1 = str1.split(/\s+/);
-    const words2 = str2.split(/\s+/);
-    const commonWords = words1.filter(w => words2.includes(w));
-    return commonWords.length / Math.max(words1.length, words2.length);
-  };
-
-  const [priceAlerts, setPriceAlerts] = useState<any[]>([]);
-
-  const handleMatchWithTransactions = async () => {
-    setIsProcessing(true);
-    setStep('matching');
-
-    try {
-      const result = await matchBillsWithTransactions.mutateAsync({
-        bills: consolidatedBills,
-      });
-
-      setMatchedBills(result.matched || []);
-      
-      if (result.matchedCount > 0) {
-        toast.success(`Matched ${result.matchedCount} bills with existing bank transactions`);
-      } else {
-        toast.info('No matching bank transactions found. Bills will be imported as unpaid.');
-      }
-      
-      setIsProcessing(false);
-      setStep('preview'); // Go back to preview to show results
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to match bills');
-      setIsProcessing(false);
-      setStep('preview'); // Go back to preview on error
+  const handleContinueWithDuplicates = () => {
+    if (skipDuplicates) {
+      // Filter out duplicates
+      const nonDuplicates = consolidatedBills.filter(
+        bill => !duplicateBills.some(dup => dup.billNumber === bill.billNumber)
+      );
+      setConsolidatedBills(nonDuplicates);
+      toast.info(`Skipping ${duplicateBills.length} duplicate bills. Importing ${nonDuplicates.length} new bills.`);
+    } else {
+      toast.info(`Re-importing all ${consolidatedBills.length} bills (including ${duplicateBills.length} duplicates).`);
     }
+    setStep('preview');
   };
 
   const handleImport = async () => {
@@ -398,7 +328,7 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
         taxAmount: bill.taxAmount,
         totalAmount: bill.totalAmount,
         category: bill.category,
-        status: matchedBills.some(m => m.billNumber === bill.billNumber) ? 'paid' : bill.status,
+        status: bill.status,
         lineItems: bill.lineItems,
         notes: bill.notes,
       })),
@@ -409,7 +339,8 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
     setFile(null);
     setParsedBills([]);
     setConsolidatedBills([]);
-    setMatchedBills([]);
+    setDuplicateBills([]);
+    setSkipDuplicates(true);
     setStep('upload');
     setIsProcessing(false);
     if (fileInputRef.current) {
@@ -487,7 +418,84 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
             </div>
           )}
 
-          {/* Step 2: Preview */}
+          {/* Step 2: Duplicates Warning */}
+          {step === 'duplicates' && (
+            <div className="space-y-4">
+              <div className="bg-amber-500/10 border-2 border-amber-500/50 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                  <AlertCircle className="text-amber-400 flex-shrink-0 mt-1" size={32} />
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-amber-400 mb-2">⚠️ Duplicate Bills Detected</h3>
+                    <p className="text-zinc-300 mb-4">
+                      Found <strong className="text-white">{duplicateBills.length}</strong> bills that already exist in your system.
+                    </p>
+                    
+                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 mb-4 max-h-48 overflow-y-auto">
+                      <p className="text-sm font-medium text-amber-300 mb-2">Duplicate Bills:</p>
+                      <div className="space-y-1">
+                        {duplicateBills.map((bill, idx) => (
+                          <div key={idx} className="text-sm text-zinc-300">
+                            • {bill.billNumber} - {bill.vendorName} - ${bill.totalAmount}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+                        <input
+                          type="radio"
+                          name="duplicateHandling"
+                          checked={skipDuplicates}
+                          onChange={() => setSkipDuplicates(true)}
+                          className="w-4 h-4 text-purple-600"
+                        />
+                        <div>
+                          <p className="font-medium text-white">Skip Duplicates (Recommended)</p>
+                          <p className="text-xs text-zinc-400">
+                            Import only {consolidatedBills.length - duplicateBills.length} new bills
+                          </p>
+                        </div>
+                      </label>
+                      
+                      <label className="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
+                        <input
+                          type="radio"
+                          name="duplicateHandling"
+                          checked={!skipDuplicates}
+                          onChange={() => setSkipDuplicates(false)}
+                          className="w-4 h-4 text-purple-600"
+                        />
+                        <div>
+                          <p className="font-medium text-white">Re-import All Bills</p>
+                          <p className="text-xs text-zinc-400">
+                            This will create duplicate entries in your system
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleReset}
+                  className="flex-1 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleContinueWithDuplicates}
+                  className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-all"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Preview */}
           {step === 'preview' && (
             <div className="space-y-4">
               <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
@@ -499,8 +507,8 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
                 </div>
               </div>
 
-              {/* Price Spike Alerts */}
-              {priceAlerts.length > 0 && (
+              {/* Remove old price spike alerts section */}
+              {false && (
                 <div className="bg-rose-500/10 border-2 border-rose-500/50 rounded-xl p-4 animate-pulse">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="text-rose-400 flex-shrink-0 mt-1" size={24} />
@@ -547,14 +555,10 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
               <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4">
                 <div className="flex items-center gap-2 text-cyan-400 mb-2">
                   <AlertCircle size={18} />
-                  <span className="font-medium text-sm">Smart Category Mapping & AI Matching</span>
+                  <span className="font-medium text-sm">Smart Category Mapping</span>
                 </div>
-                <p className="text-xs text-cyan-300 ml-6 mb-2">
-                  ✓ Materials automatically categorized by type (Shingles→Roofing Materials, Nails→Fasteners, etc.)
-                </p>
                 <p className="text-xs text-cyan-300 ml-6">
-                  Click "Match with Bank Transactions" to have AI check if any of these bills have already been paid via your bank account. 
-                  Matched bills will be automatically marked as "Paid" during import.
+                  ✓ Materials automatically categorized by type (Shingles→Roofing Materials, Nails→Fasteners, etc.)
                 </p>
               </div>
 
@@ -613,23 +617,6 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
                   Cancel
                 </button>
                 <button
-                  onClick={handleMatchWithTransactions}
-                  disabled={isProcessing}
-                  className="flex-1 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="animate-spin" size={18} />
-                      Matching...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={18} />
-                      Match with Bank Transactions
-                    </>
-                  )}
-                </button>
-                <button
                   onClick={handleImport}
                   disabled={isProcessing}
                   className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
@@ -650,16 +637,6 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
             </div>
           )}
 
-          {/* Step 3: Matching */}
-          {step === 'matching' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-center gap-3 text-cyan-400 py-12">
-                <Loader2 className="animate-spin" size={32} />
-                <span className="text-lg">AI is matching bills with bank transactions...</span>
-              </div>
-            </div>
-          )}
-
           {/* Step 4: Complete */}
           {step === 'complete' && (
             <div className="space-y-4 text-center py-12">
@@ -669,7 +646,6 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
               <h3 className="text-2xl font-bold text-white">Import Complete!</h3>
               <p className="text-zinc-400">
                 Successfully imported {consolidatedBills.length} bills
-                {matchedBills.length > 0 && ` (${matchedBills.length} matched with bank transactions)`}
               </p>
               <button
                 onClick={handleClose}
