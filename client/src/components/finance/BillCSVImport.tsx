@@ -256,7 +256,23 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
       // Parse and format dates to ISO string
       const parseDate = (dateStr: string) => {
         if (!dateStr) return new Date().toISOString();
+        
         // Handle MM-DD-YYYY format from Beacon CSV
+        // Split the date string and parse manually for reliability
+        const parts = dateStr.split(/[-\/]/);
+        if (parts.length === 3) {
+          const month = parseInt(parts[0], 10);
+          const day = parseInt(parts[1], 10);
+          const year = parseInt(parts[2], 10);
+          
+          // Create date in local timezone then convert to ISO
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            return date.toISOString();
+          }
+        }
+        
+        // Fallback: try native Date parsing
         const date = new Date(dateStr);
         return isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
       };
