@@ -535,11 +535,9 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {consolidatedBills.map((bill, idx) => {
-                        const hasAlert = priceAlerts.some(a => a.billNumber === bill.billNumber);
                         return (
-                          <tr key={idx} className={`text-white hover:bg-white/5 ${hasAlert ? 'bg-rose-500/5' : ''}`}>
+                          <tr key={idx} className="text-white hover:bg-white/5">
                             <td className="px-4 py-3 font-mono text-xs">
-                              {hasAlert && <span className="text-rose-400 mr-1">⚠️</span>}
                               {bill.billNumber}
                             </td>
                             <td className="px-4 py-3">{bill.vendorName}</td>
