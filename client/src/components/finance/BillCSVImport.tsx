@@ -507,50 +507,6 @@ export function BillCSVImport({ open, onOpenChange }: BillCSVImportProps) {
                 </div>
               </div>
 
-              {/* Remove old price spike alerts section */}
-              {false && (
-                <div className="bg-rose-500/10 border-2 border-rose-500/50 rounded-xl p-4 animate-pulse">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="text-rose-400 flex-shrink-0 mt-1" size={24} />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-bold text-rose-400 text-lg">⚠️ Price Spike Alert</span>
-                        <span className="px-2 py-1 bg-rose-500/20 rounded-full text-xs font-bold text-rose-300">
-                          {priceAlerts.length} {priceAlerts.length === 1 ? 'item' : 'items'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-rose-300 mb-3">
-                        The following materials have abnormally high prices compared to your historical purchases:
-                      </p>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {priceAlerts.map((alert, idx) => (
-                          <div key={idx} className="bg-rose-500/5 border border-rose-500/20 rounded-lg p-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1">
-                                <p className="font-medium text-white text-sm mb-1">{alert.item}</p>
-                                <p className="text-xs text-rose-300">Bill #{alert.billNumber}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-bold text-rose-400">
-                                  +{alert.increase}%
-                                </p>
-                                <p className="text-xs text-rose-300">
-                                  ${alert.currentPrice} vs ${alert.type === 'avg' ? alert.avgPrice : alert.recentPrice} {alert.type === 'avg' ? 'avg' : 'recent'}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-rose-500/20">
-                        <p className="text-xs text-rose-300">
-                          💡 <strong>Recommendation:</strong> Review these items before importing. Consider contacting vendors about pricing or checking for data entry errors.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4">
                 <div className="flex items-center gap-2 text-cyan-400 mb-2">
