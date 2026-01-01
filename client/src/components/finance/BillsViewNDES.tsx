@@ -15,6 +15,8 @@ export function BillsViewNDES() {
   const [selectedBill, setSelectedBill] = useState<any>(null);
   const [selectedBills, setSelectedBills] = useState<Set<number>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(50);
 
   const { data: bills = [], isLoading } = trpc.bills.getAll.useQuery();
   const { data: stats } = trpc.bills.getStats.useQuery();
@@ -53,6 +55,20 @@ export function BillsViewNDES() {
     });
   }, [bills, search, statusFilter]);
 
+  // Paginate bills for better performance
+  const paginatedBills = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredBills.slice(startIndex, endIndex);
+  }, [filteredBills, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredBills.length / itemsPerPage);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
   const handleMarkPaid = (bill: any) => {
     setSelectedBill(bill);
     setShowMarkPaidDialog(true);
@@ -69,10 +85,16 @@ export function BillsViewNDES() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedBills.size === filteredBills.length) {
-      setSelectedBills(new Set());
+    if (selectedBills.size === paginatedBills.length && paginatedBills.every(item => selectedBills.has(item.bill.id))) {
+      // Deselect all on current page
+      const newSelection = new Set(selectedBills);
+      paginatedBills.forEach(item => newSelection.delete(item.bill.id));
+      setSelectedBills(newSelection);
     } else {
-      setSelectedBills(new Set(filteredBills.map(item => item.bill.id)));
+      // Select all on current page
+      const newSelection = new Set(selectedBills);
+      paginatedBills.forEach(item => newSelection.add(item.bill.id));
+      setSelectedBills(newSelection);
     }
   };
 
@@ -243,7 +265,7 @@ export function BillsViewNDES() {
               <th className="px-8 py-6">
                 <input
                   type="checkbox"
-                  checked={selectedBills.size === filteredBills.length && filteredBills.length > 0}
+                  checked={paginatedBills.length > 0 && paginatedBills.every(item => selectedBills.has(item.bill.id))}
                   onChange={toggleSelectAll}
                   className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-purple-600 focus:ring-purple-500"
                 />
@@ -257,7 +279,7 @@ export function BillsViewNDES() {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {filteredBills.length > 0 ? filteredBills.map((item) => {
+            {paginatedBills.length > 0 ? paginatedBills.map((item) => {
               const bill = item.bill;
               const dueDate = new Date(bill.dueDate);
               const isOverdue = dueDate < new Date() && bill.status !== 'paid';
@@ -330,13 +352,65 @@ export function BillsViewNDES() {
               );
             }) : (
               <tr>
-                <td colSpan={6} className="px-8 py-20 text-center text-zinc-500 font-medium">
+                <td colSpan={7} className="px-8 py-20 text-center text-zinc-500 font-medium">
                   No bills found.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-8 py-4 border-t border-white/5">
+            <div className="text-sm text-zinc-400">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredBills.length)} of {filteredBills.length} bills
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                        currentPage === pageNum
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add Bill Dialog */}
