@@ -9,15 +9,20 @@ import { trpc } from "@/lib/trpc";
 
 interface FinancialLedgerProps {
   jobId: number;
-  baseContractValue: number; // From proposal totalPrice
 }
 
-export function FinancialLedger({ jobId, baseContractValue }: FinancialLedgerProps) {
+export function FinancialLedger({ jobId }: FinancialLedgerProps) {
+  // Fetch job data to get current totalPrice
+  const { data: job } = trpc.crm.getLead.useQuery({ id: jobId });
+  
   // Fetch change orders summary
   const { data: changeOrderSummary } = trpc.changeOrders.getJobSummary.useQuery({ jobId });
   
   // Fetch job invoices
   const { data: invoices = [] } = trpc.invoices.getJobInvoices.useQuery({ jobId });
+
+  // Calculate base contract value from job data
+  const baseContractValue = job?.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
 
   // Calculate totals
   const approvedChanges = changeOrderSummary?.totalApproved || 0;

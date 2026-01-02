@@ -19,16 +19,17 @@ import { format } from "date-fns";
 interface InvoiceManagerProps {
   jobId: number;
   jobDealType: "insurance" | "retail" | "warranty";
-  baseContractValue: number;
   preSelectedChangeOrderId?: number; // Set when "Bill This" is clicked
 }
 
 export function InvoiceManager({ 
   jobId, 
   jobDealType, 
-  baseContractValue,
   preSelectedChangeOrderId 
 }: InvoiceManagerProps) {
+  // Fetch job data to get current totalPrice
+  const { data: job } = trpc.crm.getLead.useQuery({ id: jobId });
+  const baseContractValue = job?.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [invoiceType, setInvoiceType] = useState<"deposit" | "progress" | "supplement" | "final">("deposit");
   const [customAmount, setCustomAmount] = useState("");
