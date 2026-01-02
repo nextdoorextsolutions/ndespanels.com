@@ -149,9 +149,9 @@ export const invoicesRouter = router({
       reportRequestId: z.number().optional(),
       clientName: z.string(),
       clientEmail: z.string().email().optional(),
-      amount: z.string(),
-      taxAmount: z.string().optional(),
-      totalAmount: z.string(),
+      amount: z.number(), // Accept dollars, convert to cents
+      taxAmount: z.number().optional(),
+      totalAmount: z.number(),
       invoiceDate: z.string(),
       dueDate: z.string(),
       notes: z.string().optional(),
@@ -160,14 +160,19 @@ export const invoicesRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      // Convert dollars to cents
+      const amountCents = Math.round(input.amount * 100);
+      const taxAmountCents = Math.round((input.taxAmount || 0) * 100);
+      const totalAmountCents = Math.round(input.totalAmount * 100);
+
       const [newInvoice] = await db.insert(invoices).values({
         invoiceNumber: input.invoiceNumber,
         reportRequestId: input.reportRequestId,
         clientName: input.clientName,
         clientEmail: input.clientEmail,
-        amount: input.amount,
-        taxAmount: input.taxAmount || "0.00",
-        totalAmount: input.totalAmount,
+        amount: amountCents,
+        taxAmount: taxAmountCents,
+        totalAmount: totalAmountCents,
         status: "draft",
         invoiceDate: new Date(input.invoiceDate),
         dueDate: new Date(input.dueDate),
@@ -454,7 +459,7 @@ export const invoicesRouter = router({
         ? new Date(input.dueDate)
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
-      // STEP 6: Create invoice record
+      // STEP 6: Create invoice record (amounts in cents)
       const [newInvoice] = await db.insert(invoices).values({
         invoiceNumber,
         reportRequestId: input.jobId,
@@ -463,9 +468,9 @@ export const invoicesRouter = router({
         clientEmail: job.email || undefined,
         clientPhone: job.phone || undefined,
         address: job.address || undefined,
-        amount: invoiceAmount.toFixed(2),
-        taxAmount: taxAmount.toFixed(2),
-        totalAmount: totalAmount.toFixed(2),
+        amount: Math.round(invoiceAmount * 100),
+        taxAmount: Math.round(taxAmount * 100),
+        totalAmount: Math.round(totalAmount * 100),
         status: "draft",
         invoiceDate,
         dueDate,
@@ -637,7 +642,7 @@ export const invoicesRouter = router({
         ? new Date(input.dueDate)
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-      // STEP 5: Create invoice record
+      // STEP 5: Create invoice record (amounts in cents)
       const [newInvoice] = await db.insert(invoices).values({
         invoiceNumber,
         reportRequestId: input.jobId,
@@ -646,9 +651,9 @@ export const invoicesRouter = router({
         clientEmail: job.email || undefined,
         clientPhone: job.phone || undefined,
         address: job.address || undefined,
-        amount: balanceDue.toFixed(2),
-        taxAmount: "0.00",
-        totalAmount: balanceDue.toFixed(2),
+        amount: Math.round(balanceDue * 100),
+        taxAmount: 0,
+        totalAmount: Math.round(balanceDue * 100),
         status: "draft",
         invoiceDate,
         dueDate,

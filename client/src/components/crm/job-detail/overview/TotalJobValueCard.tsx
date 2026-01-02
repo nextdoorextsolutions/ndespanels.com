@@ -16,10 +16,15 @@ export function TotalJobValueCard({ jobId }: TotalJobValueCardProps) {
   // Fetch invoices
   const { data: invoices = [] } = trpc.invoices.getJobInvoices.useQuery({ jobId });
 
-  // Calculate total invoiced (excluding supplements to avoid double-counting change orders)
+  // Calculate total invoiced (amounts stored in cents, convert to dollars)
+  const totalInvoiced = invoices
+    .filter(inv => inv.status !== "cancelled")
+    .reduce((sum, inv) => sum + (Number(inv.totalAmount) / 100), 0);
+
+  // Calculate base invoiced (excluding supplements, amounts in cents)
   const baseInvoiced = invoices
     .filter(inv => inv.status !== "cancelled" && inv.invoiceType !== "supplement")
-    .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+    .reduce((sum, inv) => sum + (Number(inv.totalAmount) / 100), 0);
 
   // Calculate base contract value
   let baseContractValue = job?.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;

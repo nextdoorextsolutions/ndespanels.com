@@ -220,7 +220,7 @@ export function InvoiceManager({
                     </span>
                   </td>
                   <td className="py-4 px-4 text-right font-mono font-bold text-white">
-                    ${parseFloat(invoice.totalAmount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    ${(Number(invoice.totalAmount) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="py-4 px-4 text-sm text-slate-400">
                     {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}

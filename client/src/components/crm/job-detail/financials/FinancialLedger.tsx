@@ -21,15 +21,15 @@ export function FinancialLedger({ jobId }: FinancialLedgerProps) {
   // Fetch job invoices
   const { data: invoices = [] } = trpc.invoices.getJobInvoices.useQuery({ jobId });
 
-  // Calculate total invoiced
+  // Calculate total invoiced (amounts stored in cents, convert to dollars)
   const totalInvoiced = invoices
     .filter(inv => inv.status !== "cancelled")
-    .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+    .reduce((sum, inv) => sum + (Number(inv.totalAmount) / 100), 0);
 
-  // Calculate base invoiced (excluding supplements to avoid double-counting change orders)
+  // Calculate base invoiced (excluding supplements, amounts in cents)
   const baseInvoiced = invoices
     .filter(inv => inv.status !== "cancelled" && inv.invoiceType !== "supplement")
-    .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+    .reduce((sum, inv) => sum + (Number(inv.totalAmount) / 100), 0);
 
   // Calculate base contract value
   // If totalPrice is set, use it. Otherwise, use non-supplement invoiced amount as the base contract (for legacy jobs)
