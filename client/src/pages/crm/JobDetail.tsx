@@ -309,7 +309,7 @@ export default function JobDetail() {
               job={job as Job}
               jobId={jobId}
               canEdit={canEdit}
-              jobDealType={(job.dealType === "insurance" || job.dealType === "warranty") ? job.dealType : "retail"}
+              jobDealType={job.dealType === "insurance" ? "insurance" : "retail"}
             />
           )}
 
