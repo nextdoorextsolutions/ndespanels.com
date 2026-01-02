@@ -20,6 +20,7 @@ interface JobDetailTabsProps {
 const TABS: Tab[] = [
   { id: "overview", label: "Overview" },
   { id: "production_report", label: "Production Report" },
+  { id: "financials", label: "Financials" },
   { id: "payments", label: "Payments" },
   { id: "documents", label: "Documents" },
   { id: "photos", label: "Photos" },
@@ -58,7 +59,7 @@ export function JobDetailTabs({
       </div>
 
       {/* Search */}
-      {activeTab !== "overview" && activeTab !== "proposal" && activeTab !== "payments" && (
+      {activeTab !== "overview" && activeTab !== "proposal" && activeTab !== "payments" && activeTab !== "financials" && (
         <div className="px-6 pb-4 pt-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

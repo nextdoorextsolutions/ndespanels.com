@@ -19,6 +19,7 @@ import { JobMessagesTab } from "@/components/crm/job-detail/JobMessagesTab";
 import { JobTimelineTab } from "@/components/crm/job-detail/JobTimelineTab";
 import { JobEditHistoryTab } from "@/components/crm/job-detail/JobEditHistoryTab";
 import { JobPaymentsTab } from "@/components/crm/job-detail/JobPaymentsTab";
+import { JobFinancialsTab } from "@/components/crm/job-detail/JobFinancialsTab";
 import EstimatorTool from "@/components/estimator/EstimatorTool";
 
 // Custom Hooks
@@ -290,6 +291,14 @@ export default function JobDetail() {
 
           {activeTab === "payments" && (
             <JobPaymentsTab
+              jobId={jobId}
+              canEdit={canEdit}
+            />
+          )}
+
+          {activeTab === "financials" && (
+            <JobFinancialsTab
+              job={job as Job}
               jobId={jobId}
               canEdit={canEdit}
             />
