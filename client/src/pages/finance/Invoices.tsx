@@ -156,9 +156,9 @@ const Invoices: React.FC = () => {
       reportRequestId: invoice.reportRequestId || undefined,
       clientName: invoice.clientName || 'Unknown',
       clientEmail: invoice.clientEmail || undefined,
-      amount: String(invoice.amount ?? invoice.totalAmount ?? '0.00'),
-      taxAmount: String(invoice.taxAmount ?? '0.00'),
-      totalAmount: String(invoice.totalAmount ?? '0.00'),
+      amount: Number(invoice.amount) / 100, // Convert cents to dollars
+      taxAmount: Number(invoice.taxAmount || 0) / 100, // Convert cents to dollars
+      totalAmount: Number(invoice.totalAmount) / 100, // Convert cents to dollars
       invoiceDate: new Date().toISOString(),
       dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString() : new Date().toISOString(),
       notes: invoice.notes || undefined,
