@@ -19,13 +19,14 @@ async function migrateInvoiceAmounts() {
     `);
 
     // Step 2: Migrate existing data from string dollars to integer cents
-    console.log("Step 2: Converting existing data to cents...");
+    // CRITICAL: Use ROUND() to avoid floating point errors (e.g., 19.99 * 100 = 1998.9999999)
+    console.log("Step 2: Converting existing data to cents with proper rounding...");
     await db.execute(sql`
       UPDATE invoices 
       SET 
-        amount_cents = ROUND(CAST(amount AS NUMERIC) * 100)::INTEGER,
-        tax_amount_cents = ROUND(CAST(tax_amount AS NUMERIC) * 100)::INTEGER,
-        total_amount_cents = ROUND(CAST(total_amount AS NUMERIC) * 100)::INTEGER
+        amount_cents = ROUND((CAST(amount AS NUMERIC) * 100))::INTEGER,
+        tax_amount_cents = ROUND((CAST(tax_amount AS NUMERIC) * 100))::INTEGER,
+        total_amount_cents = ROUND((CAST(total_amount AS NUMERIC) * 100))::INTEGER
       WHERE amount_cents IS NULL;
     `);
 

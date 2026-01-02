@@ -9,12 +9,13 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_amount_cents INTEGER;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS total_amount_cents INTEGER;
 
 -- Step 2: Migrate existing data from string dollars to integer cents
+-- CRITICAL: Use ROUND() to avoid floating point errors (e.g., 19.99 * 100 = 1998.9999999)
 -- Convert string to numeric, multiply by 100, round to nearest integer
 UPDATE invoices 
 SET 
-  amount_cents = ROUND(CAST(amount AS NUMERIC) * 100)::INTEGER,
-  tax_amount_cents = ROUND(CAST(tax_amount AS NUMERIC) * 100)::INTEGER,
-  total_amount_cents = ROUND(CAST(total_amount AS NUMERIC) * 100)::INTEGER
+  amount_cents = ROUND((CAST(amount AS NUMERIC) * 100))::INTEGER,
+  tax_amount_cents = ROUND((CAST(tax_amount AS NUMERIC) * 100))::INTEGER,
+  total_amount_cents = ROUND((CAST(total_amount AS NUMERIC) * 100))::INTEGER
 WHERE amount_cents IS NULL;
 
 -- Step 3: Make new columns NOT NULL after data migration

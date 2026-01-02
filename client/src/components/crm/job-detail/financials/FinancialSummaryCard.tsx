@@ -32,6 +32,9 @@ export function FinancialSummaryCard({ jobId }: FinancialSummaryCardProps) {
   const approvedChanges = changeOrderSummary?.totalApproved || 0;
   const totalContractValue = baseContractValue + approvedChanges;
   const remainingBalance = totalContractValue - totalInvoiced;
+  
+  // Calculate collected (payments received) - stored in cents
+  const totalCollected = job?.amountPaid ? (job.amountPaid / 100) : 0;
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -44,11 +47,11 @@ export function FinancialSummaryCard({ jobId }: FinancialSummaryCardProps) {
   return (
     <Card className="glass-card bg-gradient-to-br from-slate-800/90 to-slate-900/90 border-slate-700/50 p-6 mb-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Contract Total */}
+        {/* Column 1: Contract Price */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-slate-400 text-sm">
             <TrendingUp className="w-4 h-4" />
-            <span>Contract Total</span>
+            <span>Contract Price</span>
           </div>
           <div className="text-3xl font-bold text-white">
             ${formatCurrency(totalContractValue)}
@@ -59,7 +62,7 @@ export function FinancialSummaryCard({ jobId }: FinancialSummaryCardProps) {
           </div>
         </div>
 
-        {/* Total Invoiced */}
+        {/* Column 2: Total Invoiced */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-slate-400 text-sm">
             <FileText className="w-4 h-4" />
@@ -73,49 +76,42 @@ export function FinancialSummaryCard({ jobId }: FinancialSummaryCardProps) {
           </div>
         </div>
 
-        {/* Remaining Balance */}
+        {/* Column 3: Remaining Balance */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-slate-400 text-sm">
             <DollarSign className="w-4 h-4" />
             <span>Remaining Balance</span>
           </div>
-          <div className={`text-3xl font-bold ${
-            isFullyInvoiced ? 'text-green-400' : 'text-orange-400'
-          }`}>
-            ${formatCurrency(Math.abs(remainingBalance))}
-          </div>
+          {isFullyInvoiced && !hasOverage ? (
+            <div className="flex items-center gap-2">
+              <div className="text-3xl font-bold text-green-400">$0.00</div>
+              <div className="px-2 py-1 bg-green-500/20 border border-green-500/40 rounded-md">
+                <span className="text-xs font-semibold text-green-400">PAID IN FULL</span>
+              </div>
+            </div>
+          ) : (
+            <div className={`text-3xl font-bold ${
+              hasOverage ? 'text-red-400' : 'text-orange-400'
+            }`}>
+              ${formatCurrency(Math.abs(remainingBalance))}
+            </div>
+          )}
           <div className="text-xs text-slate-500">
-            {isFullyInvoiced ? 'Fully invoiced' : 'Unbilled revenue'}
+            {isFullyInvoiced ? (hasOverage ? 'Over-invoiced' : 'Fully invoiced') : 'Unbilled revenue'}
           </div>
         </div>
 
-        {/* Status Indicator */}
-        <div className="flex items-center justify-center">
-          <div className={`flex flex-col items-center gap-2 p-4 rounded-lg ${
-            isFullyInvoiced 
-              ? 'bg-green-500/10 border border-green-500/30' 
-              : 'bg-orange-500/10 border border-orange-500/30'
-          }`}>
-            {isFullyInvoiced ? (
-              <>
-                <CheckCircle className="w-8 h-8 text-green-400" />
-                <span className="text-sm font-semibold text-green-400">
-                  {hasOverage ? 'Over-Invoiced' : 'Complete'}
-                </span>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="w-8 h-8 text-orange-400" />
-                <span className="text-sm font-semibold text-orange-400">
-                  Pending
-                </span>
-              </>
-            )}
-            {hasOverage && (
-              <span className="text-xs text-red-400">
-                +${formatCurrency(Math.abs(remainingBalance))} over
-              </span>
-            )}
+        {/* Column 4: Collected */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-slate-400 text-sm">
+            <CheckCircle className="w-4 h-4" />
+            <span>Collected</span>
+          </div>
+          <div className="text-3xl font-bold text-green-400">
+            ${formatCurrency(totalCollected)}
+          </div>
+          <div className="text-xs text-slate-500">
+            Total payments received
           </div>
         </div>
       </div>
