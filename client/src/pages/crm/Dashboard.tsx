@@ -12,6 +12,7 @@ import { DashboardStats } from "@/components/crm/dashboard/DashboardStats";
 import { DashboardCharts } from "@/components/crm/dashboard/DashboardCharts";
 import { RecentActivity } from "@/components/crm/dashboard/RecentActivity";
 import { ActionableWidgets } from "@/components/crm/dashboard/ActionableWidgets";
+import AIInsightsBanner from "@/components/crm/analytics/AIInsightsBanner";
 
 export default function CRMDashboard() {
   const [activeTab, setActiveTab] = useState("all");
@@ -83,6 +84,11 @@ export default function CRMDashboard() {
               </div>
             </div>
           )}
+
+          {/* AI Insights Banner */}
+          <div className="mb-8">
+            <AIInsightsBanner />
+          </div>
 
           {/* KPI Cards & Deal Types - Extracted Component */}
           <DashboardStats stats={stats} userRole={permissions?.role} />

@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { JobPipelineTracker } from "@/components/JobPipelineTracker";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { JobStatus } from "@/types";
 
 const PIPELINE_ORDER: JobStatus[] = [
@@ -13,6 +14,19 @@ const PIPELINE_ORDER: JobStatus[] = [
   "invoiced",
   "closed_deal",
 ];
+
+const STATUS_LABELS: Record<JobStatus, string> = {
+  lead: "Lead",
+  appointment_set: "Appointment Set",
+  prospect: "Prospect",
+  approved: "Approved",
+  project_scheduled: "Project Scheduled",
+  completed: "Completed",
+  invoiced: "Invoiced",
+  lien_legal: "Lien Legal",
+  closed_deal: "Closed Deal",
+  closed_lost: "Closed Lost",
+};
 
 interface JobPipelineProps {
   currentStatus: JobStatus;
@@ -65,25 +79,58 @@ export function JobPipeline({ currentStatus, canEdit, onStatusChange }: JobPipel
                 <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
                 Previous
               </button>
-              <button
-                className="
-                  group relative px-6 py-2.5 rounded-full
-                  bg-gradient-to-r from-[#00d4aa] to-[#00b894]
-                  border-2 border-[#00d4aa]
-                  text-white font-bold text-sm
-                  transition-all duration-300 ease-out
-                  hover:scale-110 hover:shadow-[0_0_30px_rgba(0,212,170,0.6)]
-                  hover:from-[#00e6bc] hover:to-[#00d4aa]
-                  disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100
-                  disabled:hover:shadow-none
-                  flex items-center gap-2
-                "
-                disabled={!canGoForward}
-                onClick={handleNext}
-              >
-                Next
-                <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              </button>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  className="
+                    group relative px-6 py-2.5 rounded-full
+                    bg-gradient-to-r from-[#00d4aa] to-[#00b894]
+                    border-2 border-[#00d4aa]
+                    text-white font-bold text-sm
+                    transition-all duration-300 ease-out
+                    hover:scale-110 hover:shadow-[0_0_30px_rgba(0,212,170,0.6)]
+                    hover:from-[#00e6bc] hover:to-[#00d4aa]
+                    disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100
+                    disabled:hover:shadow-none
+                    flex items-center gap-2
+                  "
+                  disabled={!canGoForward}
+                  onClick={handleNext}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+                
+                {/* Quick Jump Dropdown */}
+                <Select value={currentStatus} onValueChange={(value) => onStatusChange(value as JobStatus)}>
+                  <SelectTrigger className="w-[180px] bg-slate-800 border-slate-600 text-white hover:bg-slate-700">
+                    <SelectValue placeholder="Jump to stage..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    {PIPELINE_ORDER.map((status) => (
+                      <SelectItem 
+                        key={status} 
+                        value={status}
+                        className="text-white hover:bg-slate-700 focus:bg-slate-700"
+                      >
+                        {STATUS_LABELS[status]}
+                      </SelectItem>
+                    ))}
+                    <SelectItem 
+                      value="lien_legal" 
+                      className="text-white hover:bg-slate-700 focus:bg-slate-700"
+                    >
+                      {STATUS_LABELS["lien_legal"]}
+                    </SelectItem>
+                    <SelectItem 
+                      value="closed_lost" 
+                      className="text-white hover:bg-slate-700 focus:bg-slate-700"
+                    >
+                      {STATUS_LABELS["closed_lost"]}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
         </div>
