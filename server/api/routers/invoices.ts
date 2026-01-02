@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, notInArray } from "drizzle-orm";
 import { getDb } from "../../db";
-import { invoices, reportRequests, activities } from "../../../drizzle/schema";
+import { invoices, reportRequests, activities, changeOrders, invoiceItems } from "../../../drizzle/schema";
 import { protectedProcedure, router } from "../../_core/trpc";
 import { sendInvoiceEmail } from "../../mail";
+import { TRPCError } from "@trpc/server";
 
 export const invoicesRouter = router({
   // Get all invoices with optional filtering
@@ -234,4 +235,301 @@ export const invoicesRouter = router({
       activeCount: Number(stats?.activeCount || 0),
     };
   }),
+
+  // ============================================================================
+  // FINANCIAL CORE - Phase 2: Convert to Invoice
+  // ============================================================================
+
+  /**
+   * Convert a job's proposal/change orders into an invoice
+   * Implements job-linked invoice numbering (INV-{JobId}-{Sequence})
+   * Supports: deposit, progress, supplement, final invoice types
+   */
+  convertToInvoice: protectedProcedure
+    .input(z.object({
+      jobId: z.number(),
+      invoiceType: z.enum(["deposit", "progress", "supplement", "final"]),
+      customAmount: z.number().optional(), // Required for deposit/progress, override amount
+      dueDate: z.string().optional(), // ISO date string, defaults to 30 days from now
+      notes: z.string().optional(),
+      // For supplement invoices: which change orders to bill
+      changeOrderIds: z.array(z.number()).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      if (!ctx.user?.id) throw new Error("User not authenticated");
+
+      // STEP 1: Fetch job details
+      const [job] = await db
+        .select()
+        .from(reportRequests)
+        .where(eq(reportRequests.id, input.jobId))
+        .limit(1);
+
+      if (!job) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Job not found",
+        });
+      }
+
+      // STEP 2: Calculate invoice amount based on type
+      let invoiceAmount = 0;
+      let taxAmount = 0;
+      let lineItemsToCreate: Array<{
+        description: string;
+        quantity: string;
+        unitPrice: number;
+        totalPrice: number;
+        changeOrderId?: number;
+      }> = [];
+
+      // Get all existing invoices for this job (excluding cancelled)
+      const existingInvoices = await db
+        .select()
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.reportRequestId, input.jobId),
+            notInArray(invoices.status, ["cancelled"])
+          )
+        );
+
+      const totalPreviouslyInvoiced = existingInvoices.reduce(
+        (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
+        0
+      );
+
+      // Base contract value (from proposal)
+      const baseContractValue = job.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
+
+      // Get all approved change orders
+      const approvedChangeOrders = await db
+        .select()
+        .from(changeOrders)
+        .where(
+          and(
+            eq(changeOrders.jobId, input.jobId),
+            eq(changeOrders.status, "approved")
+          )
+        );
+
+      const totalApprovedChanges = approvedChangeOrders.reduce(
+        (sum, co) => sum + (co.amount / 100), // Convert cents to dollars
+        0
+      );
+
+      // Total contract value = Base + Approved Changes
+      const totalContractValue = baseContractValue + totalApprovedChanges;
+
+      switch (input.invoiceType) {
+        case "deposit":
+          // Deposit: Use customAmount (required)
+          if (!input.customAmount) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "customAmount is required for deposit invoices",
+            });
+          }
+          invoiceAmount = input.customAmount;
+          
+          // Create line item for deposit
+          lineItemsToCreate.push({
+            description: job.dealType === "insurance" 
+              ? "ACV Deposit (Insurance)" 
+              : "Materials Deposit (50% of contract)",
+            quantity: "1",
+            unitPrice: Math.round(invoiceAmount * 100), // Convert to cents
+            totalPrice: Math.round(invoiceAmount * 100),
+          });
+          break;
+
+        case "progress":
+          // Progress: Use customAmount (required)
+          if (!input.customAmount) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "customAmount is required for progress invoices",
+            });
+          }
+          invoiceAmount = input.customAmount;
+          
+          lineItemsToCreate.push({
+            description: "Progress Payment",
+            quantity: "1",
+            unitPrice: Math.round(invoiceAmount * 100),
+            totalPrice: Math.round(invoiceAmount * 100),
+          });
+          break;
+
+        case "supplement":
+          // Supplement: Bill specific change orders
+          if (!input.changeOrderIds || input.changeOrderIds.length === 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "changeOrderIds is required for supplement invoices",
+            });
+          }
+
+          // Get the specified change orders
+          const changeOrdersToBill = approvedChangeOrders.filter(co => 
+            input.changeOrderIds!.includes(co.id)
+          );
+
+          if (changeOrdersToBill.length === 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "No approved change orders found with the specified IDs",
+            });
+          }
+
+          // Check if any are already billed
+          const alreadyBilled = changeOrdersToBill.filter(co => co.invoiceId !== null);
+          if (alreadyBilled.length > 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Change order(s) ${alreadyBilled.map(co => co.id).join(", ")} have already been billed`,
+            });
+          }
+
+          // Create line items for each change order
+          changeOrdersToBill.forEach(co => {
+            const amount = co.amount / 100; // Convert cents to dollars
+            invoiceAmount += amount;
+            lineItemsToCreate.push({
+              description: co.description,
+              quantity: "1",
+              unitPrice: co.amount, // Already in cents
+              totalPrice: co.amount,
+              changeOrderId: co.id,
+            });
+          });
+          break;
+
+        case "final":
+          // Final: (Total Contract + Approved Changes) - Previous Invoices
+          const remainingBalance = totalContractValue - totalPreviouslyInvoiced;
+          
+          if (remainingBalance <= 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `No remaining balance. Total contract: $${totalContractValue.toFixed(2)}, Already invoiced: $${totalPreviouslyInvoiced.toFixed(2)}`,
+            });
+          }
+
+          invoiceAmount = remainingBalance;
+          
+          lineItemsToCreate.push({
+            description: "Final Payment (Balance Due)",
+            quantity: "1",
+            unitPrice: Math.round(invoiceAmount * 100),
+            totalPrice: Math.round(invoiceAmount * 100),
+          });
+          break;
+      }
+
+      // STEP 3: Calculate tax (inherit from proposal if available)
+      // For now, manual entry - tax logic is complex per state
+      if (job.pricePerSq && job.totalPrice) {
+        // If proposal had tax calculation, we could inherit it here
+        // For now, tax is 0 and must be manually added
+        taxAmount = 0;
+      }
+
+      const totalAmount = invoiceAmount + taxAmount;
+
+      // STEP 4: Generate invoice number (INV-{JobId}-{Sequence})
+      const jobInvoiceCount = existingInvoices.length;
+      const sequence = String(jobInvoiceCount + 1).padStart(2, "0");
+      const invoiceNumber = `INV-${input.jobId}-${sequence}`;
+
+      // STEP 5: Set due date (default 30 days from now)
+      const invoiceDate = new Date();
+      const dueDate = input.dueDate 
+        ? new Date(input.dueDate)
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+      // STEP 6: Create invoice record
+      const [newInvoice] = await db.insert(invoices).values({
+        invoiceNumber,
+        reportRequestId: input.jobId,
+        invoiceType: input.invoiceType,
+        clientName: job.fullName,
+        clientEmail: job.email || undefined,
+        clientPhone: job.phone || undefined,
+        address: job.address || undefined,
+        amount: invoiceAmount.toFixed(2),
+        taxAmount: taxAmount.toFixed(2),
+        totalAmount: totalAmount.toFixed(2),
+        status: "draft",
+        invoiceDate,
+        dueDate,
+        notes: input.notes,
+        createdBy: ctx.user.id,
+      }).returning();
+
+      // STEP 7: Create invoice line items
+      if (lineItemsToCreate.length > 0) {
+        await db.insert(invoiceItems).values(
+          lineItemsToCreate.map((item, index) => ({
+            invoiceId: newInvoice.id,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
+            changeOrderId: item.changeOrderId,
+            sortOrder: index,
+          }))
+        );
+      }
+
+      // STEP 8: Link change orders to invoice (for supplement invoices)
+      if (input.invoiceType === "supplement" && input.changeOrderIds) {
+        await db
+          .update(changeOrders)
+          .set({ 
+            invoiceId: newInvoice.id,
+            updatedAt: new Date(),
+          })
+          .where(inArray(changeOrders.id, input.changeOrderIds));
+      }
+
+      // STEP 9: Log activity
+      await db.insert(activities).values({
+        reportRequestId: input.jobId,
+        userId: ctx.user.id,
+        activityType: "note_added",
+        description: `Created ${input.invoiceType} invoice ${invoiceNumber} for $${totalAmount.toFixed(2)}`,
+        metadata: JSON.stringify({ 
+          invoiceId: newInvoice.id, 
+          invoiceType: input.invoiceType,
+          amount: totalAmount,
+        }),
+      });
+
+      return {
+        success: true,
+        invoice: newInvoice,
+        invoiceNumber,
+        totalAmount,
+      };
+    }),
+
+  // Get invoices for a specific job
+  getJobInvoices: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const jobInvoices = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.reportRequestId, input.jobId))
+        .orderBy(desc(invoices.createdAt));
+
+      return jobInvoices;
+    }),
 });

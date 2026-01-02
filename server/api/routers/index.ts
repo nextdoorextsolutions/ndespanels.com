@@ -31,6 +31,7 @@ export { portalRouter } from "./portal";
 export { productsRouter } from "./products";
 export { aiRouter } from "./ai";
 export { invoicesRouter } from "./invoices";
+export { changeOrdersRouter } from "./changeOrders";
 export { messagingRouter } from "./messaging";
 export { analyticsRouter } from "./analytics";
 export { commissionsRouter } from "./commissions";

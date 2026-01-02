@@ -45,6 +45,7 @@ import { inventoryRouter } from "./api/routers/inventory";
 import { billsRouter } from "./api/routers/bills";
 import { reportsRouter } from "./api/routers/reports";
 import { expensesRouter } from "./api/routers/expenses";
+import { changeOrdersRouter } from "./api/routers/changeOrders";
 
 export const appRouter = router({
   // Core System
@@ -65,6 +66,7 @@ export const appRouter = router({
   
   // Finance & Operations
   invoices: invoicesRouter,
+  changeOrders: changeOrdersRouter,
   expenses: expensesRouter,
   commissions: commissionsRouter,
   payments: paymentsRouter,
