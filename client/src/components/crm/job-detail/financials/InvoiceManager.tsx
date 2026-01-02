@@ -62,6 +62,19 @@ export function InvoiceManager({
     },
   });
 
+  // Generate balance invoice with PDF mutation
+  const generateBalanceMutation = trpc.invoices.generateBalanceInvoice.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Balance invoice generated: $${data.balanceDue.toFixed(2)} - PDF saved to Documents`);
+      // Invalidate to refresh all components
+      utils.invoices.getJobInvoices.invalidate({ jobId });
+      utils.crm.getLead.invalidate({ id: jobId });
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate balance invoice: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setInvoiceType("deposit");
     setCustomAmount("");
@@ -161,13 +174,24 @@ export function InvoiceManager({
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-white">Invoices</h2>
-        <Button
-          onClick={handleOpenDialog}
-          className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Generate Invoice
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => generateBalanceMutation.mutate({ jobId })}
+            disabled={generateBalanceMutation.isPending}
+            variant="outline"
+            className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            {generateBalanceMutation.isPending ? "Generating..." : "Generate Balance Invoice"}
+          </Button>
+          <Button
+            onClick={handleOpenDialog}
+            className="bg-[#00d4aa] hover:bg-[#00b894] text-black font-semibold"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Generate Invoice
+          </Button>
+        </div>
       </div>
 
       {/* Invoice List */}

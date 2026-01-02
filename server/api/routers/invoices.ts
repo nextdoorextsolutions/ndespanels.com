@@ -1,9 +1,12 @@
 import { z } from "zod";
 import { eq, desc, and, sql, inArray, notInArray } from "drizzle-orm";
 import { getDb } from "../../db";
-import { invoices, reportRequests, activities, changeOrders, invoiceItems } from "../../../drizzle/schema";
+import { invoices, reportRequests, activities, changeOrders, invoiceItems, documents } from "../../../drizzle/schema";
 import { protectedProcedure, router } from "../../_core/trpc";
 import { sendInvoiceEmail } from "../../mail";
+import { generateInvoicePDF } from "../../lib/invoicePDFGenerator";
+import { storagePut } from "../../storage";
+import { logEditHistory } from "../../lib/editHistory";
 import { TRPCError } from "@trpc/server";
 
 export const invoicesRouter = router({
@@ -531,5 +534,200 @@ export const invoicesRouter = router({
         .orderBy(desc(invoices.createdAt));
 
       return jobInvoices;
+    }),
+
+  /**
+   * Generate Balance Invoice with PDF
+   * Calculates: (Base Contract + Approved Changes) - Total Invoiced
+   * Creates invoice, generates PDF, and uploads to documents
+   */
+  generateBalanceInvoice: protectedProcedure
+    .input(z.object({
+      jobId: z.number(),
+      dueDate: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      if (!ctx.user?.id) throw new Error("User not authenticated");
+
+      // STEP 1: Fetch job details
+      const [job] = await db
+        .select()
+        .from(reportRequests)
+        .where(eq(reportRequests.id, input.jobId))
+        .limit(1);
+
+      if (!job) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Job not found",
+        });
+      }
+
+      // STEP 2: Calculate amounts
+      const baseContractValue = job.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
+
+      // Get all approved change orders
+      const approvedChangeOrders = await db
+        .select()
+        .from(changeOrders)
+        .where(
+          and(
+            eq(changeOrders.jobId, input.jobId),
+            eq(changeOrders.status, "approved")
+          )
+        );
+
+      const totalApprovedChanges = approvedChangeOrders.reduce(
+        (sum, co) => sum + (co.amount / 100),
+        0
+      );
+
+      // Total contract value
+      const totalContractValue = baseContractValue + totalApprovedChanges;
+
+      // Get all existing invoices (excluding cancelled)
+      const existingInvoices = await db
+        .select()
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.reportRequestId, input.jobId),
+            notInArray(invoices.status, ["cancelled"])
+          )
+        );
+
+      const totalPreviouslyInvoiced = existingInvoices.reduce(
+        (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
+        0
+      );
+
+      // Calculate balance due
+      const balanceDue = totalContractValue - totalPreviouslyInvoiced;
+
+      if (balanceDue <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `No balance due. Total contract: $${totalContractValue.toFixed(2)}, Already invoiced: $${totalPreviouslyInvoiced.toFixed(2)}`,
+        });
+      }
+
+      // STEP 3: Generate invoice number
+      const jobInvoiceCount = existingInvoices.length;
+      const sequence = String(jobInvoiceCount + 1).padStart(2, "0");
+      const invoiceNumber = `INV-${input.jobId}-${sequence}`;
+
+      // STEP 4: Set dates
+      const invoiceDate = new Date();
+      const dueDate = input.dueDate 
+        ? new Date(input.dueDate)
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      // STEP 5: Create invoice record
+      const [newInvoice] = await db.insert(invoices).values({
+        invoiceNumber,
+        reportRequestId: input.jobId,
+        invoiceType: "final",
+        clientName: job.fullName,
+        clientEmail: job.email || undefined,
+        clientPhone: job.phone || undefined,
+        address: job.address || undefined,
+        amount: balanceDue.toFixed(2),
+        taxAmount: "0.00",
+        totalAmount: balanceDue.toFixed(2),
+        status: "draft",
+        invoiceDate,
+        dueDate,
+        notes: input.notes,
+        createdBy: ctx.user.id,
+      }).returning();
+
+      // STEP 6: Create line items
+      const lineItemsData = [
+        {
+          description: "Balance Due (Total Contract - Payments Received)",
+          quantity: "1",
+          unitPrice: Math.round(balanceDue * 100),
+          totalPrice: Math.round(balanceDue * 100),
+        }
+      ];
+
+      await db.insert(invoiceItems).values(
+        lineItemsData.map((item, index) => ({
+          invoiceId: newInvoice.id,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          sortOrder: index,
+        }))
+      );
+
+      // STEP 7: Generate PDF
+      const pdfData = {
+        invoiceNumber,
+        invoiceDate: invoiceDate.toLocaleDateString(),
+        dueDate: dueDate.toLocaleDateString(),
+        clientName: job.fullName,
+        clientAddress: job.address || undefined,
+        clientEmail: job.email || undefined,
+        clientPhone: job.phone || undefined,
+        lineItems: lineItemsData,
+        subtotal: balanceDue,
+        taxAmount: 0,
+        totalAmount: balanceDue,
+        notes: input.notes,
+      };
+
+      const pdfBuffer = await generateInvoicePDF(pdfData);
+
+      // STEP 8: Upload PDF to documents
+      const timestamp = Date.now();
+      const safeCustomerName = job.fullName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_');
+      const fileName = `Invoice_${invoiceNumber}_${safeCustomerName}.pdf`;
+      const filePath = `job-${input.jobId}/${timestamp}_${fileName}`;
+
+      const { url } = await storagePut(filePath, pdfBuffer, "application/pdf", 'documents');
+
+      // STEP 9: Save document record
+      await db.insert(documents).values({
+        reportRequestId: input.jobId,
+        uploadedBy: ctx.user.id,
+        fileName: fileName,
+        fileUrl: url,
+        fileType: "application/pdf",
+        fileSize: pdfBuffer.length,
+        category: "invoice",
+      });
+
+      // STEP 10: Log activity
+      await db.insert(activities).values({
+        reportRequestId: input.jobId,
+        userId: ctx.user.id,
+        activityType: "document_uploaded",
+        description: `Generated balance invoice ${invoiceNumber} - $${balanceDue.toFixed(2)}`,
+      });
+
+      // Log to edit history
+      await logEditHistory(
+        db,
+        input.jobId,
+        ctx.user.id,
+        "invoice",
+        null,
+        `Generated balance invoice ${invoiceNumber} for $${balanceDue.toFixed(2)}`,
+        "create",
+        ctx
+      );
+
+      return {
+        success: true,
+        invoice: newInvoice,
+        pdfUrl: url,
+        balanceDue,
+      };
     }),
 });
