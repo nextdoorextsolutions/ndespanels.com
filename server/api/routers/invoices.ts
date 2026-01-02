@@ -583,6 +583,11 @@ export const invoicesRouter = router({
         0
       );
 
+      // Calculate base invoiced (excluding supplements to avoid double-counting change orders)
+      const baseInvoiced = existingInvoices
+        .filter(inv => inv.invoiceType !== "supplement")
+        .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+
       // Get all approved change orders
       const approvedChangeOrders = await db
         .select()
@@ -600,12 +605,12 @@ export const invoicesRouter = router({
       );
 
       // Calculate base contract value
-      // If totalPrice is set, use it. Otherwise, use total invoiced as the base contract (for legacy jobs)
+      // If totalPrice is set, use it. Otherwise, use non-supplement invoiced amount as the base contract (for legacy jobs)
       let baseContractValue = job.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
       
-      if (baseContractValue === 0 && totalPreviouslyInvoiced > 0) {
-        // Legacy job: Use invoiced amount as base contract
-        baseContractValue = totalPreviouslyInvoiced;
+      if (baseContractValue === 0 && baseInvoiced > 0) {
+        // Legacy job: Use non-supplement invoiced amount as base contract
+        baseContractValue = baseInvoiced;
       }
 
       // Total contract value = Base + Approved Changes

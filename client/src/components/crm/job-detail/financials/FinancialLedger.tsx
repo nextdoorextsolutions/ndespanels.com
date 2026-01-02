@@ -26,13 +26,18 @@ export function FinancialLedger({ jobId }: FinancialLedgerProps) {
     .filter(inv => inv.status !== "cancelled")
     .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
 
+  // Calculate base invoiced (excluding supplements to avoid double-counting change orders)
+  const baseInvoiced = invoices
+    .filter(inv => inv.status !== "cancelled" && inv.invoiceType !== "supplement")
+    .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+
   // Calculate base contract value
-  // If totalPrice is set, use it. Otherwise, use total invoiced as the base contract (for legacy jobs)
+  // If totalPrice is set, use it. Otherwise, use non-supplement invoiced amount as the base contract (for legacy jobs)
   let baseContractValue = job?.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
   
-  if (baseContractValue === 0 && totalInvoiced > 0) {
-    // Legacy job: Use invoiced amount as base contract
-    baseContractValue = totalInvoiced;
+  if (baseContractValue === 0 && baseInvoiced > 0) {
+    // Legacy job: Use non-supplement invoiced amount as base contract
+    baseContractValue = baseInvoiced;
   }
 
   // Calculate totals
