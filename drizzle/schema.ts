@@ -513,11 +513,13 @@ export type CompanySettings = typeof companySettings.$inferSelect;
 export type InsertCompanySettings = typeof companySettings.$inferInsert;
 
 export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "paid", "overdue", "cancelled"]);
+export const invoiceTypeEnum = pgEnum("invoice_type", ["deposit", "progress", "supplement", "final", "other"]);
 
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
   invoiceNumber: varchar("invoice_number", { length: 50 }).notNull().unique(),
   reportRequestId: integer("report_request_id"),
+  invoiceType: invoiceTypeEnum("invoice_type").default("other"),
   clientName: varchar("client_name", { length: 255 }).notNull(),
   clientEmail: varchar("client_email", { length: 320 }),
   clientPhone: varchar("client_phone", { length: 50 }),
@@ -541,6 +543,74 @@ export const invoices = pgTable("invoices", {
 
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = typeof invoices.$inferInsert;
+
+/**
+ * Invoice Items - Normalized line items for invoices
+ * Replaces JSONB lineItems for better reporting and querying
+ */
+export const invoiceItems = pgTable("invoice_items", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").references(() => invoices.id, { onDelete: "cascade" }).notNull(),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).default("1").notNull(),
+  unitPrice: integer("unit_price").notNull(), // Stored in cents
+  totalPrice: integer("total_price").notNull(), // Stored in cents
+  productId: integer("product_id").references(() => products.id, { onDelete: "set null" }), // For reporting
+  changeOrderId: integer("change_order_id").references(() => changeOrders.id, { onDelete: "set null" }), // Track source of line item
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+export type InsertInvoiceItem = typeof invoiceItems.$inferInsert;
+
+/**
+ * Change Orders - Tracks value added after initial contract
+ * Supports supplements (insurance) and retail change orders
+ */
+export const changeOrderStatusEnum = pgEnum("change_order_status", ["pending", "approved", "rejected"]);
+export const changeOrderTypeEnum = pgEnum("change_order_type", ["supplement", "retail_change", "insurance_supplement"]);
+
+export const changeOrders = pgTable("change_orders", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").references(() => reportRequests.id, { onDelete: "cascade" }).notNull(),
+  type: changeOrderTypeEnum("type").notNull(),
+  description: text("description").notNull(),
+  amount: integer("amount").notNull(), // Stored in cents to match amountPaid pattern
+  status: changeOrderStatusEnum("status").default("pending").notNull(),
+  invoiceId: integer("invoice_id").references(() => invoices.id, { onDelete: "set null" }), // Tracks if billed
+  approvedBy: integer("approved_by").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type ChangeOrder = typeof changeOrders.$inferSelect;
+export type InsertChangeOrder = typeof changeOrders.$inferInsert;
+
+/**
+ * Insurance Scopes - Parsed data from Scope of Loss PDFs
+ * Stores carrier information and parsed line items for comparison
+ */
+export const insuranceScopes = pgTable("insurance_scopes", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").references(() => reportRequests.id, { onDelete: "cascade" }).notNull(),
+  documentId: integer("document_id").references(() => documents.id, { onDelete: "set null" }), // Link to source PDF
+  carrierName: varchar("carrier_name", { length: 255 }),
+  claimNumber: varchar("claim_number", { length: 100 }),
+  rcvAmount: integer("rcv_amount"), // Replacement Cost Value in cents
+  acvAmount: integer("acv_amount"), // Actual Cash Value in cents
+  deductible: integer("deductible"), // Stored in cents
+  lineItems: jsonb("line_items"), // Array of parsed scope items for comparison UI
+  rawData: jsonb("raw_data"), // Full parser output for debugging
+  parserVersion: varchar("parser_version", { length: 50 }), // Track parser version for debugging
+  parsedAt: timestamp("parsed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type InsuranceScope = typeof insuranceScopes.$inferSelect;
+export type InsertInsuranceScope = typeof insuranceScopes.$inferInsert;
 
 export const expenseCategoryEnum = pgEnum("expense_category", [
   "materials",
