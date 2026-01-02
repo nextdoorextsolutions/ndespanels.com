@@ -1564,6 +1564,115 @@ Return ONLY the JSON array, no other text.`;
         }
       }),
 
+    // AI-Powered Job Summary for Individual Jobs
+    getJobSummary: protectedProcedure
+      .input(z.object({
+        jobId: z.number(),
+      }))
+      .query(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        if (!ctx.user?.id) throw new Error("User not authenticated");
+
+        // Fetch job details
+        const [job] = await db
+          .select()
+          .from(reportRequests)
+          .where(eq(reportRequests.id, input.jobId))
+          .limit(1);
+
+        if (!job) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Job not found",
+          });
+        }
+
+        // Fetch job activities
+        const jobActivities = await db
+          .select()
+          .from(activities)
+          .where(eq(activities.reportRequestId, input.jobId))
+          .orderBy(desc(activities.createdAt))
+          .limit(10);
+
+        // Calculate days in current stage
+        const daysInStage = Math.floor((Date.now() - new Date(job.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+
+        // Generate insights based on job data
+        const insights = [];
+
+        // Insight 1: Stage duration
+        if (daysInStage > 14) {
+          insights.push({
+            title: "Long Stage Duration",
+            description: `This job has been in ${job.status} stage for ${daysInStage} days. Consider moving it forward or following up.`,
+            type: "warning",
+          });
+        } else if (daysInStage > 7) {
+          insights.push({
+            title: "Stage Progress",
+            description: `Job has been in ${job.status} stage for ${daysInStage} days. Normal progression.`,
+            type: "info",
+          });
+        }
+
+        // Insight 2: Activity level
+        const recentActivityCount = jobActivities.filter(a => 
+          (Date.now() - new Date(a.createdAt).getTime()) < (7 * 24 * 60 * 60 * 1000)
+        ).length;
+
+        if (recentActivityCount === 0) {
+          insights.push({
+            title: "Low Activity",
+            description: "No activity in the past 7 days. Consider reaching out to the customer.",
+            type: "warning",
+          });
+        } else if (recentActivityCount > 3) {
+          insights.push({
+            title: "High Engagement",
+            description: `${recentActivityCount} activities in the past week. Great customer engagement!`,
+            type: "success",
+          });
+        }
+
+        // Insight 3: Deal value
+        if (job.amountPaid > 0) {
+          const dealValue = job.amountPaid / 100;
+          if (dealValue > 10000) {
+            insights.push({
+              title: "High-Value Deal",
+              description: `This is a high-value job worth $${dealValue.toLocaleString()}. Ensure excellent service delivery.`,
+              type: "success",
+            });
+          }
+        }
+
+        // Insight 4: Deal type specific
+        if (job.dealType === 'insurance' && !job.claimNumber) {
+          insights.push({
+            title: "Missing Claim Number",
+            description: "Insurance job is missing claim number. Add it to avoid delays.",
+            type: "warning",
+          });
+        }
+
+        // If no insights, add a default one
+        if (insights.length === 0) {
+          insights.push({
+            title: "On Track",
+            description: "Job is progressing normally. Continue with standard workflow.",
+            type: "info",
+          });
+        }
+
+        return {
+          insights: insights.slice(0, 3), // Return max 3 insights
+          generatedAt: new Date().toISOString(),
+        };
+      }),
+
     // ============================================================================
     // MERGED SUB-ROUTERS - Maintaining flat API structure for backward compatibility
     // ============================================================================
