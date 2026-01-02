@@ -4,8 +4,7 @@ import { PropertyCard } from "./overview/PropertyCard";
 import { QuickActions } from "./overview/QuickActions";
 import { InsuranceInfoCard } from "../InsuranceInfoCard";
 import { ContractPriceCard } from "./overview/ContractPriceCard";
-import { ApprovedAmountCard } from "./overview/ApprovedAmountCard";
-import { ChangeOrderCard } from "./overview/ChangeOrderCard";
+import { TotalJobValueCard } from "./overview/TotalJobValueCard";
 import { JobAISummary } from "./JobAISummary";
 import type { Job, JobStatus } from "@/types";
 
@@ -28,8 +27,7 @@ export function JobOverviewTab({
 }: JobOverviewTabProps) {
   // Determine which financial cards to show based on status
   const statusIndex = ["lead", "appointment_set", "prospect", "approved", "project_scheduled", "completed", "invoiced", "lien_legal", "closed_deal", "closed_lost"].indexOf(job.status);
-  const showApprovedAmount = statusIndex >= 3; // Show from "approved" onwards
-  const showChangeOrders = statusIndex >= 5; // Show from "completed" onwards
+  const showFinancialSummary = statusIndex >= 3; // Show from "approved" onwards
 
   return (
     <div className="space-y-6">
@@ -50,24 +48,9 @@ export function JobOverviewTab({
         canEdit={canEdit}
       />
 
-      {/* Approved Amount Section (visible after approval) */}
-      {showApprovedAmount && (
-        <ApprovedAmountCard
-          jobId={jobId}
-          approvedAmount={job.approvedAmount ?? null}
-          canEdit={canEdit}
-        />
-      )}
-
-      {/* Change Orders Section (visible when completed or later) */}
-      {showChangeOrders && (
-        <ChangeOrderCard
-          jobId={jobId}
-          extrasCharged={job.extrasCharged ?? null}
-          supplementNumbers={job.supplementNumbers ?? null}
-          approvedAmount={job.approvedAmount ?? null}
-          canEdit={canEdit}
-        />
+      {/* Total Job Value (visible after approval) */}
+      {showFinancialSummary && (
+        <TotalJobValueCard jobId={jobId} />
       )}
 
       {/* Main Content Grid */}
