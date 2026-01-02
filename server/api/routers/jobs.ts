@@ -390,6 +390,10 @@ export const jobsRouter = router({
           updateData.manualAreaSqFt = input.manualAreaSqFt;
           await logEditHistory(db, input.id, user!.id, "manualAreaSqFt", String(currentLead.manualAreaSqFt || ""), String(input.manualAreaSqFt || ""), "update", ctx);
         }
+        if (input.totalPrice !== undefined && input.totalPrice !== Number(currentLead.totalPrice)) {
+          updateData.totalPrice = input.totalPrice;
+          await logEditHistory(db, input.id, user!.id, "totalPrice", String(currentLead.totalPrice || ""), String(input.totalPrice || ""), "update", ctx);
+        }
         if (input.approvedAmount !== undefined && input.approvedAmount !== Number(currentLead.approvedAmount)) {
           updateData.approvedAmount = input.approvedAmount;
           await logEditHistory(db, input.id, user!.id, "approvedAmount", String(currentLead.approvedAmount || ""), String(input.approvedAmount || ""), "update", ctx);
