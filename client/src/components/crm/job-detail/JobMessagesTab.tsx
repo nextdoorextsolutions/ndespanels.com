@@ -94,7 +94,10 @@ export function JobMessagesTab({
     <div>
       {/* Header with Job Assets Toggle */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">Notes & Messages ({messages.length})</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-white">Internal Messages ({messages.length})</h2>
+          <p className="text-sm text-slate-400">Team communications and customer messages</p>
+        </div>
         <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
           <SheetTrigger asChild>
             <Button 

@@ -15,9 +15,28 @@ interface UseJobTimelineProps {
 
 export function useJobTimeline({ activities, filterTag, searchQuery }: UseJobTimelineProps) {
   const threadedActivities = useMemo(() => {
-    // Build threaded activity tree
-    // Cast activities to match Activity type (tags from backend are string[] | null, we normalize to ActivityTag[] | undefined)
-    return activities.length > 0 ? buildActivityTree(activities as any) : [];
+    // Filter to only system events (exclude user messages)
+    const SYSTEM_EVENT_TYPES = [
+      'status_change', 
+      'note_added', 
+      'call_logged', 
+      'email_sent', 
+      'sms_sent', 
+      'appointment_scheduled', 
+      'document_uploaded', 
+      'payment_received', 
+      'assigned', 
+      'created', 
+      'photo_uploaded', 
+      'inspection_complete'
+    ];
+    
+    const systemEvents = activities.filter((activity: any) => 
+      SYSTEM_EVENT_TYPES.includes(activity.activityType)
+    );
+    
+    // Build threaded activity tree from system events only
+    return systemEvents.length > 0 ? buildActivityTree(systemEvents as any) : [];
   }, [activities]);
 
   const filteredTimeline = useMemo(() => {

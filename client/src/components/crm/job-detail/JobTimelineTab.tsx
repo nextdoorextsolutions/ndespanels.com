@@ -16,7 +16,10 @@ export function JobTimelineTab({ activities, activityIcons, onReply, filterTag, 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-white">Activity Timeline ({activities.length})</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-white">System Timeline ({activities.length})</h2>
+          <p className="text-sm text-slate-400">Status changes, file uploads, and system events</p>
+        </div>
         
         {/* Filter Dropdown */}
         <Select value={filterTag} onValueChange={(v) => onFilterChange(v as ActivityTag | "all")}>

@@ -164,6 +164,14 @@ export default function JobDetail() {
   const documents = job?.documents || [];
   const rawActivities = job?.activities || [];
 
+  // Separate messages from system events
+  const MESSAGE_TYPES = ['message', 'customer_message', 'callback_requested'];
+
+  // Messages: Only user communications
+  const userMessages = rawActivities.filter((activity: any) => 
+    MESSAGE_TYPES.includes(activity.activityType)
+  );
+
   // Filter data based on search
   const filteredDocuments = documents.filter((doc: any) =>
     doc.fileName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -171,7 +179,7 @@ export default function JobDetail() {
   const filteredPhotos = documents.filter((doc: any) =>
     doc.fileType?.startsWith("image/") && doc.fileName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const filteredMessages = rawActivities.filter((msg: any) =>
+  const filteredMessages = userMessages.filter((msg: any) =>
     msg.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
