@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { FinancialSummaryCard } from "./financials/FinancialSummaryCard";
 import { FinancialLedger } from "./financials/FinancialLedger";
 import { ChangeOrderManager } from "./financials/ChangeOrderManager";
 import { InvoiceManager } from "./financials/InvoiceManager";
@@ -14,9 +15,10 @@ interface JobFinancialsTabProps {
   job: Job;
   jobId: number;
   canEdit: boolean;
+  jobDealType: "insurance" | "retail" | "warranty";
 }
 
-export function JobFinancialsTab({ job, jobId, canEdit }: JobFinancialsTabProps) {
+export function JobFinancialsTab({ job, jobId, canEdit, jobDealType }: JobFinancialsTabProps) {
   // State for cross-component communication
   const [preSelectedChangeOrderId, setPreSelectedChangeOrderId] = useState<number | undefined>(undefined);
 
@@ -27,6 +29,9 @@ export function JobFinancialsTab({ job, jobId, canEdit }: JobFinancialsTabProps)
 
   return (
     <div className="space-y-6">
+      {/* Financial Summary - Top Level Overview */}
+      <FinancialSummaryCard jobId={jobId} />
+
       {/* 1. Financial Ledger - The Source of Truth */}
       <FinancialLedger 
         jobId={jobId}

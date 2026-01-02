@@ -524,9 +524,9 @@ export const invoices = pgTable("invoices", {
   clientEmail: varchar("client_email", { length: 320 }),
   clientPhone: varchar("client_phone", { length: 50 }),
   address: text("address"),
-  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
-  taxAmount: numeric("tax_amount", { precision: 10, scale: 2 }).default("0.00"),
-  totalAmount: numeric("total_amount", { precision: 10, scale: 2 }).notNull(),
+  amount: integer("amount").notNull(), // Stored in cents
+  taxAmount: integer("tax_amount").default(0).notNull(), // Stored in cents
+  totalAmount: integer("total_amount").notNull(), // Stored in cents
   status: invoiceStatusEnum("status").default("draft").notNull(),
   invoiceDate: timestamp("invoice_date").notNull(),
   dueDate: timestamp("due_date").notNull(),

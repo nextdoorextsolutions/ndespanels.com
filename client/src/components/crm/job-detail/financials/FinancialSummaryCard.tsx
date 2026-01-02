@@ -1,0 +1,134 @@
+import { Card } from "@/components/ui/card";
+import { DollarSign, TrendingUp, FileText, AlertCircle, CheckCircle } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+
+interface FinancialSummaryCardProps {
+  jobId: number;
+}
+
+export function FinancialSummaryCard({ jobId }: FinancialSummaryCardProps) {
+  const { data: job } = trpc.crm.getLead.useQuery({ id: jobId });
+  const { data: changeOrderSummary } = trpc.changeOrders.getJobSummary.useQuery({ jobId });
+  const { data: invoices = [] } = trpc.invoices.getJobInvoices.useQuery({ jobId });
+
+  // Calculate total invoiced
+  const totalInvoiced = invoices
+    .filter(inv => inv.status !== "cancelled")
+    .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+
+  // Calculate base invoiced (excluding supplements)
+  const baseInvoiced = invoices
+    .filter(inv => inv.status !== "cancelled" && inv.invoiceType !== "supplement")
+    .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+
+  // Calculate base contract value
+  let baseContractValue = job?.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
+  
+  if (baseContractValue === 0 && baseInvoiced > 0) {
+    baseContractValue = baseInvoiced;
+  }
+
+  // Calculate totals
+  const approvedChanges = changeOrderSummary?.totalApproved || 0;
+  const totalContractValue = baseContractValue + approvedChanges;
+  const remainingBalance = totalContractValue - totalInvoiced;
+
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  // Determine status
+  const isFullyInvoiced = remainingBalance <= 0;
+  const hasOverage = remainingBalance < 0;
+
+  return (
+    <Card className="glass-card bg-gradient-to-br from-slate-800/90 to-slate-900/90 border-slate-700/50 p-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Contract Total */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-slate-400 text-sm">
+            <TrendingUp className="w-4 h-4" />
+            <span>Contract Total</span>
+          </div>
+          <div className="text-3xl font-bold text-white">
+            ${formatCurrency(totalContractValue)}
+          </div>
+          <div className="text-xs text-slate-500">
+            Base: ${formatCurrency(baseContractValue)}
+            {approvedChanges > 0 && ` + Changes: $${formatCurrency(approvedChanges)}`}
+          </div>
+        </div>
+
+        {/* Total Invoiced */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-slate-400 text-sm">
+            <FileText className="w-4 h-4" />
+            <span>Total Invoiced</span>
+          </div>
+          <div className="text-3xl font-bold text-blue-400">
+            ${formatCurrency(totalInvoiced)}
+          </div>
+          <div className="text-xs text-slate-500">
+            {invoices.filter(inv => inv.status !== "cancelled").length} invoice(s)
+          </div>
+        </div>
+
+        {/* Remaining Balance */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-slate-400 text-sm">
+            <DollarSign className="w-4 h-4" />
+            <span>Remaining Balance</span>
+          </div>
+          <div className={`text-3xl font-bold ${
+            isFullyInvoiced ? 'text-green-400' : 'text-orange-400'
+          }`}>
+            ${formatCurrency(Math.abs(remainingBalance))}
+          </div>
+          <div className="text-xs text-slate-500">
+            {isFullyInvoiced ? 'Fully invoiced' : 'Unbilled revenue'}
+          </div>
+        </div>
+
+        {/* Status Indicator */}
+        <div className="flex items-center justify-center">
+          <div className={`flex flex-col items-center gap-2 p-4 rounded-lg ${
+            isFullyInvoiced 
+              ? 'bg-green-500/10 border border-green-500/30' 
+              : 'bg-orange-500/10 border border-orange-500/30'
+          }`}>
+            {isFullyInvoiced ? (
+              <>
+                <CheckCircle className="w-8 h-8 text-green-400" />
+                <span className="text-sm font-semibold text-green-400">
+                  {hasOverage ? 'Over-Invoiced' : 'Complete'}
+                </span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-8 h-8 text-orange-400" />
+                <span className="text-sm font-semibold text-orange-400">
+                  Pending
+                </span>
+              </>
+            )}
+            {hasOverage && (
+              <span className="text-xs text-red-400">
+                +${formatCurrency(Math.abs(remainingBalance))} over
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Warning for over-invoiced */}
+      {hasOverage && (
+        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-red-300">
+            <strong>Warning:</strong> Total invoiced (${formatCurrency(totalInvoiced)}) exceeds contract value (${formatCurrency(totalContractValue)}) by ${formatCurrency(Math.abs(remainingBalance))}.
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
