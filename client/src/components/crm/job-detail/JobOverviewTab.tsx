@@ -3,6 +3,7 @@ import { JobPipeline } from "./overview/JobPipeline";
 import { PropertyCard } from "./overview/PropertyCard";
 import { QuickActions } from "./overview/QuickActions";
 import { InsuranceInfoCard } from "../InsuranceInfoCard";
+import { ContractPriceCard } from "./overview/ContractPriceCard";
 import { ApprovedAmountCard } from "./overview/ApprovedAmountCard";
 import { ChangeOrderCard } from "./overview/ChangeOrderCard";
 import { JobAISummary } from "./JobAISummary";
@@ -40,6 +41,13 @@ export function JobOverviewTab({
         currentStatus={job.status}
         canEdit={canEdit}
         onStatusChange={onStatusChange}
+      />
+
+      {/* Contract Price - Always visible */}
+      <ContractPriceCard
+        jobId={jobId}
+        totalPrice={job.totalPrice ? parseFloat(job.totalPrice.toString()) : null}
+        canEdit={canEdit}
       />
 
       {/* Approved Amount Section (visible after approval) */}

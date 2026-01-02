@@ -266,6 +266,7 @@ export const jobsRouter = router({
         scheduledDate: z.string().optional(),
         customerStatusMessage: z.string().optional(),
         manualAreaSqFt: z.number().nullable().optional(), // Manual roof area override
+        totalPrice: z.number().nullable().optional(), // Original contract price (base amount)
         approvedAmount: z.number().nullable().optional(), // Approved amount (visible after approval)
         extrasCharged: z.number().nullable().optional(), // Additional charges for extras/change orders
         supplementNumbers: z.string().nullable().optional(), // Supplement numbers for insurance claims
