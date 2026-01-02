@@ -21,17 +21,23 @@ export function FinancialLedger({ jobId }: FinancialLedgerProps) {
   // Fetch job invoices
   const { data: invoices = [] } = trpc.invoices.getJobInvoices.useQuery({ jobId });
 
-  // Calculate base contract value from job data
-  const baseContractValue = job?.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
+  // Calculate total invoiced
+  const totalInvoiced = invoices
+    .filter(inv => inv.status !== "cancelled")
+    .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+
+  // Calculate base contract value
+  // If totalPrice is set, use it. Otherwise, use total invoiced as the base contract (for legacy jobs)
+  let baseContractValue = job?.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
+  
+  if (baseContractValue === 0 && totalInvoiced > 0) {
+    // Legacy job: Use invoiced amount as base contract
+    baseContractValue = totalInvoiced;
+  }
 
   // Calculate totals
   const approvedChanges = changeOrderSummary?.totalApproved || 0;
   const totalJobValue = baseContractValue + approvedChanges;
-  
-  const totalInvoiced = invoices
-    .filter(inv => inv.status !== "cancelled")
-    .reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
-  
   const unbilledRevenue = totalJobValue - totalInvoiced;
 
   // Determine alert state

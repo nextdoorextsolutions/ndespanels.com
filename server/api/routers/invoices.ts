@@ -567,8 +567,21 @@ export const invoicesRouter = router({
         });
       }
 
-      // STEP 2: Calculate amounts
-      const baseContractValue = job.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
+      // STEP 2: Get all existing invoices (excluding cancelled)
+      const existingInvoices = await db
+        .select()
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.reportRequestId, input.jobId),
+            notInArray(invoices.status, ["cancelled"])
+          )
+        );
+
+      const totalPreviouslyInvoiced = existingInvoices.reduce(
+        (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
+        0
+      );
 
       // Get all approved change orders
       const approvedChangeOrders = await db
@@ -586,24 +599,17 @@ export const invoicesRouter = router({
         0
       );
 
-      // Total contract value
+      // Calculate base contract value
+      // If totalPrice is set, use it. Otherwise, use total invoiced as the base contract (for legacy jobs)
+      let baseContractValue = job.totalPrice ? parseFloat(job.totalPrice.toString()) : 0;
+      
+      if (baseContractValue === 0 && totalPreviouslyInvoiced > 0) {
+        // Legacy job: Use invoiced amount as base contract
+        baseContractValue = totalPreviouslyInvoiced;
+      }
+
+      // Total contract value = Base + Approved Changes
       const totalContractValue = baseContractValue + totalApprovedChanges;
-
-      // Get all existing invoices (excluding cancelled)
-      const existingInvoices = await db
-        .select()
-        .from(invoices)
-        .where(
-          and(
-            eq(invoices.reportRequestId, input.jobId),
-            notInArray(invoices.status, ["cancelled"])
-          )
-        );
-
-      const totalPreviouslyInvoiced = existingInvoices.reduce(
-        (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
-        0
-      );
 
       // Calculate balance due
       const balanceDue = totalContractValue - totalPreviouslyInvoiced;
