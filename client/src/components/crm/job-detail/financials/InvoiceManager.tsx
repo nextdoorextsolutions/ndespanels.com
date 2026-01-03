@@ -75,6 +75,18 @@ export function InvoiceManager({
     },
   });
 
+  // Generate PDF for existing invoice
+  const generatePDFMutation = trpc.invoices.generatePDF.useMutation({
+    onSuccess: (data) => {
+      toast.success(`PDF generated and saved to Documents`);
+      // Invalidate documents to show new PDF
+      utils.crm.getLead.invalidate({ id: jobId });
+    },
+    onError: (error) => {
+      toast.error(`Failed to generate PDF: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setInvoiceType("deposit");
     setCustomAmount("");
@@ -242,9 +254,11 @@ export function InvoiceManager({
                         size="sm"
                         variant="ghost"
                         className="text-slate-400 hover:text-white"
+                        onClick={() => generatePDFMutation.mutate({ invoiceId: invoice.id })}
+                        disabled={generatePDFMutation.isPending}
                       >
                         <Download className="w-4 h-4 mr-1" />
-                        PDF
+                        {generatePDFMutation.isPending ? "Generating..." : "PDF"}
                       </Button>
                     </div>
                   </td>

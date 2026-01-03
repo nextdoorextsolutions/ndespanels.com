@@ -746,4 +746,93 @@ export const invoicesRouter = router({
         balanceDue,
       };
     }),
+
+  // Generate PDF for existing invoice and save to documents
+  generatePDF: protectedProcedure
+    .input(z.object({
+      invoiceId: z.number(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // STEP 1: Get invoice with line items
+      const [invoice] = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.id, input.invoiceId));
+
+      if (!invoice) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+
+      const lineItems = await db
+        .select()
+        .from(invoiceItems)
+        .where(eq(invoiceItems.invoiceId, input.invoiceId))
+        .orderBy(invoiceItems.sortOrder);
+
+      // STEP 2: Get job details for client info
+      const [job] = invoice.reportRequestId 
+        ? await db.select().from(reportRequests).where(eq(reportRequests.id, invoice.reportRequestId))
+        : [];
+
+      // STEP 3: Prepare PDF data (amounts are in cents, convert to dollars for display)
+      const pdfData = {
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate.toISOString().split('T')[0],
+        dueDate: invoice.dueDate.toISOString().split('T')[0],
+        clientName: invoice.clientName,
+        clientAddress: invoice.address || job?.address || undefined,
+        clientEmail: invoice.clientEmail || job?.email || undefined,
+        clientPhone: invoice.clientPhone || job?.phone || undefined,
+        lineItems: lineItems.map(item => ({
+          description: item.description,
+          quantity: item.quantity.toString(),
+          unitPrice: item.unitPrice, // Already in cents
+          totalPrice: item.totalPrice, // Already in cents
+        })),
+        subtotal: Number(invoice.amount) / 100, // Convert cents to dollars
+        taxAmount: Number(invoice.taxAmount) / 100, // Convert cents to dollars
+        totalAmount: Number(invoice.totalAmount) / 100, // Convert cents to dollars
+        notes: invoice.notes || undefined,
+      };
+
+      // STEP 4: Generate PDF
+      const pdfBuffer = await generateInvoicePDF(pdfData);
+
+      // STEP 5: Upload to Supabase Storage
+      const fileName = `invoice-${invoice.invoiceNumber}-${Date.now()}.pdf`;
+      const filePath = invoice.reportRequestId 
+        ? `${invoice.reportRequestId}/invoices/${fileName}`
+        : `invoices/${fileName}`;
+
+      const uploadResult = await storagePut(filePath, pdfBuffer, "application/pdf", "documents");
+
+      // STEP 6: Save document record
+      if (invoice.reportRequestId) {
+        await db.insert(documents).values({
+          reportRequestId: invoice.reportRequestId,
+          fileName: fileName,
+          fileUrl: uploadResult.url,
+          fileType: "application/pdf",
+          category: "invoice",
+          uploadedBy: ctx.user.id,
+        });
+
+        // STEP 7: Log activity
+        await db.insert(activities).values({
+          reportRequestId: invoice.reportRequestId,
+          userId: ctx.user.id,
+          activityType: "note_added",
+          description: `Generated PDF for invoice ${invoice.invoiceNumber}`,
+        });
+      }
+
+      return {
+        success: true,
+        pdfUrl: uploadResult.url,
+        fileName,
+      };
+    }),
 });
