@@ -1,4 +1,7 @@
 import PDFDocument from 'pdfkit';
+import { getPublicUrl } from './supabase';
+import https from 'https';
+import http from 'http';
 
 interface InvoiceLineItem {
   description: string;
@@ -22,8 +25,21 @@ interface InvoiceData {
   notes?: string;
 }
 
-export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
+// Helper to fetch image from URL
+async function fetchImageBuffer(url: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    const protocol = url.startsWith('https') ? https : http;
+    protocol.get(url, (response) => {
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve(Buffer.concat(chunks)));
+      response.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
+  return new Promise(async (resolve, reject) => {
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
     const buffers: Buffer[] = [];
 
@@ -34,13 +50,29 @@ export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
     });
     doc.on('error', reject);
 
-    // Header
-    doc.fontSize(20).text('INVOICE', { align: 'center' });
-    doc.moveDown();
+    try {
+      // Try to add company logo from Supabase
+      const logoUrl = getPublicUrl('company-assets/logo.png', 'CRM files');
+      try {
+        const logoBuffer = await fetchImageBuffer(logoUrl);
+        doc.image(logoBuffer, 50, 45, { width: 150 });
+        doc.moveDown(3);
+      } catch (logoError) {
+        console.warn('Could not load logo, continuing without it:', logoError);
+        // Continue without logo if it fails
+      }
 
-    // Company info (you can customize this)
-    doc.fontSize(10).text('Next Door Exterior Solutions', { align: 'left' });
-    doc.moveDown(0.5);
+      // Header
+      doc.fontSize(20).text('INVOICE', { align: 'center' });
+      doc.moveDown();
+
+      // Company info
+      doc.fontSize(10).text('Next Door Exterior Solutions', { align: 'left' });
+      doc.moveDown(0.5);
+    } catch (error) {
+      reject(error);
+      return;
+    }
 
     // Invoice details
     doc.fontSize(12).text(`Invoice #: ${data.invoiceNumber}`, { align: 'right' });
