@@ -49,6 +49,8 @@ const clientUrl = process.env.CLIENT_URL;
 const allowedOrigins = [
   "https://ndespanels.com",
   "https://www.ndespanels.com",
+  "https://nextdoorestimate.com",
+  "https://www.nextdoorestimate.com",
   "http://localhost:5173",
   "http://localhost:3000",
 ];

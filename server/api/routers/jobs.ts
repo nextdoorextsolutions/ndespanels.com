@@ -783,6 +783,56 @@ export const jobsRouter = router({
         }
       }),
 
+    // Public endpoint to submit leads from estimator landing page
+    submitEstimatorLead: publicProcedure
+      .input(z.object({
+        name: z.string().min(1, "Name is required"),
+        email: z.string().email("Valid email is required"),
+        phone: z.string().min(1, "Phone is required"),
+        address: z.string().min(1, "Address is required"),
+        cityStateZip: z.string().optional(),
+        estimatorData: z.any().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        console.log(`[SubmitEstimatorLead] New lead submission from: ${input.name}`);
+
+        try {
+          // Create new unassigned lead
+          const [newLead] = await db.insert(reportRequests).values({
+            fullName: input.name,
+            email: input.email,
+            phone: input.phone,
+            address: input.address,
+            cityStateZip: input.cityStateZip || null,
+            estimatorData: input.estimatorData || null,
+            status: "lead",
+            priority: "medium" as const,
+            leadSource: "estimator",
+            handsOnInspection: false,
+            amountPaid: 0,
+            internalNotes: input.notes || null,
+            assignedTo: null, // Unassigned
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }).returning();
+
+          console.log(`[SubmitEstimatorLead] Lead created successfully: ID ${newLead.id}`);
+
+          return {
+            success: true,
+            leadId: newLead.id,
+            message: "Lead submitted successfully",
+          };
+        } catch (error) {
+          console.error('[SubmitEstimatorLead] Error creating lead:', error);
+          throw new Error(`Failed to submit lead: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }),
+
     // Toggle follow-up status on a job
     toggleFollowUp: protectedProcedure
       .input(z.object({ 
@@ -1676,6 +1726,229 @@ Return ONLY the JSON array, no other text.`;
           insights: insights.slice(0, 3), // Return max 3 insights
           generatedAt: new Date().toISOString(),
         };
+      }),
+
+    // ============================================================================
+    // ROOFING ESTIMATOR PUBLIC ENDPOINTS
+    // ============================================================================
+    
+    // Geocode address to coordinates
+    geocode: publicProcedure
+      .input(z.object({ address: z.string() }))
+      .mutation(async ({ input }) => {
+        const apiKey = process.env.VITE_GOOGLE_MAPS_KEY;
+        if (!apiKey) throw new Error("Google Maps API key not configured");
+        
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input.address)}&key=${apiKey}`;
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.status !== "OK" || result.results.length === 0) {
+          throw new Error("Could not geocode address");
+        }
+        
+        const location = result.results[0].geometry.location;
+        return {
+          lat: location.lat,
+          lng: location.lng,
+          formattedAddress: result.results[0].formatted_address,
+        };
+      }),
+
+    // Get roof data from Google Solar API
+    getRoofData: publicProcedure
+      .input(z.object({
+        lat: z.number(),
+        lng: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const solarApiKey = process.env.VITE_GOOGLE_MAPS_KEY;
+          const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${input.lat},${input.lng}&zoom=20&size=600x400&maptype=satellite&key=${solarApiKey}`;
+          
+          if (!solarApiKey) {
+            return {
+              solarApiAvailable: false,
+              roofData: null,
+              satelliteImageUrl: staticMapUrl,
+            };
+          }
+          
+          const solarUrl = `https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude=${input.lat}&location.longitude=${input.lng}&requiredQuality=HIGH&key=${solarApiKey}`;
+          const response = await fetch(solarUrl);
+          
+          if (!response.ok) {
+            return {
+              solarApiAvailable: false,
+              roofData: null,
+              satelliteImageUrl: staticMapUrl,
+            };
+          }
+
+          const solarData = await response.json();
+          
+          if (!solarData.solarPotential || !solarData.solarPotential.roofSegmentStats) {
+            return {
+              solarApiAvailable: false,
+              roofData: null,
+              satelliteImageUrl: staticMapUrl,
+            };
+          }
+
+          const segments = solarData.solarPotential.roofSegmentStats;
+          const wholeRoof = solarData.solarPotential.wholeRoofStats;
+
+          const totalRoofArea = Math.round(wholeRoof.areaMeters2 * 10.7639);
+          const totalPitchDegrees = segments.reduce((sum: number, seg: any) => sum + seg.pitchDegrees, 0);
+          const avgPitchDegrees = totalPitchDegrees / segments.length;
+          const averagePitch = Math.round(Math.tan(avgPitchDegrees * Math.PI / 180) * 12);
+          const eaveLength = Math.round(Math.sqrt(totalRoofArea) * 4);
+          const ridgeValleyLength = Math.round(eaveLength * 0.2);
+
+          const roofData = {
+            totalRoofArea,
+            averagePitch,
+            eaveLength,
+            ridgeValleyLength,
+            satelliteImageUrl: staticMapUrl,
+            solarApiAvailable: true,
+          };
+
+          return {
+            solarApiAvailable: true,
+            roofData,
+            satelliteImageUrl: staticMapUrl,
+          };
+        } catch (error) {
+          console.error("Solar API error:", error);
+          return {
+            solarApiAvailable: false,
+            roofData: null,
+            satelliteImageUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${input.lat},${input.lng}&zoom=20&size=600x400&maptype=satellite&key=${process.env.VITE_GOOGLE_MAPS_KEY}`,
+          };
+        }
+      }),
+
+    // Submit lead with estimate data
+    submitLead: publicProcedure
+      .input(z.object({
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        address: z.string(),
+        latitude: z.string(),
+        longitude: z.string(),
+        roofData: z.object({
+          totalRoofArea: z.number(),
+          averagePitch: z.number(),
+          eaveLength: z.number(),
+          ridgeValleyLength: z.number(),
+          satelliteImageUrl: z.string(),
+          solarApiAvailable: z.boolean(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        // Calculate pricing
+        const WASTE_FACTOR = 0.10;
+        const PITCH_THRESHOLD = 6;
+        const PITCH_SURCHARGE = 0.15;
+        
+        const adjustedArea = input.roofData.totalRoofArea * (1 + WASTE_FACTOR);
+        const pitchMultiplier = input.roofData.averagePitch > PITCH_THRESHOLD ? (1 + PITCH_SURCHARGE) : 1;
+        
+        const PRICING_TIERS = {
+          good: { shingles: 3.50, labor: 2.00, underlayment: 0.50, ventilation: 0.30, flashing: 0.40, disposal: 0.50 },
+          better: { shingles: 4.50, labor: 2.50, underlayment: 0.60, ventilation: 0.40, flashing: 0.50, disposal: 0.60 },
+          best: { shingles: 6.00, labor: 3.00, underlayment: 0.75, ventilation: 0.50, flashing: 0.60, disposal: 0.75 },
+        };
+        
+        const calculateTier = (tier: any) => {
+          const materials = (tier.shingles + tier.underlayment) * adjustedArea;
+          const labor = tier.labor * adjustedArea;
+          const edgeWork = (tier.flashing * input.roofData.eaveLength) + (tier.flashing * 0.5 * input.roofData.ridgeValleyLength);
+          const ventilation = tier.ventilation * adjustedArea;
+          const disposal = tier.disposal * input.roofData.totalRoofArea;
+          const subtotal = (materials + labor + edgeWork + ventilation + disposal) * pitchMultiplier;
+          return Math.round(subtotal);
+        };
+        
+        const estimate = {
+          roofData: input.roofData,
+          pricing: {
+            good: calculateTier(PRICING_TIERS.good),
+            better: calculateTier(PRICING_TIERS.better),
+            best: calculateTier(PRICING_TIERS.best),
+          },
+          breakdown: {
+            adjustedArea,
+            pitchMultiplier,
+          },
+        };
+
+        // Create lead
+        const [newLead] = await db.insert(reportRequests).values({
+          fullName: input.name || null,
+          email: input.email || null,
+          phone: input.phone || null,
+          address: input.address,
+          status: "lead",
+          priority: "medium" as const,
+          leadSource: "estimator",
+          handsOnInspection: false,
+          amountPaid: 0,
+          estimatorData: {
+            roofData: input.roofData,
+            estimate: estimate,
+            latitude: input.latitude,
+            longitude: input.longitude,
+          },
+          assignedTo: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }).returning();
+
+        return { estimate, leadId: newLead.id };
+      }),
+
+    // Request manual quote
+    requestManualQuote: publicProcedure
+      .input(z.object({
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        address: z.string(),
+        latitude: z.string(),
+        longitude: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        const [newLead] = await db.insert(reportRequests).values({
+          fullName: input.name || null,
+          email: input.email || null,
+          phone: input.phone || null,
+          address: input.address,
+          status: "lead",
+          priority: "medium" as const,
+          leadSource: "estimator",
+          handsOnInspection: false,
+          amountPaid: 0,
+          internalNotes: "Manual quote requested - Solar API not available for this location",
+          estimatorData: {
+            latitude: input.latitude,
+            longitude: input.longitude,
+            manualQuoteRequested: true,
+          },
+          assignedTo: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }).returning();
+
+        return { success: true, leadId: newLead.id };
       }),
 
     // ============================================================================
