@@ -834,7 +834,7 @@ export const jobsRouter = router({
             email: input.email,
             phone: input.phone,
             address: input.address,
-            cityStateZip: input.cityStateZip || null,
+            cityStateZip: input.cityStateZip || "",
             estimatorData: input.estimatorData || null,
             status: "lead",
             priority: "medium" as const,
@@ -1759,29 +1759,6 @@ Return ONLY the JSON array, no other text.`;
     // ROOFING ESTIMATOR PUBLIC ENDPOINTS
     // ============================================================================
     
-    // Geocode address to coordinates
-    geocode: publicProcedure
-      .input(z.object({ address: z.string() }))
-      .mutation(async ({ input }) => {
-        const apiKey = process.env.VITE_GOOGLE_MAPS_KEY;
-        if (!apiKey) throw new Error("Google Maps API key not configured");
-        
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input.address)}&key=${apiKey}`;
-        const response = await fetch(url);
-        const result = await response.json();
-        
-        if (result.status !== "OK" || result.results.length === 0) {
-          throw new Error("Could not geocode address");
-        }
-        
-        const location = result.results[0].geometry.location;
-        return {
-          lat: location.lat,
-          lng: location.lng,
-          formattedAddress: result.results[0].formatted_address,
-        };
-      }),
-
     // Get roof data from Google Solar API
     getRoofData: publicProcedure
       .input(z.object({
@@ -1917,10 +1894,11 @@ Return ONLY the JSON array, no other text.`;
 
         // Create lead
         const [newLead] = await db.insert(reportRequests).values({
-          fullName: input.name || null,
+          fullName: input.name || "Website Visitor",
           email: input.email || null,
           phone: input.phone || null,
           address: input.address,
+          cityStateZip: "",
           status: "lead",
           priority: "medium" as const,
           leadSource: "estimator",
@@ -1955,10 +1933,11 @@ Return ONLY the JSON array, no other text.`;
         if (!db) throw new Error("Database not available");
 
         const [newLead] = await db.insert(reportRequests).values({
-          fullName: input.name || null,
+          fullName: input.name || "Website Visitor",
           email: input.email || null,
           phone: input.phone || null,
           address: input.address,
+          cityStateZip: "",
           status: "lead",
           priority: "medium" as const,
           leadSource: "estimator",
