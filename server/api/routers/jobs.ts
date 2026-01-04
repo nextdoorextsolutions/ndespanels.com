@@ -46,6 +46,33 @@ const emailOrEmpty = z.string().refine(
 
 // Exported Jobs Router
 export const jobsRouter = router({
+    // Geocode address to coordinates (for estimator)
+    geocode: publicProcedure
+      .input(z.object({ address: z.string() }))
+      .mutation(async ({ input }) => {
+        const apiKey = process.env.VITE_GOOGLE_MAPS_KEY;
+        
+        if (!apiKey) {
+          throw new Error("Google Maps API key not configured");
+        }
+
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input.address)}&key=${apiKey}`;
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.status !== "OK" || result.results.length === 0) {
+          throw new Error("Could not geocode address");
+        }
+        
+        const location = result.results[0].geometry.location;
+        return {
+          lat: location.lat,
+          lng: location.lng,
+          formattedAddress: result.results[0].formatted_address,
+        };
+      }),
+
     // Get all leads with filtering (role-based)
     getLeads: protectedProcedure
       .input(z.object({
